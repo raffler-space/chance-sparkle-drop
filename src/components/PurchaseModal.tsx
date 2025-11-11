@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Minus, Plus, Ticket } from 'lucide-react';
+import { Minus, Plus, Ticket, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface PurchaseModalProps {
   isOpen: boolean;
@@ -18,13 +19,50 @@ interface PurchaseModalProps {
 }
 
 const USDT_CONTRACT_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7'; // USDT on Ethereum mainnet
+const RAFFLE_CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000000'; // TODO: Replace with deployed contract
 
 export const PurchaseModal = ({ isOpen, onClose, raffle, account }: PurchaseModalProps) => {
   const [quantity, setQuantity] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [usdtBalance, setUsdtBalance] = useState<number | null>(null);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
 
-  const totalPrice = (raffle.ticketPrice * quantity).toFixed(2);
+  const totalPrice = raffle.ticketPrice * quantity;
   const availableTickets = raffle.maxTickets - raffle.ticketsSold;
+  const hasInsufficientBalance = usdtBalance !== null && usdtBalance < totalPrice;
+
+  const fetchUSDTBalance = async () => {
+    if (!account || !window.ethereum) return;
+
+    setIsLoadingBalance(true);
+    try {
+      // balanceOf(address) function signature: 0x70a08231
+      const data = `0x70a08231000000000000000000000000${account.slice(2)}`;
+      
+      const balance = await window.ethereum.request({
+        method: 'eth_call',
+        params: [{
+          to: USDT_CONTRACT_ADDRESS,
+          data: data,
+        }, 'latest'],
+      });
+
+      // USDT uses 6 decimals
+      const balanceInUSDT = parseInt(balance, 16) / 1e6;
+      setUsdtBalance(balanceInUSDT);
+    } catch (error) {
+      console.error('Error fetching USDT balance:', error);
+      setUsdtBalance(null);
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen && account) {
+      fetchUSDTBalance();
+    }
+  }, [isOpen, account]);
 
   const handleQuantityChange = (delta: number) => {
     const newQuantity = quantity + delta;
@@ -48,15 +86,21 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account }: PurchaseModa
 
     try {
       // USDT uses 6 decimals
-      const amount = (raffle.ticketPrice * quantity * 1e6).toString();
+      const amountInSmallestUnit = Math.floor(raffle.ticketPrice * quantity * 1e6);
+      const amountHex = amountInSmallestUnit.toString(16).padStart(64, '0');
       
-      // USDT ERC20 transfer function signature
+      // Remove '0x' prefix from address and pad to 32 bytes (64 hex chars)
+      const recipientAddress = RAFFLE_CONTRACT_ADDRESS.slice(2).padStart(64, '0');
+      
+      // ERC20 transfer(address,uint256) function signature: 0xa9059cbb
+      const data = `0xa9059cbb${recipientAddress}${amountHex}`;
+      
       const transferData = window.ethereum.request({
         method: 'eth_sendTransaction',
         params: [{
           from: account,
           to: USDT_CONTRACT_ADDRESS,
-          data: `0xa9059cbb${raffle.id.toString(16).padStart(64, '0')}${amount.padStart(64, '0')}`,
+          data: data,
         }],
       });
 
@@ -97,6 +141,32 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account }: PurchaseModa
         </DialogHeader>
 
         <div className="space-y-6 py-4">
+          {/* USDT Balance Display */}
+          <div className="glass-card p-3 border-neon-gold/20">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-foreground/70">Your USDT Balance</span>
+              <span className="font-rajdhani text-lg text-neon-gold">
+                {isLoadingBalance ? (
+                  <span className="animate-pulse">Loading...</span>
+                ) : usdtBalance !== null ? (
+                  `${usdtBalance.toFixed(2)} USDT`
+                ) : (
+                  'Unable to load'
+                )}
+              </span>
+            </div>
+          </div>
+
+          {/* Insufficient Balance Warning */}
+          {hasInsufficientBalance && (
+            <Alert className="border-destructive/50 bg-destructive/10">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              <AlertDescription className="text-destructive">
+                Insufficient USDT balance. You need {totalPrice.toFixed(2)} USDT but only have {usdtBalance?.toFixed(2)} USDT.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Quantity Selector */}
           <div className="space-y-2">
             <label className="text-sm font-rajdhani text-foreground/80">
@@ -146,7 +216,7 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account }: PurchaseModa
               <div className="flex justify-between items-center">
                 <span className="font-rajdhani text-lg">Total</span>
                 <span className="font-orbitron text-2xl text-neon-cyan glow-text-cyan">
-                  {totalPrice} USDT
+                  {totalPrice.toFixed(2)} USDT
                 </span>
               </div>
             </div>
@@ -155,8 +225,8 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account }: PurchaseModa
           {/* Purchase Button */}
           <Button
             onClick={handlePurchase}
-            disabled={isProcessing || !account}
-            className="w-full bg-gradient-to-r from-neon-cyan to-neon-purple hover:opacity-90 text-white font-orbitron text-lg h-12"
+            disabled={isProcessing || !account || hasInsufficientBalance}
+            className="w-full bg-gradient-to-r from-neon-cyan to-neon-purple hover:opacity-90 text-white font-orbitron text-lg h-12 disabled:opacity-50"
           >
             {isProcessing ? (
               <>
