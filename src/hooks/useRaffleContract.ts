@@ -1,0 +1,225 @@
+import { useState, useEffect, useCallback } from 'react';
+import { ethers } from 'ethers';
+import { toast } from 'sonner';
+import { getNetworkConfig, RAFFLE_ABI, isSupportedNetwork } from '@/config/contracts';
+
+export const useRaffleContract = (chainId: number | undefined, account: string | undefined) => {
+  const [contract, setContract] = useState<ethers.Contract | null>(null);
+  const [signer, setSigner] = useState<ethers.Signer | null>(null);
+  const [isContractReady, setIsContractReady] = useState(false);
+
+  useEffect(() => {
+    const initContract = async () => {
+      if (!chainId || !account) {
+        setContract(null);
+        setIsContractReady(false);
+        return;
+      }
+
+      if (!isSupportedNetwork(chainId)) {
+        toast.error('Unsupported network. Please switch to Sepolia or Ethereum Mainnet.');
+        setContract(null);
+        setIsContractReady(false);
+        return;
+      }
+
+      const networkConfig = getNetworkConfig(chainId);
+      if (!networkConfig) {
+        setIsContractReady(false);
+        return;
+      }
+
+      // Check if contract address is set
+      if (networkConfig.contracts.raffle === "0x0000000000000000000000000000000000000000") {
+        toast.error('Contract not deployed yet. Please deploy the contract first.');
+        setIsContractReady(false);
+        return;
+      }
+
+      try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const signer = provider.getSigner();
+        const raffleContract = new ethers.Contract(
+          networkConfig.contracts.raffle,
+          RAFFLE_ABI,
+          signer
+        );
+
+        setSigner(signer);
+        setContract(raffleContract);
+        setIsContractReady(true);
+      } catch (error) {
+        console.error('Error initializing contract:', error);
+        toast.error('Failed to initialize contract');
+        setIsContractReady(false);
+      }
+    };
+
+    initContract();
+  }, [chainId, account]);
+
+  // Create a new raffle (admin only)
+  const createRaffle = useCallback(async (
+    name: string,
+    description: string,
+    ticketPriceEth: string,
+    maxTickets: number,
+    durationDays: number,
+    nftContract?: string
+  ) => {
+    if (!contract) {
+      toast.error('Contract not initialized');
+      return null;
+    }
+
+    try {
+      const ticketPrice = ethers.utils.parseEther(ticketPriceEth);
+      const duration = durationDays * 24 * 60 * 60; // Convert days to seconds
+      const nftAddress = nftContract || ethers.constants.AddressZero;
+
+      const tx = await contract.createRaffle(
+        name,
+        description,
+        ticketPrice,
+        maxTickets,
+        duration,
+        nftAddress
+      );
+
+      toast.loading('Creating raffle...', { id: 'create-raffle' });
+      const receipt = await tx.wait();
+      
+      // Extract raffle ID from event
+      const event = receipt.events?.find((e: any) => e.event === 'RaffleCreated');
+      const raffleId = event?.args?.raffleId?.toString();
+
+      toast.success('Raffle created successfully!', { id: 'create-raffle' });
+      return raffleId;
+    } catch (error: any) {
+      console.error('Error creating raffle:', error);
+      toast.error(error.reason || 'Failed to create raffle', { id: 'create-raffle' });
+      return null;
+    }
+  }, [contract]);
+
+  // Buy tickets for a raffle
+  const buyTickets = useCallback(async (raffleId: number, quantity: number) => {
+    if (!contract) {
+      toast.error('Contract not initialized');
+      return false;
+    }
+
+    try {
+      // Get raffle info to calculate price
+      const raffleInfo = await contract.raffles(raffleId);
+      const totalPrice = raffleInfo.ticketPrice.mul(quantity);
+
+      const tx = await contract.buyTickets(raffleId, quantity, {
+        value: totalPrice
+      });
+
+      toast.loading('Purchasing tickets...', { id: 'buy-tickets' });
+      await tx.wait();
+
+      toast.success(`Successfully purchased ${quantity} ticket(s)!`, { id: 'buy-tickets' });
+      return true;
+    } catch (error: any) {
+      console.error('Error buying tickets:', error);
+      toast.error(error.reason || 'Failed to purchase tickets', { id: 'buy-tickets' });
+      return false;
+    }
+  }, [contract]);
+
+  // Select winner (admin only)
+  const selectWinner = useCallback(async (raffleId: number) => {
+    if (!contract) {
+      toast.error('Contract not initialized');
+      return false;
+    }
+
+    try {
+      const tx = await contract.selectWinner(raffleId);
+
+      toast.loading('Requesting winner selection...', { id: 'select-winner' });
+      await tx.wait();
+
+      toast.success('Winner selection requested! Waiting for Chainlink VRF...', { id: 'select-winner' });
+      return true;
+    } catch (error: any) {
+      console.error('Error selecting winner:', error);
+      toast.error(error.reason || 'Failed to select winner', { id: 'select-winner' });
+      return false;
+    }
+  }, [contract]);
+
+  // Claim prize (winner only)
+  const claimPrize = useCallback(async (raffleId: number) => {
+    if (!contract) {
+      toast.error('Contract not initialized');
+      return false;
+    }
+
+    try {
+      const tx = await contract.claimPrize(raffleId);
+
+      toast.loading('Claiming prize...', { id: 'claim-prize' });
+      await tx.wait();
+
+      toast.success('Prize claimed successfully!', { id: 'claim-prize' });
+      return true;
+    } catch (error: any) {
+      console.error('Error claiming prize:', error);
+      toast.error(error.reason || 'Failed to claim prize', { id: 'claim-prize' });
+      return false;
+    }
+  }, [contract]);
+
+  // Get raffle info
+  const getRaffleInfo = useCallback(async (raffleId: number) => {
+    if (!contract) return null;
+
+    try {
+      const info = await contract.raffles(raffleId);
+      return {
+        name: info.name,
+        description: info.description,
+        ticketPrice: ethers.utils.formatEther(info.ticketPrice),
+        maxTickets: info.maxTickets.toNumber(),
+        ticketsSold: info.ticketsSold.toNumber(),
+        endTime: new Date(info.endTime.toNumber() * 1000),
+        winner: info.winner,
+        isActive: info.isActive,
+        vrfRequested: info.vrfRequested,
+        nftContract: info.nftContract
+      };
+    } catch (error) {
+      console.error('Error getting raffle info:', error);
+      return null;
+    }
+  }, [contract]);
+
+  // Get user entries
+  const getUserEntries = useCallback(async (raffleId: number, userAddress: string) => {
+    if (!contract) return [];
+
+    try {
+      const entries = await contract.getUserEntries(raffleId, userAddress);
+      return entries.map((e: ethers.BigNumber) => e.toNumber());
+    } catch (error) {
+      console.error('Error getting user entries:', error);
+      return [];
+    }
+  }, [contract]);
+
+  return {
+    contract,
+    signer,
+    isContractReady,
+    createRaffle,
+    buyTickets,
+    selectWinner,
+    claimPrize,
+    getRaffleInfo,
+    getUserEntries,
+  };
+};
