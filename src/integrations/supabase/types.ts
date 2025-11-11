@@ -14,16 +14,184 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      raffles: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          draw_date: string | null
+          draw_tx_hash: string | null
+          id: number
+          image_url: string | null
+          max_tickets: number
+          name: string
+          nft_collection_address: string
+          prize_description: string
+          status: string | null
+          ticket_price: number
+          tickets_sold: number | null
+          winner_address: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          draw_date?: string | null
+          draw_tx_hash?: string | null
+          id?: number
+          image_url?: string | null
+          max_tickets: number
+          name: string
+          nft_collection_address: string
+          prize_description: string
+          status?: string | null
+          ticket_price: number
+          tickets_sold?: number | null
+          winner_address?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          draw_date?: string | null
+          draw_tx_hash?: string | null
+          id?: number
+          image_url?: string | null
+          max_tickets?: number
+          name?: string
+          nft_collection_address?: string
+          prize_description?: string
+          status?: string | null
+          ticket_price?: number
+          tickets_sold?: number | null
+          winner_address?: string | null
+        }
+        Relationships: []
+      }
+      tickets: {
+        Row: {
+          id: string
+          purchase_price: number
+          purchased_at: string
+          quantity: number
+          raffle_id: number
+          ticket_number: number
+          tx_hash: string
+          user_id: string
+          wallet_address: string
+        }
+        Insert: {
+          id?: string
+          purchase_price: number
+          purchased_at?: string
+          quantity?: number
+          raffle_id: number
+          ticket_number: number
+          tx_hash: string
+          user_id: string
+          wallet_address: string
+        }
+        Update: {
+          id?: string
+          purchase_price?: number
+          purchased_at?: string
+          quantity?: number
+          raffle_id?: number
+          ticket_number?: number
+          tx_hash?: string
+          user_id?: string
+          wallet_address?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tickets_raffle_id_fkey"
+            columns: ["raffle_id"]
+            isOneToOne: false
+            referencedRelation: "raffles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          amount: number
+          confirmed_at: string | null
+          created_at: string
+          id: string
+          raffle_id: number
+          status: string | null
+          tx_hash: string
+          user_id: string
+          wallet_address: string
+        }
+        Insert: {
+          amount: number
+          confirmed_at?: string | null
+          created_at?: string
+          id?: string
+          raffle_id: number
+          status?: string | null
+          tx_hash: string
+          user_id: string
+          wallet_address: string
+        }
+        Update: {
+          amount?: number
+          confirmed_at?: string | null
+          created_at?: string
+          id?: string
+          raffle_id?: number
+          status?: string | null
+          tx_hash?: string
+          user_id?: string
+          wallet_address?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_raffle_id_fkey"
+            columns: ["raffle_id"]
+            isOneToOne: false
+            referencedRelation: "raffles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +318,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const

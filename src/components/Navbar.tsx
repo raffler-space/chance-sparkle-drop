@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Wallet, Menu, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Wallet, Menu, X, LayoutDashboard, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -13,10 +14,9 @@ export const Navbar = ({ onConnectWallet, walletAddress, isConnecting }: NavbarP
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
-    { label: 'Raffles', href: '#raffles' },
-    { label: 'How It Works', href: '#how-it-works' },
-    { label: 'My Entries', href: '#my-entries' },
-    { label: 'Winners', href: '#winners' },
+    { label: 'Home', href: '/', type: 'link' },
+    { label: 'Dashboard', href: '/dashboard', type: 'link', icon: LayoutDashboard },
+    { label: 'Admin', href: '/admin', type: 'link', icon: Shield },
   ];
 
   const formatAddress = (address: string) => {
@@ -28,22 +28,23 @@ export const Navbar = ({ onConnectWallet, walletAddress, isConnecting }: NavbarP
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <div className="flex-shrink-0">
+          <Link to="/" className="flex-shrink-0">
             <h1 className="text-2xl font-orbitron font-bold bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent animate-gradient">
               RAFFLER
             </h1>
-          </div>
+          </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-6">
             {navLinks.map((link) => (
-              <a
+              <Link
                 key={link.href}
-                href={link.href}
-                className="text-muted-foreground hover:text-primary transition-colors font-rajdhani font-medium"
+                to={link.href}
+                className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors font-rajdhani font-medium"
               >
+                {link.icon && <link.icon className="w-4 h-4" />}
                 {link.label}
-              </a>
+              </Link>
             ))}
           </div>
 
@@ -81,14 +82,15 @@ export const Navbar = ({ onConnectWallet, walletAddress, isConnecting }: NavbarP
         <div className="md:hidden glass-effect border-t border-border/50">
           <div className="px-2 pt-2 pb-3 space-y-1">
             {navLinks.map((link) => (
-              <a
+              <Link
                 key={link.href}
-                href={link.href}
-                className="block px-3 py-2 text-base font-rajdhani font-medium text-muted-foreground hover:text-primary transition-colors"
+                to={link.href}
+                className="flex items-center gap-2 px-3 py-2 text-base font-rajdhani font-medium text-muted-foreground hover:text-primary transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
+                {link.icon && <link.icon className="w-4 h-4" />}
                 {link.label}
-              </a>
+              </Link>
             ))}
             <div className="px-3 py-2">
               <Button
