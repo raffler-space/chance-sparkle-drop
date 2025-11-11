@@ -16,20 +16,42 @@ interface NavbarProps {
 export const Navbar = ({ onConnectWallet, walletAddress, isConnecting }: NavbarProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     // Check current auth state
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        checkAdminStatus(session.user.id);
+      } else {
+        setIsAdmin(false);
+      }
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        checkAdminStatus(session.user.id);
+      } else {
+        setIsAdmin(false);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const checkAdminStatus = async (userId: string) => {
+    const { data } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .eq('role', 'admin')
+      .maybeSingle();
+    
+    setIsAdmin(!!data);
+  };
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -40,11 +62,13 @@ export const Navbar = ({ onConnectWallet, walletAddress, isConnecting }: NavbarP
     }
   };
 
-  const navLinks = [
+  const allNavLinks = [
     { label: 'Home', href: '/', type: 'link' },
     { label: 'Dashboard', href: '/dashboard', type: 'link', icon: LayoutDashboard },
-    { label: 'Admin', href: '/admin', type: 'link', icon: Shield },
+    { label: 'Admin', href: '/admin', type: 'link', icon: Shield, adminOnly: true },
   ];
+
+  const navLinks = allNavLinks.filter(link => !link.adminOnly || isAdmin);
 
   const formatAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
