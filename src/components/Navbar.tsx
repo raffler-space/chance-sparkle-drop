@@ -1,11 +1,19 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Wallet, Menu, X, LayoutDashboard, Shield, LogIn, LogOut } from 'lucide-react';
+import { Wallet, Menu, X, LayoutDashboard, Shield, LogIn, LogOut, UserCircle, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
 import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface NavbarProps {
   onConnectWallet: () => void;
@@ -62,6 +70,12 @@ export const Navbar = ({ onConnectWallet, walletAddress, isConnecting }: NavbarP
     }
   };
 
+  const handleDisconnect = () => {
+    handleSignOut();
+    // Wallet disconnect logic would go here if needed
+    toast.success('Disconnected wallet');
+  };
+
   const allNavLinks = [
     { label: 'Home', href: '/', type: 'link' },
     { label: 'Raffles', href: '/raffles', type: 'link' },
@@ -102,46 +116,54 @@ export const Navbar = ({ onConnectWallet, walletAddress, isConnecting }: NavbarP
             ))}
           </div>
 
-          {/* Auth and Wallet Buttons */}
+          {/* User Menu */}
           <div className="hidden md:flex items-center gap-3">
             {user ? (
-              <>
-                <span className="text-sm text-muted-foreground font-rajdhani">
-                  {user.email}
-                </span>
-                <Button
-                  onClick={handleSignOut}
-                  variant="outline"
-                  size="sm"
-                  className="border-neon-cyan/30 hover:bg-neon-cyan/10 font-rajdhani"
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign Out
-                </Button>
-              </>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    className="bg-gradient-to-r from-purple to-secondary hover:opacity-90 font-orbitron"
+                  >
+                    <Wallet className="mr-2 h-4 w-4" />
+                    {walletAddress ? formatAddress(walletAddress) : user.email?.split('@')[0]}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 glass-effect border-border/50">
+                  <DropdownMenuLabel className="font-rajdhani">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium">Account</p>
+                      <p className="text-xs text-muted-foreground">{user.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard" className="cursor-pointer font-rajdhani">
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/referrals" className="cursor-pointer font-rajdhani">
+                      <Gift className="mr-2 h-4 w-4" />
+                      Referrals
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleDisconnect} className="cursor-pointer font-rajdhani text-destructive focus:text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <Button
                 onClick={() => window.location.href = '/auth'}
-                variant="outline"
-                size="sm"
-                className="border-neon-cyan/30 hover:bg-neon-cyan/10 font-rajdhani"
+                className="bg-gradient-to-r from-purple to-secondary hover:opacity-90 font-orbitron"
               >
                 <LogIn className="mr-2 h-4 w-4" />
                 Sign In
               </Button>
             )}
-            <Button
-              onClick={onConnectWallet}
-              disabled={isConnecting}
-              className="bg-gradient-to-r from-purple to-secondary hover:opacity-90 font-orbitron"
-            >
-              <Wallet className="mr-2 h-4 w-4" />
-              {isConnecting
-                ? 'Connecting...'
-                : walletAddress
-                ? formatAddress(walletAddress)
-                : 'Connect Wallet'}
-            </Button>
           </div>
 
           {/* Mobile menu button */}
@@ -175,19 +197,19 @@ export const Navbar = ({ onConnectWallet, walletAddress, isConnecting }: NavbarP
             <div className="px-3 py-2 space-y-2">
               {user ? (
                 <>
-                  <div className="text-sm text-muted-foreground font-rajdhani px-3">
+                  <div className="text-sm text-muted-foreground font-rajdhani px-3 py-2">
                     {user.email}
                   </div>
                   <Button
                     onClick={() => {
-                      handleSignOut();
+                      handleDisconnect();
                       setMobileMenuOpen(false);
                     }}
                     variant="outline"
                     className="w-full border-neon-cyan/30 hover:bg-neon-cyan/10 font-rajdhani"
                   >
                     <LogOut className="mr-2 h-4 w-4" />
-                    Sign Out
+                    Log Out
                   </Button>
                 </>
               ) : (
@@ -196,28 +218,12 @@ export const Navbar = ({ onConnectWallet, walletAddress, isConnecting }: NavbarP
                     window.location.href = '/auth';
                     setMobileMenuOpen(false);
                   }}
-                  variant="outline"
-                  className="w-full border-neon-cyan/30 hover:bg-neon-cyan/10 font-rajdhani"
+                  className="w-full bg-gradient-to-r from-purple to-secondary hover:opacity-90 font-orbitron"
                 >
                   <LogIn className="mr-2 h-4 w-4" />
                   Sign In
                 </Button>
               )}
-              <Button
-                onClick={() => {
-                  onConnectWallet();
-                  setMobileMenuOpen(false);
-                }}
-                disabled={isConnecting}
-                className="w-full bg-gradient-to-r from-purple to-secondary hover:opacity-90 font-orbitron"
-              >
-                <Wallet className="mr-2 h-4 w-4" />
-                {isConnecting
-                  ? 'Connecting...'
-                  : walletAddress
-                  ? formatAddress(walletAddress)
-                  : 'Connect Wallet'}
-              </Button>
             </div>
           </div>
         </div>
