@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Wallet, Menu, X, LayoutDashboard, Shield } from 'lucide-react';
+import { Wallet, Menu, X, LayoutDashboard, Shield, LogIn, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { User } from '@supabase/supabase-js';
+import { toast } from 'sonner';
 
 interface NavbarProps {
   onConnectWallet: () => void;
@@ -12,6 +15,30 @@ interface NavbarProps {
 
 export const Navbar = ({ onConnectWallet, walletAddress, isConnecting }: NavbarProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    // Check current auth state
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error('Error signing out');
+    } else {
+      toast.success('Signed out successfully');
+    }
+  };
 
   const navLinks = [
     { label: 'Home', href: '/', type: 'link' },
@@ -48,8 +75,34 @@ export const Navbar = ({ onConnectWallet, walletAddress, isConnecting }: NavbarP
             ))}
           </div>
 
-          {/* Wallet Button */}
-          <div className="hidden md:block">
+          {/* Auth and Wallet Buttons */}
+          <div className="hidden md:flex items-center gap-3">
+            {user ? (
+              <>
+                <span className="text-sm text-muted-foreground font-rajdhani">
+                  {user.email}
+                </span>
+                <Button
+                  onClick={handleSignOut}
+                  variant="outline"
+                  size="sm"
+                  className="border-neon-cyan/30 hover:bg-neon-cyan/10 font-rajdhani"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <Button
+                onClick={() => window.location.href = '/auth'}
+                variant="outline"
+                size="sm"
+                className="border-neon-cyan/30 hover:bg-neon-cyan/10 font-rajdhani"
+              >
+                <LogIn className="mr-2 h-4 w-4" />
+                Sign In
+              </Button>
+            )}
             <Button
               onClick={onConnectWallet}
               disabled={isConnecting}
@@ -92,7 +145,37 @@ export const Navbar = ({ onConnectWallet, walletAddress, isConnecting }: NavbarP
                 {link.label}
               </Link>
             ))}
-            <div className="px-3 py-2">
+            <div className="px-3 py-2 space-y-2">
+              {user ? (
+                <>
+                  <div className="text-sm text-muted-foreground font-rajdhani px-3">
+                    {user.email}
+                  </div>
+                  <Button
+                    onClick={() => {
+                      handleSignOut();
+                      setMobileMenuOpen(false);
+                    }}
+                    variant="outline"
+                    className="w-full border-neon-cyan/30 hover:bg-neon-cyan/10 font-rajdhani"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  onClick={() => {
+                    window.location.href = '/auth';
+                    setMobileMenuOpen(false);
+                  }}
+                  variant="outline"
+                  className="w-full border-neon-cyan/30 hover:bg-neon-cyan/10 font-rajdhani"
+                >
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Sign In
+                </Button>
+              )}
               <Button
                 onClick={() => {
                   onConnectWallet();
