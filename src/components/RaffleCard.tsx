@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Users, Ticket } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { PurchaseModal } from './PurchaseModal';
 
 interface RaffleCardProps {
   id: number;
@@ -10,11 +12,12 @@ interface RaffleCardProps {
   prize: string;
   image: string;
   ticketPrice: string;
+  ticketPriceNumeric: number;
   totalTickets: number;
   soldTickets: number;
   endDate: Date;
   isActive: boolean;
-  onEnter: (id: number) => void;
+  account: string | null;
 }
 
 export const RaffleCard = ({
@@ -24,12 +27,14 @@ export const RaffleCard = ({
   prize,
   image,
   ticketPrice,
+  ticketPriceNumeric,
   totalTickets,
   soldTickets,
   endDate,
   isActive,
-  onEnter,
+  account,
 }: RaffleCardProps) => {
+  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const timeRemaining = () => {
     const now = new Date();
     const diff = endDate.getTime() - now.getTime();
@@ -109,7 +114,7 @@ export const RaffleCard = ({
 
       <CardFooter>
         <Button
-          onClick={() => onEnter(id)}
+          onClick={() => setIsPurchaseModalOpen(true)}
           disabled={!isActive}
           className="w-full bg-gradient-to-r from-purple to-secondary hover:opacity-90 font-orbitron"
         >
@@ -117,6 +122,19 @@ export const RaffleCard = ({
           Enter Raffle
         </Button>
       </CardFooter>
+
+      <PurchaseModal
+        isOpen={isPurchaseModalOpen}
+        onClose={() => setIsPurchaseModalOpen(false)}
+        raffle={{
+          id,
+          name: title,
+          ticketPrice: ticketPriceNumeric,
+          maxTickets: totalTickets,
+          ticketsSold: soldTickets,
+        }}
+        account={account}
+      />
     </Card>
   );
 };

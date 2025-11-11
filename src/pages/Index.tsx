@@ -14,7 +14,8 @@ const mockRaffles = [
     description: 'Luxury timepiece with provable authenticity',
     prize: '$15,000 Value',
     image: 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=800&q=80',
-    ticketPrice: '0.05 ETH',
+    ticketPrice: '75 USDT',
+    ticketPriceNumeric: 75,
     totalTickets: 100,
     soldTickets: 67,
     endDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
@@ -26,7 +27,8 @@ const mockRaffles = [
     description: 'Supercar raffle - win your dream vehicle',
     prize: '$250,000 Value',
     image: 'https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=800&q=80',
-    ticketPrice: '0.5 ETH',
+    ticketPrice: '750 USDT',
+    ticketPriceNumeric: 750,
     totalTickets: 500,
     soldTickets: 423,
     endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -38,7 +40,8 @@ const mockRaffles = [
     description: 'Exclusive NFT bundle from top artists',
     prize: '$50,000 Value',
     image: 'https://images.unsplash.com/photo-1618172193622-ae2d025f4032?w=800&q=80',
-    ticketPrice: '0.1 ETH',
+    ticketPrice: '150 USDT',
+    ticketPriceNumeric: 150,
     totalTickets: 200,
     soldTickets: 156,
     endDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
@@ -50,7 +53,8 @@ const mockRaffles = [
     description: 'Top-tier gaming setup with RTX 4090',
     prize: '$8,000 Value',
     image: 'https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=800&q=80',
-    ticketPrice: '0.02 ETH',
+    ticketPrice: '30 USDT',
+    ticketPriceNumeric: 30,
     totalTickets: 150,
     soldTickets: 89,
     endDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
@@ -62,7 +66,8 @@ const mockRaffles = [
     description: '0.5 BTC prize for one lucky winner',
     prize: '0.5 BTC',
     image: 'https://images.unsplash.com/photo-1621416894569-0f39ed31d247?w=800&q=80',
-    ticketPrice: '0.08 ETH',
+    ticketPrice: '120 USDT',
+    ticketPriceNumeric: 120,
     totalTickets: 250,
     soldTickets: 198,
     endDate: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000),
@@ -74,7 +79,8 @@ const mockRaffles = [
     description: 'All-expenses paid trip to the Maldives',
     prize: '$20,000 Value',
     image: 'https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=800&q=80',
-    ticketPrice: '0.04 ETH',
+    ticketPrice: '60 USDT',
+    ticketPriceNumeric: 60,
     totalTickets: 180,
     soldTickets: 124,
     endDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000),
@@ -84,18 +90,6 @@ const mockRaffles = [
 
 const Index = () => {
   const { account, isConnecting, connectWallet } = useWeb3();
-  const [selectedRaffle, setSelectedRaffle] = useState<number | null>(null);
-
-  const handleEnterRaffle = (raffleId: number) => {
-    if (!account) {
-      toast.error('Please connect your wallet first');
-      connectWallet();
-      return;
-    }
-    setSelectedRaffle(raffleId);
-    toast.info('Opening entry modal...');
-    // TODO: Open entry modal
-  };
 
   return (
     <div className="min-h-screen">
@@ -123,7 +117,7 @@ const Index = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {mockRaffles.map((raffle) => (
-              <RaffleCard key={raffle.id} {...raffle} onEnter={handleEnterRaffle} />
+              <RaffleCard key={raffle.id} {...raffle} account={account} />
             ))}
           </div>
         </div>
@@ -165,7 +159,7 @@ const Index = () => {
               </div>
               <h3 className="font-orbitron font-bold text-xl">Buy Entries</h3>
               <p className="text-muted-foreground">
-                Purchase raffle tickets with ETH - more entries = better odds
+                Purchase raffle tickets with USDT - more entries = better odds
               </p>
             </div>
 
