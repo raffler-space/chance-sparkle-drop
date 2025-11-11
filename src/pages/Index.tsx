@@ -123,54 +123,34 @@ const Index = () => {
         </div>
       </section>
 
-      {/* How It Works */}
-      <section id="how-it-works" className="py-20 px-4 glass-effect border-y border-border/50">
+      {/* Why Choose Raffler */}
+      <section className="py-20 px-4">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl sm:text-5xl font-orbitron font-bold text-glow mb-4">
-              How It Works
+          <div className="glass-effect p-8 rounded-xl">
+            <h2 className="text-4xl sm:text-5xl font-orbitron font-bold text-center text-accent mb-12">
+              ⚡ Why Choose Raffler?
             </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto text-2xl font-bold text-primary">
-                1
-              </div>
-              <h3 className="font-orbitron font-bold text-xl">Connect Wallet</h3>
-              <p className="text-muted-foreground">
-                Link your MetaMask or compatible Web3 wallet
-              </p>
-            </div>
-
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 rounded-full bg-secondary/20 flex items-center justify-center mx-auto text-2xl font-bold text-secondary">
-                2
-              </div>
-              <h3 className="font-orbitron font-bold text-xl">Choose Raffle</h3>
-              <p className="text-muted-foreground">
-                Browse active raffles and select your favorite prize
-              </p>
-            </div>
-
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center mx-auto text-2xl font-bold text-accent">
-                3
-              </div>
-              <h3 className="font-orbitron font-bold text-xl">Buy Entries</h3>
-              <p className="text-muted-foreground">
-                Purchase raffle tickets with USDT - more entries = better odds
-              </p>
-            </div>
-
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 rounded-full bg-purple/20 flex items-center justify-center mx-auto text-2xl font-bold text-purple">
-                4
-              </div>
-              <h3 className="font-orbitron font-bold text-xl">Win Big</h3>
-              <p className="text-muted-foreground">
-                Winners selected via Chainlink VRF for provable fairness
-              </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[
+                { icon: '🔒', title: 'Blockchain Secure', desc: 'Smart contracts ensure transparent and tamper-proof raffles' },
+                { icon: '💰', title: 'Auto Refunds', desc: "Didn't reach target? Get your money back automatically" },
+                { icon: '🌍', title: 'Global Delivery', desc: 'Winners worldwide - we handle shipping and logistics' },
+                { icon: '🎯', title: 'Fair & Random', desc: 'Chainlink VRF ensures provably fair winner selection' },
+                { icon: '✨', title: 'Life Changing', desc: 'Real life changing opportunities for an affordable entry price.' },
+                { icon: '🌐', title: 'Community Driven', desc: 'Join a growing community of enthusiasts and dreamers.' }
+              ].map((feature, index) => (
+                <div
+                  key={index}
+                  className="p-6 bg-background/30 rounded-xl border border-border/50 hover:scale-105 transition-transform"
+                >
+                  <div className="text-5xl mb-4">{feature.icon}</div>
+                  <h3 className="font-orbitron text-xl text-primary mb-3">
+                    {feature.title}
+                  </h3>
+                  <p className="text-muted-foreground">{feature.desc}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>

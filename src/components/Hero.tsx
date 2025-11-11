@@ -8,13 +8,10 @@ export const Hero = () => {
         {/* Main Title */}
         <div className="space-y-4 animate-fade-in">
           <h1 className="text-5xl sm:text-7xl lg:text-8xl font-orbitron font-black bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent animate-gradient leading-tight">
-            WIN LUXURY
-            <br />
-            ON BLOCKCHAIN
+            VERIFIED FAIRNESS
           </h1>
           <p className="text-xl sm:text-2xl text-primary/80 font-rajdhani max-w-3xl mx-auto">
-            Enter provably fair raffles powered by Chainlink VRF. NFT holders get exclusive access
-            to premium prizes.
+            Enter blockchain-powered raffles for Coin lots, NFTs, supercars, real estate, and luxury goods. Transparent, secure, and life-changing.
           </p>
         </div>
 
@@ -23,6 +20,7 @@ export const Hero = () => {
           <Button
             size="lg"
             className="bg-gradient-to-r from-secondary to-purple hover:opacity-90 text-white font-orbitron text-lg px-8 py-6 neon-border animate-pulse-glow"
+            onClick={() => window.location.href = '/#raffles'}
           >
             <Sparkles className="mr-2 h-5 w-5" />
             Browse Raffles
@@ -31,6 +29,7 @@ export const Hero = () => {
             size="lg"
             variant="outline"
             className="border-primary text-primary hover:bg-primary hover:text-primary-foreground font-orbitron text-lg px-8 py-6"
+            onClick={() => window.location.href = '/how-it-works'}
           >
             <Shield className="mr-2 h-5 w-5" />
             How It Works
@@ -43,9 +42,9 @@ export const Hero = () => {
             <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mx-auto">
               <Shield className="h-6 w-6 text-primary" />
             </div>
-            <h3 className="font-orbitron font-bold text-lg">Provably Fair</h3>
+            <h3 className="font-orbitron font-bold text-lg">Blockchain Secure</h3>
             <p className="text-muted-foreground text-sm">
-              Powered by Chainlink VRF for truly random winner selection
+              Smart contracts ensure transparent and tamper-proof raffles
             </p>
           </div>
 
@@ -53,9 +52,9 @@ export const Hero = () => {
             <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center mx-auto">
               <Trophy className="h-6 w-6 text-accent" />
             </div>
-            <h3 className="font-orbitron font-bold text-lg">Luxury Prizes</h3>
+            <h3 className="font-orbitron font-bold text-lg">Fair & Random</h3>
             <p className="text-muted-foreground text-sm">
-              Win exclusive items from watches to cars and beyond
+              Chainlink VRF ensures provably fair winner selection
             </p>
           </div>
 
@@ -63,9 +62,9 @@ export const Hero = () => {
             <div className="w-12 h-12 rounded-full bg-secondary/20 flex items-center justify-center mx-auto">
               <Sparkles className="h-6 w-6 text-secondary" />
             </div>
-            <h3 className="font-orbitron font-bold text-lg">NFT Exclusive</h3>
+            <h3 className="font-orbitron font-bold text-lg">Life Changing</h3>
             <p className="text-muted-foreground text-sm">
-              Special access for verified NFT collection holders
+              Real life changing opportunities for an affordable entry price
             </p>
           </div>
         </div>
