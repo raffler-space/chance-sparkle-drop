@@ -79,9 +79,7 @@ export const Navbar = ({ onConnectWallet, walletAddress, isConnecting }: NavbarP
   const allNavLinks = [
     { label: 'Home', href: '/', type: 'link' },
     { label: 'Raffles', href: '/raffles', type: 'link' },
-    { label: 'Dashboard', href: '/dashboard', type: 'link', icon: LayoutDashboard },
     { label: 'How It Works', href: '/how-it-works', type: 'link' },
-    { label: 'Referrals', href: '/referrals', type: 'link' },
     { label: 'Admin', href: '/admin', type: 'link', icon: Shield, adminOnly: true },
   ];
 
