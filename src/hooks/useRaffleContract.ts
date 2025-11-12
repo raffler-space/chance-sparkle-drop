@@ -89,6 +89,36 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
       const duration = durationDays * 24 * 60 * 60; // Convert days to seconds
       const nftAddress = nftContract || ethers.constants.AddressZero;
 
+      console.log('Creating raffle with params:', {
+        name,
+        description,
+        ticketPrice: ticketPrice.toString(),
+        maxTickets,
+        duration,
+        nftAddress
+      });
+
+      // Try to call the function first to get better error messages
+      try {
+        await contract.callStatic.createRaffle(
+          name,
+          description,
+          ticketPrice,
+          maxTickets,
+          duration,
+          nftAddress
+        );
+      } catch (staticError: any) {
+        console.error('Static call error:', staticError);
+        // Try to extract the revert reason
+        if (staticError.error?.data?.message) {
+          throw new Error(staticError.error.data.message);
+        } else if (staticError.reason) {
+          throw new Error(staticError.reason);
+        }
+        throw staticError;
+      }
+
       const tx = await contract.createRaffle(
         name,
         description,
@@ -131,7 +161,7 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
         if (error.message.includes('Ownable: caller is not the owner')) {
           errorMessage = 'Only the contract owner can create raffles';
         } else if (error.message.includes('execution reverted')) {
-          errorMessage = 'Transaction reverted. This might be due to: 1) VRF subscription not set up, 2) Contract not added as VRF consumer, 3) Invalid parameters, or 4) Contract needs LINK tokens';
+          errorMessage = 'Transaction reverted. Possible issues: Invalid parameters, VRF setup, or contract state. Check console for details.';
         } else {
           errorMessage = error.message.substring(0, 200); // Truncate long messages
         }
