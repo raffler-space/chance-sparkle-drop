@@ -119,10 +119,14 @@ export const RaffleManagement = () => {
         // Check ownership first
         console.log('Checking contract ownership...');
         const owner = await raffleContract.checkOwner();
-        console.log('Contract owner check complete');
+        console.log('Contract owner:', owner);
+        console.log('Your address:', account);
         
         if (owner && owner.toLowerCase() !== account.toLowerCase()) {
-          toast.error('You are not the contract owner. Only the owner can create raffles.');
+          toast.error(
+            `You are not the contract owner. Contract owner is: ${owner}. Your address: ${account}. You need to deploy your own contract.`,
+            { duration: 10000 }
+          );
           setIsProcessing(false);
           return;
         }

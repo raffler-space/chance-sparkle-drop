@@ -84,6 +84,11 @@ export const defaultNetwork = sepoliaConfig;
 
 // Contract ABI will be imported after compilation
 export const RAFFLE_ABI = [
+  // Ownable functions
+  "function owner() view returns (address)",
+  "function transferOwnership(address newOwner)",
+  
+  // Raffle functions
   "function createRaffle(string name, string description, uint256 ticketPrice, uint256 maxTickets, uint256 duration, address nftContract) returns (uint256)",
   "function buyTickets(uint256 raffleId, uint256 quantity) payable",
   "function selectWinner(uint256 raffleId)",
@@ -94,6 +99,8 @@ export const RAFFLE_ABI = [
   "function raffles(uint256) view returns (string name, string description, uint256 ticketPrice, uint256 maxTickets, uint256 ticketsSold, uint256 endTime, address winner, bool isActive, bool vrfRequested, address nftContract)",
   "function raffleCounter() view returns (uint256)",
   "function platformFee() view returns (uint256)",
+  
+  // Events
   "event RaffleCreated(uint256 indexed raffleId, string name, uint256 ticketPrice, uint256 maxTickets)",
   "event TicketPurchased(uint256 indexed raffleId, address indexed buyer, uint256 quantity)",
   "event WinnerRequested(uint256 indexed raffleId, uint256 requestId)",
