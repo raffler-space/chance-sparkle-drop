@@ -113,19 +113,31 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
         reason: error.reason,
         code: error.code,
         message: error.message,
-        data: error.data
+        data: error.data,
+        error: error.error
       });
       
       let errorMessage = 'Failed to create raffle';
-      if (error.reason) {
+      
+      // Try to extract revert reason from error
+      if (error.error?.data?.message) {
+        errorMessage = error.error.data.message;
+      } else if (error.error?.message) {
+        errorMessage = error.error.message;
+      } else if (error.reason) {
         errorMessage = error.reason;
-      } else if (error.message?.includes('Ownable: caller is not the owner')) {
-        errorMessage = 'Only the contract owner can create raffles. Please deploy your own contract or contact the admin.';
       } else if (error.message) {
-        errorMessage = error.message;
+        // Parse common error messages
+        if (error.message.includes('Ownable: caller is not the owner')) {
+          errorMessage = 'Only the contract owner can create raffles';
+        } else if (error.message.includes('execution reverted')) {
+          errorMessage = 'Transaction reverted. This might be due to: 1) VRF subscription not set up, 2) Contract not added as VRF consumer, 3) Invalid parameters, or 4) Contract needs LINK tokens';
+        } else {
+          errorMessage = error.message.substring(0, 200); // Truncate long messages
+        }
       }
       
-      toast.error(errorMessage, { id: 'create-raffle' });
+      toast.error(errorMessage, { id: 'create-raffle', duration: 8000 });
       return null;
     }
   }, [contract]);
