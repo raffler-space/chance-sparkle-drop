@@ -3,8 +3,8 @@ const hre = require("hardhat");
 async function main() {
   console.log("Starting Raffle contract deployment...\n");
 
-  // Sepolia Testnet Chainlink VRF Configuration
-  const VRF_COORDINATOR = "0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625";
+  // Sepolia Testnet Chainlink VRF V2 Configuration
+  const VRF_COORDINATOR = "0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B";
   const GAS_LANE = "0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c";
   const CALLBACK_GAS_LIMIT = 500000;
   
