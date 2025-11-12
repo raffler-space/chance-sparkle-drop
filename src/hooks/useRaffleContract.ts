@@ -100,12 +100,30 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
         nftAddress
       });
 
-      // First verify the contract is responsive
+      // First verify the contract is responsive and has expected functions
+      console.log('Verifying contract...');
       try {
-        const raffleCounter = await contract.raffleCounter();
-        console.log('Current raffle counter:', raffleCounter.toString());
-      } catch (e) {
-        console.error('Failed to read raffle counter:', e);
+        // Try reading simpler values first
+        const owner = await contract.owner();
+        console.log('✓ Contract owner:', owner);
+        
+        try {
+          const platformFee = await contract.platformFee();
+          console.log('✓ Platform fee:', platformFee.toString());
+        } catch (e: any) {
+          console.warn('⚠ platformFee() not available:', e.message);
+        }
+        
+        try {
+          const raffleCounter = await contract.raffleCounter();
+          console.log('✓ Current raffle counter:', raffleCounter.toString());
+        } catch (e: any) {
+          console.error('✗ raffleCounter() failed:', e.message);
+          throw new Error('Contract ABI mismatch. The deployed contract at 0xFb60F5E74175089b944c673583Bb2d133A98F8A1 may not be the Raffle contract, or was compiled differently. Please verify on Sepolia Etherscan.');
+        }
+      } catch (e: any) {
+        console.error('Contract verification failed:', e);
+        throw e;
       }
 
       // Try to call the function first to get better error messages
