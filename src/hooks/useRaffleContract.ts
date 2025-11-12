@@ -93,14 +93,25 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
         name,
         description,
         ticketPrice: ticketPrice.toString(),
+        ticketPriceEth: ethers.utils.formatEther(ticketPrice),
         maxTickets,
         duration,
+        durationDays,
         nftAddress
       });
 
+      // First verify the contract is responsive
+      try {
+        const raffleCounter = await contract.raffleCounter();
+        console.log('Current raffle counter:', raffleCounter.toString());
+      } catch (e) {
+        console.error('Failed to read raffle counter:', e);
+      }
+
       // Try to call the function first to get better error messages
       try {
-        await contract.callStatic.createRaffle(
+        console.log('Attempting static call...');
+        const result = await contract.callStatic.createRaffle(
           name,
           description,
           ticketPrice,
@@ -108,24 +119,36 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
           duration,
           nftAddress
         );
+        console.log('Static call succeeded, raffle ID would be:', result.toString());
       } catch (staticError: any) {
-        console.error('Static call error:', staticError);
-        // Try to extract the revert reason
-        if (staticError.error?.data?.message) {
-          throw new Error(staticError.error.data.message);
-        } else if (staticError.reason) {
-          throw new Error(staticError.reason);
+        console.error('Static call failed:', staticError);
+        console.error('Static call error details:', {
+          message: staticError.message,
+          reason: staticError.reason,
+          code: staticError.code,
+          data: staticError.data
+        });
+        
+        // Common issues
+        let errorMsg = 'Contract reverted. ';
+        if (staticError.message.includes('CALL_EXCEPTION')) {
+          errorMsg += 'Possible issues: 1) Contract is paused, 2) Missing required setup, 3) Invalid parameters. ';
+          errorMsg += 'Check Sepolia Etherscan for contract state: https://sepolia.etherscan.io/address/0xFb60F5E74175089b944c673583Bb2d133A98F8A1#readContract';
         }
-        throw staticError;
+        throw new Error(errorMsg);
       }
 
+      console.log('Sending transaction with explicit gas limit...');
       const tx = await contract.createRaffle(
         name,
         description,
         ticketPrice,
         maxTickets,
         duration,
-        nftAddress
+        nftAddress,
+        {
+          gasLimit: 500000 // Explicit gas limit
+        }
       );
 
       toast.loading('Creating raffle...', { id: 'create-raffle' });
