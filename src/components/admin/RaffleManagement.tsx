@@ -66,6 +66,12 @@ export const RaffleManagement = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    console.log('=== Raffle Creation Debug ===');
+    console.log('Account:', account);
+    console.log('ChainId:', chainId);
+    console.log('Contract Ready:', raffleContract.isContractReady);
+    console.log('Contract object:', raffleContract.contract);
+
     if (!account) {
       toast.error('Please connect your wallet first');
       return;
@@ -74,6 +80,12 @@ export const RaffleManagement = () => {
     const network = chainId ? getNetworkConfig(chainId) : null;
     if (!network) {
       toast.error('Please connect to Sepolia or Mainnet');
+      return;
+    }
+    
+    if (!raffleContract.isContractReady || !raffleContract.contract) {
+      toast.error('Contract not initialized. Please ensure you are on the correct network.');
+      console.error('Contract not ready. ChainId:', chainId);
       return;
     }
 

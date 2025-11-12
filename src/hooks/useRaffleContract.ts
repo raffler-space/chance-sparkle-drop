@@ -10,13 +10,19 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
 
   useEffect(() => {
     const initContract = async () => {
+      console.log('=== Contract Initialization ===');
+      console.log('ChainId:', chainId);
+      console.log('Account:', account);
+      
       if (!chainId || !account) {
+        console.log('Missing chainId or account');
         setContract(null);
         setIsContractReady(false);
         return;
       }
 
       if (!isSupportedNetwork(chainId)) {
+        console.log('Unsupported network:', chainId);
         toast.error('Unsupported network. Please switch to Sepolia or Ethereum Mainnet.');
         setContract(null);
         setIsContractReady(false);
@@ -25,12 +31,17 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
 
       const networkConfig = getNetworkConfig(chainId);
       if (!networkConfig) {
+        console.log('No network config found');
         setIsContractReady(false);
         return;
       }
 
+      console.log('Network config:', networkConfig);
+      console.log('Contract address:', networkConfig.contracts.raffle);
+
       // Check if contract address is set
       if (networkConfig.contracts.raffle === "0x0000000000000000000000000000000000000000") {
+        console.log('Contract not deployed');
         toast.error('Contract not deployed yet. Please deploy the contract first.');
         setIsContractReady(false);
         return;
@@ -45,6 +56,7 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
           signer
         );
 
+        console.log('Contract initialized successfully');
         setSigner(signer);
         setContract(raffleContract);
         setIsContractReady(true);
