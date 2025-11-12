@@ -7,8 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
+import { useWeb3 } from '@/hooks/useWeb3';
+import { useRaffleContract } from '@/hooks/useRaffleContract';
+import { getNetworkConfig } from '@/config/contracts';
 
 interface Raffle {
   id: number;
@@ -22,11 +25,15 @@ interface Raffle {
   image_url: string | null;
   status: string;
   created_at: string;
+  draw_tx_hash: string | null;
 }
 
 export const RaffleManagement = () => {
+  const { account, chainId } = useWeb3();
+  const raffleContract = useRaffleContract(chainId, account);
   const [raffles, setRaffles] = useState<Raffle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRaffle, setEditingRaffle] = useState<Raffle | null>(null);
   const [formData, setFormData] = useState({
@@ -37,6 +44,7 @@ export const RaffleManagement = () => {
     max_tickets: '',
     nft_collection_address: '',
     image_url: '',
+    duration_days: '7',
   });
 
   useEffect(() => {
@@ -58,6 +66,17 @@ export const RaffleManagement = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!account) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
+
+    const network = chainId ? getNetworkConfig(chainId) : null;
+    if (!network) {
+      toast.error('Please connect to Sepolia or Mainnet');
+      return;
+    }
+
     const raffleData = {
       name: formData.name,
       description: formData.description,
@@ -69,6 +88,7 @@ export const RaffleManagement = () => {
     };
 
     if (editingRaffle) {
+      // Edit only updates Supabase (can't edit on-chain)
       const { error } = await supabase
         .from('raffles')
         .update(raffleData)
@@ -80,14 +100,48 @@ export const RaffleManagement = () => {
         toast.success('Raffle updated successfully');
       }
     } else {
-      const { error } = await supabase
-        .from('raffles')
-        .insert([raffleData]);
+      // Creating a new raffle - deploy to blockchain first
+      try {
+        setIsProcessing(true);
+        toast.loading('Creating raffle on blockchain...', { id: 'blockchain-tx' });
+        
+        const raffleId = await raffleContract.createRaffle(
+          formData.name,
+          formData.description,
+          formData.ticket_price,
+          parseInt(formData.max_tickets),
+          parseInt(formData.duration_days),
+          formData.nft_collection_address || undefined
+        );
 
-      if (error) {
-        toast.error('Failed to create raffle');
-      } else {
-        toast.success('Raffle created successfully');
+        if (raffleId) {
+          toast.success('Raffle created on blockchain!', { id: 'blockchain-tx' });
+          
+          // Now save to Supabase
+          const drawDate = new Date();
+          drawDate.setDate(drawDate.getDate() + parseInt(formData.duration_days));
+
+          const { error } = await supabase
+            .from('raffles')
+            .insert([{
+              ...raffleData,
+              draw_date: drawDate.toISOString(),
+            }]);
+
+          if (error) {
+            toast.error('Saved to blockchain but failed to save to database');
+            console.error('Supabase error:', error);
+          } else {
+            toast.success('Raffle created successfully!');
+          }
+        } else {
+          toast.error('Failed to create raffle on blockchain', { id: 'blockchain-tx' });
+        }
+      } catch (error: any) {
+        toast.error(error.message || 'Failed to create raffle', { id: 'blockchain-tx' });
+        console.error('Contract error:', error);
+      } finally {
+        setIsProcessing(false);
       }
     }
 
@@ -107,6 +161,7 @@ export const RaffleManagement = () => {
       max_tickets: raffle.max_tickets.toString(),
       nft_collection_address: raffle.nft_collection_address,
       image_url: raffle.image_url || '',
+      duration_days: '7',
     });
     setDialogOpen(true);
   };
@@ -136,6 +191,7 @@ export const RaffleManagement = () => {
       max_tickets: '',
       nft_collection_address: '',
       image_url: '',
+      duration_days: '7',
     });
   };
 
@@ -190,6 +246,19 @@ export const RaffleManagement = () => {
                     <p className="font-mono text-xs truncate">{raffle.nft_collection_address}</p>
                   </div>
                 </div>
+                {raffle.draw_tx_hash && chainId && getNetworkConfig(chainId) && (
+                  <div className="mt-4">
+                    <a
+                      href={`${getNetworkConfig(chainId)!.blockExplorer}/tx/${raffle.draw_tx_hash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-neon-cyan hover:underline flex items-center gap-1"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      View on Etherscan
+                    </a>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2 ml-4">
@@ -259,7 +328,7 @@ export const RaffleManagement = () => {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="ticket_price">Ticket Price (USDT)</Label>
                 <Input
@@ -280,6 +349,19 @@ export const RaffleManagement = () => {
                   value={formData.max_tickets}
                   onChange={(e) => setFormData({ ...formData, max_tickets: e.target.value })}
                   required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="duration_days">Duration (Days)</Label>
+                <Input
+                  id="duration_days"
+                  type="number"
+                  min="1"
+                  value={formData.duration_days}
+                  onChange={(e) => setFormData({ ...formData, duration_days: e.target.value })}
+                  required
+                  disabled={!!editingRaffle}
                 />
               </div>
             </div>
@@ -320,8 +402,14 @@ export const RaffleManagement = () => {
               <Button
                 type="submit"
                 className="bg-gradient-to-r from-neon-cyan to-neon-purple hover:opacity-90"
+                disabled={isProcessing || !account}
               >
-                {editingRaffle ? 'Update Raffle' : 'Create Raffle'}
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : editingRaffle ? 'Update Raffle' : 'Create Raffle'}
               </Button>
             </div>
           </form>
