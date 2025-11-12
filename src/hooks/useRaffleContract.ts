@@ -97,7 +97,23 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
       return raffleId;
     } catch (error: any) {
       console.error('Error creating raffle:', error);
-      toast.error(error.reason || 'Failed to create raffle', { id: 'create-raffle' });
+      console.error('Error details:', {
+        reason: error.reason,
+        code: error.code,
+        message: error.message,
+        data: error.data
+      });
+      
+      let errorMessage = 'Failed to create raffle';
+      if (error.reason) {
+        errorMessage = error.reason;
+      } else if (error.message?.includes('Ownable: caller is not the owner')) {
+        errorMessage = 'Only the contract owner can create raffles. Please deploy your own contract or contact the admin.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage, { id: 'create-raffle' });
       return null;
     }
   }, [contract]);
@@ -211,6 +227,22 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
     }
   }, [contract]);
 
+  // Check contract owner
+  const checkOwner = useCallback(async () => {
+    if (!contract || !account) return null;
+    
+    try {
+      const owner = await contract.owner();
+      console.log('Contract owner:', owner);
+      console.log('Connected account:', account);
+      console.log('Is owner:', owner.toLowerCase() === account.toLowerCase());
+      return owner;
+    } catch (error) {
+      console.error('Error checking owner:', error);
+      return null;
+    }
+  }, [contract, account]);
+
   return {
     contract,
     signer,
@@ -221,5 +253,6 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
     claimPrize,
     getRaffleInfo,
     getUserEntries,
+    checkOwner,
   };
 };

@@ -103,6 +103,18 @@ export const RaffleManagement = () => {
       // Creating a new raffle - deploy to blockchain first
       try {
         setIsProcessing(true);
+        
+        // Check ownership first
+        console.log('Checking contract ownership...');
+        const owner = await raffleContract.checkOwner();
+        console.log('Contract owner check complete');
+        
+        if (owner && owner.toLowerCase() !== account.toLowerCase()) {
+          toast.error('You are not the contract owner. Only the owner can create raffles.');
+          setIsProcessing(false);
+          return;
+        }
+        
         toast.loading('Creating raffle on blockchain...', { id: 'blockchain-tx' });
         
         const raffleId = await raffleContract.createRaffle(
