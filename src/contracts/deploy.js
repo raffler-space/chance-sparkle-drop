@@ -1,4 +1,5 @@
-const hre = require("hardhat");
+import hre from "hardhat";
+import fs from "fs";
 
 async function main() {
   console.log("Starting Raffle contract deployment...\n");
@@ -69,7 +70,6 @@ async function main() {
   console.log("\n");
 
   // Save deployment info
-  const fs = require('fs');
   const deploymentInfo = {
     network: hre.network.name,
     contractAddress: raffle.address,
