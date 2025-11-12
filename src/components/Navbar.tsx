@@ -116,14 +116,23 @@ export const Navbar = ({ onConnectWallet, walletAddress, isConnecting }: NavbarP
 
           {/* User Menu */}
           <div className="hidden md:flex items-center gap-3">
-            {user ? (
+            {!walletAddress ? (
+              <Button
+                onClick={onConnectWallet}
+                disabled={isConnecting}
+                className="bg-gradient-to-r from-purple to-secondary hover:opacity-90 font-orbitron"
+              >
+                <Wallet className="mr-2 h-4 w-4" />
+                {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+              </Button>
+            ) : user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     className="bg-gradient-to-r from-purple to-secondary hover:opacity-90 font-orbitron"
                   >
                     <Wallet className="mr-2 h-4 w-4" />
-                    {walletAddress ? formatAddress(walletAddress) : user.email?.split('@')[0]}
+                    {formatAddress(walletAddress)}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56 glass-effect border-border/50">
@@ -193,10 +202,25 @@ export const Navbar = ({ onConnectWallet, walletAddress, isConnecting }: NavbarP
               </Link>
             ))}
             <div className="px-3 py-2 space-y-2">
-              {user ? (
+              {!walletAddress ? (
+                <Button
+                  onClick={() => {
+                    onConnectWallet();
+                    setMobileMenuOpen(false);
+                  }}
+                  disabled={isConnecting}
+                  className="w-full bg-gradient-to-r from-purple to-secondary hover:opacity-90 font-orbitron"
+                >
+                  <Wallet className="mr-2 h-4 w-4" />
+                  {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+                </Button>
+              ) : user ? (
                 <>
                   <div className="text-sm text-muted-foreground font-rajdhani px-3 py-2">
                     {user.email}
+                  </div>
+                  <div className="text-sm text-muted-foreground font-rajdhani px-3 py-2">
+                    Wallet: {formatAddress(walletAddress)}
                   </div>
                   <Button
                     onClick={() => {
