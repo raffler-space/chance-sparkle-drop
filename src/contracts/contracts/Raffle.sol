@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
-import "@chainlink/contracts/src/v0.8/vrf/interfaces/VRFCoordinatorV2Interface.sol";
+import "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
+import "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
+import "@chainlink/contracts/src/v0.8/vrf/dev/interfaces/IVRFCoordinatorV2Plus.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -11,11 +12,11 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  * @title Raffle
  * @dev NFT-gated raffle system using Chainlink VRF for provably fair winner selection
  */
-contract Raffle is VRFConsumerBaseV2, Ownable, ReentrancyGuard {
-    VRFCoordinatorV2Interface private immutable i_vrfCoordinator;
+contract Raffle is VRFConsumerBaseV2Plus, Ownable, ReentrancyGuard {
+    IVRFCoordinatorV2Plus private immutable i_vrfCoordinator;
     
     // Chainlink VRF Configuration
-    uint64 private immutable i_subscriptionId;
+    uint256 private immutable i_subscriptionId;
     bytes32 private immutable i_gasLane;
     uint32 private immutable i_callbackGasLimit;
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
@@ -52,11 +53,11 @@ contract Raffle is VRFConsumerBaseV2, Ownable, ReentrancyGuard {
 
     constructor(
         address vrfCoordinatorV2,
-        uint64 subscriptionId,
+        uint256 subscriptionId,
         bytes32 gasLane,
         uint32 callbackGasLimit
-    ) VRFConsumerBaseV2(vrfCoordinatorV2) {
-        i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinatorV2);
+    ) VRFConsumerBaseV2Plus(vrfCoordinatorV2) {
+        i_vrfCoordinator = IVRFCoordinatorV2Plus(vrfCoordinatorV2);
         i_subscriptionId = subscriptionId;
         i_gasLane = gasLane;
         i_callbackGasLimit = callbackGasLimit;
@@ -147,11 +148,16 @@ contract Raffle is VRFConsumerBaseV2, Ownable, ReentrancyGuard {
         raffle.vrfRequested = true;
 
         uint256 requestId = i_vrfCoordinator.requestRandomWords(
-            i_gasLane,
-            i_subscriptionId,
-            REQUEST_CONFIRMATIONS,
-            i_callbackGasLimit,
-            NUM_WORDS
+            VRFV2PlusClient.RandomWordsRequest({
+                keyHash: i_gasLane,
+                subId: i_subscriptionId,
+                requestConfirmations: REQUEST_CONFIRMATIONS,
+                callbackGasLimit: i_callbackGasLimit,
+                numWords: NUM_WORDS,
+                extraArgs: VRFV2PlusClient._argsToBytes(
+                    VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
+                )
+            })
         );
 
         vrfRequestToRaffleId[requestId] = raffleId;
