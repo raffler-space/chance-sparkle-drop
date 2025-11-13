@@ -203,6 +203,7 @@ export default function Raffles() {
             ticketsSold: selectedRaffle.tickets_sold,
           }}
           account={account}
+          onPurchaseSuccess={fetchRaffles}
         />
       )}
     </div>

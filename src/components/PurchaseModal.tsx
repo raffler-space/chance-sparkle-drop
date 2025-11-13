@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Minus, Plus, Ticket, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PurchaseModalProps {
   isOpen: boolean;
@@ -16,12 +17,13 @@ interface PurchaseModalProps {
     ticketsSold: number;
   };
   account: string | null;
+  onPurchaseSuccess?: () => void;
 }
 
 const USDT_CONTRACT_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7'; // USDT on Ethereum mainnet
 const RAFFLE_CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000000'; // TODO: Replace with deployed contract
 
-export const PurchaseModal = ({ isOpen, onClose, raffle, account }: PurchaseModalProps) => {
+export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSuccess }: PurchaseModalProps) => {
   const [quantity, setQuantity] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
   const [usdtBalance, setUsdtBalance] = useState<number | null>(null);
@@ -104,17 +106,50 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account }: PurchaseModa
         }],
       });
 
-      toast.promise(transferData, {
-        loading: 'Confirming transaction...',
-        success: () => {
-          setQuantity(1);
-          onClose();
-          return `Successfully purchased ${quantity} ticket${quantity > 1 ? 's' : ''}!`;
-        },
-        error: 'Transaction failed. Please try again.',
-      });
+      const txHash = await transferData;
 
-      await transferData;
+      // Update database after successful transaction
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          toast.error('Please sign in to complete purchase');
+          return;
+        }
+
+        // Insert ticket records
+        const ticketRecords = Array.from({ length: quantity }, (_, i) => ({
+          user_id: user.id,
+          raffle_id: raffle.id,
+          tx_hash: txHash,
+          wallet_address: account,
+          ticket_number: raffle.ticketsSold + i + 1,
+          quantity: 1,
+          purchase_price: raffle.ticketPrice,
+        }));
+
+        const { error: ticketsError } = await supabase
+          .from('tickets')
+          .insert(ticketRecords);
+
+        if (ticketsError) throw ticketsError;
+
+        // Update raffle tickets_sold count
+        const { error: updateError } = await supabase
+          .from('raffles')
+          .update({ tickets_sold: raffle.ticketsSold + quantity })
+          .eq('id', raffle.id);
+
+        if (updateError) throw updateError;
+
+        toast.success(`Successfully purchased ${quantity} ticket${quantity > 1 ? 's' : ''}!`);
+        setQuantity(1);
+        onClose();
+        onPurchaseSuccess?.();
+      } catch (dbError) {
+        console.error('Database update error:', dbError);
+        toast.error('Transaction succeeded but failed to update records. Please contact support.');
+      }
     } catch (error: any) {
       console.error('Purchase error:', error);
       if (error.code === 4001) {
