@@ -3,9 +3,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Loader2, Sparkles } from 'lucide-react';
+import { Trophy, Loader2, Sparkles, ExternalLink, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
+import { useRaffleContract } from '@/hooks/useRaffleContract';
+import { useWeb3 } from '@/hooks/useWeb3';
+import { ethers } from 'ethers';
 
 interface Raffle {
   id: number;
@@ -22,10 +25,55 @@ export const WinnerSelection = () => {
   const [raffles, setRaffles] = useState<Raffle[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<number | null>(null);
+  const { account, chainId } = useWeb3();
+  const { contract, selectWinner, isContractReady } = useRaffleContract(chainId, account);
 
   useEffect(() => {
     fetchRaffles();
   }, []);
+
+  // Listen for WinnerSelected events
+  useEffect(() => {
+    if (!contract) return;
+
+    const handleWinnerSelected = async (
+      raffleId: ethers.BigNumber,
+      winner: string,
+      winningEntry: ethers.BigNumber,
+      event: any
+    ) => {
+      console.log('WinnerSelected event:', { raffleId: raffleId.toString(), winner, winningEntry: winningEntry.toString() });
+      
+      const txHash = event.transactionHash;
+      const raffleIdNum = raffleId.toNumber();
+
+      // Update database with winner info
+      const { error } = await supabase
+        .from('raffles')
+        .update({
+          status: 'completed',
+          winner_address: winner,
+          draw_tx_hash: txHash,
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', raffleIdNum);
+
+      if (error) {
+        console.error('Error updating winner in database:', error);
+        toast.error('Failed to update winner information');
+      } else {
+        toast.success(`Winner selected: ${winner.slice(0, 6)}...${winner.slice(-4)}`);
+        fetchRaffles();
+        setProcessing(null);
+      }
+    };
+
+    contract.on('WinnerSelected', handleWinnerSelected);
+
+    return () => {
+      contract.off('WinnerSelected', handleWinnerSelected);
+    };
+  }, [contract]);
 
   const fetchRaffles = async () => {
     const { data, error } = await supabase
@@ -41,42 +89,52 @@ export const WinnerSelection = () => {
   };
 
   const handleTriggerDraw = async (raffleId: number) => {
-    setProcessing(raffleId);
-    
-    // In a real implementation, this would:
-    // 1. Call the smart contract's requestRandomWords function
-    // 2. Wait for Chainlink VRF to provide random number
-    // 3. Call selectWinner with the random number
-    // 4. Update the database with winner information
-    
-    // For now, we'll simulate the process
-    toast.loading('Initiating Chainlink VRF request...', { id: 'vrf-request' });
-    
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Update raffle status to drawing
-    const { error: updateError } = await supabase
-      .from('raffles')
-      .update({ status: 'drawing' })
-      .eq('id', raffleId);
-
-    if (updateError) {
-      toast.error('Failed to initiate draw', { id: 'vrf-request' });
-      setProcessing(null);
+    if (!isContractReady) {
+      toast.error('Please connect your wallet first');
       return;
     }
 
-    toast.success('VRF request initiated! Waiting for Chainlink response...', { id: 'vrf-request' });
-    
-    // Simulate waiting for VRF response
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // In production, the actual winner would be determined by the smart contract
-    // This is just a simulation
-    toast.success('Winner selected! Check the smart contract for details.', { id: 'vrf-request' });
-    
-    setProcessing(null);
-    fetchRaffles();
+    setProcessing(raffleId);
+
+    try {
+      // Update raffle status to drawing in database
+      const { error: updateError } = await supabase
+        .from('raffles')
+        .update({ status: 'drawing' })
+        .eq('id', raffleId);
+
+      if (updateError) {
+        toast.error('Failed to initiate draw');
+        setProcessing(null);
+        return;
+      }
+
+      // Call smart contract to select winner
+      toast.loading('Requesting Chainlink VRF...', { id: 'vrf-request' });
+      const success = await selectWinner(raffleId);
+
+      if (success) {
+        toast.success('VRF request sent! Winner will be selected shortly...', { id: 'vrf-request' });
+        // Note: The actual winner update happens in the event listener
+      } else {
+        // Revert status if failed
+        await supabase
+          .from('raffles')
+          .update({ status: 'active' })
+          .eq('id', raffleId);
+        setProcessing(null);
+      }
+    } catch (error) {
+      console.error('Error triggering draw:', error);
+      toast.error('Failed to trigger draw');
+      setProcessing(null);
+      fetchRaffles();
+    }
+  };
+
+  const copyAddress = (address: string) => {
+    navigator.clipboard.writeText(address);
+    toast.success('Address copied to clipboard!');
   };
 
   if (loading) {
@@ -154,19 +212,60 @@ export const WinnerSelection = () => {
                     </div>
 
                     {raffle.winner_address && (
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1">Winner</p>
-                        <p className="font-mono text-xs text-neon-cyan">{raffle.winner_address}</p>
-                        {raffle.draw_tx_hash && (
-                          <a 
-                            href={`https://etherscan.io/tx/${raffle.draw_tx_hash}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-neon-purple hover:underline"
-                          >
-                            View transaction
-                          </a>
-                        )}
+                      <div className="bg-gradient-to-r from-neon-gold/20 to-neon-cyan/20 border border-neon-gold/30 rounded-lg p-4 mt-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Trophy className="w-5 h-5 text-neon-gold" />
+                          <span className="font-bold text-neon-gold">Winner Selected!</span>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">Winner Address:</span>
+                            <code className="text-xs font-mono bg-background/50 px-2 py-1 rounded flex-1 truncate">
+                              {raffle.winner_address}
+                            </code>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => copyAddress(raffle.winner_address!)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              asChild
+                              className="h-8 w-8 p-0"
+                            >
+                              <a
+                                href={`https://sepolia.etherscan.io/address/${raffle.winner_address}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
+                            </Button>
+                          </div>
+                          {raffle.draw_tx_hash && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-muted-foreground">Transaction:</span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                asChild
+                                className="h-8 px-2 text-xs"
+                              >
+                                <a
+                                  href={`https://sepolia.etherscan.io/tx/${raffle.draw_tx_hash}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  View on Etherscan <ExternalLink className="w-3 h-3 ml-1" />
+                                </a>
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -175,21 +274,34 @@ export const WinnerSelection = () => {
                 <div className="ml-4">
                   <Button
                     onClick={() => handleTriggerDraw(raffle.id)}
-                    disabled={!canDraw || processing !== null}
-                    className="bg-gradient-to-r from-neon-gold to-neon-purple hover:opacity-90 disabled:opacity-50"
+                    disabled={!canDraw || processing === raffle.id || raffle.status === 'drawing' || raffle.status === 'completed'}
+                    className="bg-gradient-to-r from-neon-gold to-neon-cyan hover:opacity-90"
                   >
                     {processing === raffle.id ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         Processing...
                       </>
+                    ) : raffle.status === 'drawing' ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Waiting for VRF...
+                      </>
+                    ) : raffle.status === 'completed' ? (
+                      'Draw Complete'
                     ) : (
                       <>
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        Trigger Draw
+                        <Trophy className="w-4 h-4 mr-2" />
+                        Trigger Winner Draw
                       </>
                     )}
                   </Button>
+                  
+                  {!canDraw && raffle.status === 'active' && (
+                    <p className="text-xs text-muted-foreground text-center mt-2">
+                      Waiting for at least 1 ticket to be sold
+                    </p>
+                  )}
                 </div>
               </div>
             </Card>
