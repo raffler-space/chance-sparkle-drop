@@ -142,10 +142,10 @@ export const RaffleManagement = () => {
           formData.nft_collection_address || undefined
         );
 
-        if (raffleId) {
+        if (raffleId !== null) {
           toast.success('Raffle created on blockchain!', { id: 'blockchain-tx' });
           
-          // Now save to Supabase
+          // Now save to Supabase with contract raffle ID
           const drawDate = new Date();
           drawDate.setDate(drawDate.getDate() + parseInt(formData.duration_days));
 
@@ -153,6 +153,7 @@ export const RaffleManagement = () => {
             .from('raffles')
             .insert([{
               ...raffleData,
+              contract_raffle_id: raffleId,
               draw_date: drawDate.toISOString(),
             }]);
 
