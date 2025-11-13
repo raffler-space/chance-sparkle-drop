@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { useWeb3 } from '@/hooks/useWeb3';
-import { Loader2, Ticket, Trophy } from 'lucide-react';
+import { Loader2, Ticket, Trophy, ExternalLink, Loader2 as LoaderIcon } from 'lucide-react';
 import { PurchaseModal } from '@/components/PurchaseModal';
 
 interface Raffle {
@@ -161,9 +161,42 @@ export default function Raffles() {
 
                   {isCompleted && raffle.winner_address ? (
                     <div className="pt-2 border-t border-neon-cyan/20">
-                      <div className="flex items-center gap-2 text-sm text-neon-gold">
-                        <Trophy className="w-4 h-4" />
-                        <span className="font-rajdhani">Winner: {raffle.winner_address}</span>
+                      <div className="bg-gradient-to-r from-neon-gold/20 to-neon-cyan/20 border border-neon-gold/30 rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Trophy className="w-4 h-4 text-neon-gold" />
+                          <span className="text-sm font-bold text-neon-gold">Winner Announced!</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <code className="text-xs font-mono bg-background/50 px-2 py-1 rounded flex-1 truncate">
+                            {raffle.winner_address}
+                          </code>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            asChild
+                            className="h-7 w-7 p-0"
+                          >
+                            <a
+                              href={`https://sepolia.etherscan.io/address/${raffle.winner_address}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </Button>
+                        </div>
+                        {account?.toLowerCase() === raffle.winner_address.toLowerCase() && (
+                          <div className="mt-2 p-2 bg-neon-gold/10 border border-neon-gold/30 rounded text-center">
+                            <p className="text-xs font-bold text-neon-gold">🎉 You Won! 🎉</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : raffle.status === 'drawing' ? (
+                    <div className="pt-2 border-t border-neon-cyan/20">
+                      <div className="flex items-center justify-center gap-2 text-sm text-neon-cyan py-3">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span className="font-rajdhani">Drawing Winner...</span>
                       </div>
                     </div>
                   ) : (

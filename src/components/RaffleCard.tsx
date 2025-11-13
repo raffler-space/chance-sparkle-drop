@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Users, Ticket } from 'lucide-react';
+import { Clock, Users, Ticket, Trophy, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { PurchaseModal } from './PurchaseModal';
 
@@ -19,6 +19,8 @@ interface RaffleCardProps {
   isActive: boolean;
   account: string | null;
   onPurchaseSuccess?: () => void;
+  status?: string;
+  winnerAddress?: string | null;
 }
 
 export const RaffleCard = ({
@@ -35,6 +37,8 @@ export const RaffleCard = ({
   isActive,
   account,
   onPurchaseSuccess,
+  status,
+  winnerAddress,
 }: RaffleCardProps) => {
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const timeRemaining = () => {
@@ -59,12 +63,16 @@ export const RaffleCard = ({
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
         <Badge
           className={`absolute top-4 right-4 ${
-            isActive
+            status === 'completed'
+              ? 'bg-neon-gold/20 text-neon-gold border-neon-gold/30'
+              : status === 'drawing'
+              ? 'bg-neon-cyan/20 text-neon-cyan border-neon-cyan/30'
+              : isActive
               ? 'bg-primary text-primary-foreground'
               : 'bg-muted text-muted-foreground'
           }`}
         >
-          {isActive ? 'Active' : 'Ended'}
+          {status === 'completed' ? 'Completed' : status === 'drawing' ? 'Drawing' : isActive ? 'Active' : 'Ended'}
         </Badge>
       </div>
 
@@ -112,16 +120,50 @@ export const RaffleCard = ({
             />
           </div>
         </div>
+
+        {/* Winner Display */}
+        {status === 'completed' && winnerAddress && (
+          <div className="bg-gradient-to-r from-neon-gold/20 to-neon-cyan/20 border border-neon-gold/30 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Trophy className="w-5 h-5 text-neon-gold" />
+              <span className="font-bold text-neon-gold">Winner Announced!</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <code className="text-xs font-mono bg-background/50 px-2 py-1 rounded flex-1 truncate">
+                {winnerAddress}
+              </code>
+              <Button
+                size="sm"
+                variant="ghost"
+                asChild
+                className="h-7 w-7 p-0"
+              >
+                <a
+                  href={`https://sepolia.etherscan.io/address/${winnerAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </Button>
+            </div>
+            {account?.toLowerCase() === winnerAddress.toLowerCase() && (
+              <div className="mt-3 p-2 bg-neon-gold/10 border border-neon-gold/30 rounded text-center">
+                <p className="text-sm font-bold text-neon-gold">🎉 Congratulations! You Won! 🎉</p>
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
 
       <CardFooter>
         <Button
           onClick={() => setIsPurchaseModalOpen(true)}
-          disabled={!isActive}
+          disabled={!isActive || status === 'drawing' || status === 'completed'}
           className="w-full bg-gradient-to-r from-purple to-secondary hover:opacity-90 font-orbitron"
         >
           <Ticket className="mr-2 h-4 w-4" />
-          Enter Raffle
+          {status === 'completed' ? 'Raffle Ended' : status === 'drawing' ? 'Drawing Winner...' : 'Enter Raffle'}
         </Button>
       </CardFooter>
 
