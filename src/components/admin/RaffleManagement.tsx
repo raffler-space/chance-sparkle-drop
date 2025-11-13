@@ -386,11 +386,13 @@ export const RaffleManagement = () => {
                 <Input
                   id="duration_days"
                   type="number"
-                  min="1"
+                  step="0.001"
+                  min="0.001"
                   value={formData.duration_days}
                   onChange={(e) => setFormData({ ...formData, duration_days: e.target.value })}
                   required
                   disabled={!!editingRaffle}
+                  placeholder="0.001 = ~90 seconds"
                 />
               </div>
             </div>
