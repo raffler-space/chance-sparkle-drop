@@ -19,6 +19,7 @@ interface Raffle {
   status: string;
   winner_address: string | null;
   draw_tx_hash: string | null;
+  contract_raffle_id: number | null;
 }
 
 export const WinnerSelection = () => {
@@ -45,7 +46,20 @@ export const WinnerSelection = () => {
       console.log('WinnerSelected event:', { raffleId: raffleId.toString(), winner, winningEntry: winningEntry.toString() });
       
       const txHash = event.transactionHash;
-      const raffleIdNum = raffleId.toNumber();
+      const contractRaffleId = raffleId.toNumber();
+
+      // Find the database raffle by contract_raffle_id
+      const { data: raffleData, error: findError } = await supabase
+        .from('raffles')
+        .select('id')
+        .eq('contract_raffle_id', contractRaffleId)
+        .single();
+
+      if (findError || !raffleData) {
+        console.error('Error finding raffle in database:', findError);
+        toast.error('Failed to find raffle record');
+        return;
+      }
 
       // Update database with winner info
       const { error } = await supabase
@@ -56,7 +70,7 @@ export const WinnerSelection = () => {
           draw_tx_hash: txHash,
           completed_at: new Date().toISOString(),
         })
-        .eq('id', raffleIdNum);
+        .eq('id', raffleData.id);
 
       if (error) {
         console.error('Error updating winner in database:', error);
@@ -88,9 +102,14 @@ export const WinnerSelection = () => {
     setLoading(false);
   };
 
-  const handleTriggerDraw = async (raffleId: number) => {
+  const handleTriggerDraw = async (raffleId: number, contractRaffleId: number | null) => {
     if (!isContractReady) {
       toast.error('Please connect your wallet first');
+      return;
+    }
+
+    if (!contractRaffleId) {
+      toast.error('This raffle was not created on the blockchain. Please create a new raffle.');
       return;
     }
 
@@ -109,9 +128,9 @@ export const WinnerSelection = () => {
         return;
       }
 
-      // Call smart contract to select winner
+      // Call smart contract to select winner using contract raffle ID
       toast.loading('Requesting Chainlink VRF...', { id: 'vrf-request' });
-      const success = await selectWinner(raffleId);
+      const success = await selectWinner(contractRaffleId);
 
       if (success) {
         toast.success('VRF request sent! Winner will be selected shortly...', { id: 'vrf-request' });
@@ -273,8 +292,8 @@ export const WinnerSelection = () => {
 
                 <div className="ml-4">
                   <Button
-                    onClick={() => handleTriggerDraw(raffle.id)}
-                    disabled={!canDraw || processing === raffle.id || raffle.status === 'drawing' || raffle.status === 'completed'}
+                    onClick={() => handleTriggerDraw(raffle.id, raffle.contract_raffle_id)}
+                    disabled={!canDraw || processing === raffle.id || raffle.status === 'drawing' || raffle.status === 'completed' || !raffle.contract_raffle_id}
                     className="bg-gradient-to-r from-neon-gold to-neon-cyan hover:opacity-90"
                   >
                     {processing === raffle.id ? (
