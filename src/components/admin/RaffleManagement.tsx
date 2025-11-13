@@ -44,7 +44,7 @@ export const RaffleManagement = () => {
     max_tickets: '',
     nft_collection_address: '',
     image_url: '',
-    duration_days: '7',
+    duration_days: '0.001', // ~90 seconds for testing
   });
 
   useEffect(() => {

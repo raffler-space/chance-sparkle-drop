@@ -19,7 +19,7 @@ interface Raffle {
   status: string;
   winner_address: string | null;
   draw_tx_hash: string | null;
-  contract_raffle_id: number | null;
+  contract_raffle_id?: number | null;
 }
 
 export const WinnerSelection = () => {
@@ -49,14 +49,14 @@ export const WinnerSelection = () => {
       const contractRaffleId = raffleId.toNumber();
 
       // Find the database raffle by contract_raffle_id
-      const { data: raffleData, error: findError } = await supabase
+      const raffleQuery = await (supabase as any)
         .from('raffles')
         .select('id')
         .eq('contract_raffle_id', contractRaffleId)
         .single();
 
-      if (findError || !raffleData) {
-        console.error('Error finding raffle in database:', findError);
+      if (raffleQuery.error || !raffleQuery.data) {
+        console.error('Error finding raffle in database:', raffleQuery.error);
         toast.error('Failed to find raffle record');
         return;
       }
@@ -70,7 +70,7 @@ export const WinnerSelection = () => {
           draw_tx_hash: txHash,
           completed_at: new Date().toISOString(),
         })
-        .eq('id', raffleData.id);
+        .eq('id', raffleQuery.data.id);
 
       if (error) {
         console.error('Error updating winner in database:', error);
