@@ -18,6 +18,7 @@ interface RaffleCardProps {
   endDate: Date;
   isActive: boolean;
   account: string | null;
+  onPurchaseSuccess?: () => void;
 }
 
 export const RaffleCard = ({
@@ -33,6 +34,7 @@ export const RaffleCard = ({
   endDate,
   isActive,
   account,
+  onPurchaseSuccess,
 }: RaffleCardProps) => {
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const timeRemaining = () => {
@@ -134,6 +136,7 @@ export const RaffleCard = ({
           ticketsSold: soldTickets,
         }}
         account={account}
+        onPurchaseSuccess={onPurchaseSuccess}
       />
     </Card>
   );
