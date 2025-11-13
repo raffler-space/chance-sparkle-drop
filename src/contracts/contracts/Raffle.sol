@@ -6,12 +6,13 @@ import "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 import "@chainlink/contracts/src/v0.8/vrf/dev/interfaces/IVRFCoordinatorV2Plus.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title Raffle
  * @dev NFT-gated raffle system using Chainlink VRF for provably fair winner selection
  */
-contract Raffle is VRFConsumerBaseV2Plus, ReentrancyGuard {
+contract Raffle is VRFConsumerBaseV2Plus, ReentrancyGuard, Ownable {
     IVRFCoordinatorV2Plus private immutable i_vrfCoordinator;
     
     // Chainlink VRF Configuration
@@ -55,7 +56,7 @@ contract Raffle is VRFConsumerBaseV2Plus, ReentrancyGuard {
         uint256 subscriptionId,
         bytes32 gasLane,
         uint32 callbackGasLimit
-    ) VRFConsumerBaseV2Plus(vrfCoordinatorV2) {
+    ) VRFConsumerBaseV2Plus(vrfCoordinatorV2) Ownable(msg.sender) {
         i_vrfCoordinator = IVRFCoordinatorV2Plus(vrfCoordinatorV2);
         i_subscriptionId = subscriptionId;
         i_gasLane = gasLane;
