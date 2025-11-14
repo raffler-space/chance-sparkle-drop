@@ -21,6 +21,7 @@ interface RaffleCardProps {
   onPurchaseSuccess?: () => void;
   status?: string;
   winnerAddress?: string | null;
+  contract_raffle_id?: number | null;
 }
 
 export const RaffleCard = ({
@@ -39,6 +40,7 @@ export const RaffleCard = ({
   onPurchaseSuccess,
   status,
   winnerAddress,
+  contract_raffle_id,
 }: RaffleCardProps) => {
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const timeRemaining = () => {
@@ -176,6 +178,7 @@ export const RaffleCard = ({
           ticketPrice: ticketPriceNumeric,
           maxTickets: totalTickets,
           ticketsSold: soldTickets,
+          contract_raffle_id,
         }}
         account={account}
         onPurchaseSuccess={onPurchaseSuccess}
