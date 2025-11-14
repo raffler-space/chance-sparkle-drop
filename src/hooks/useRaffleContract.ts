@@ -91,7 +91,7 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
     }
 
     try {
-      const ticketPrice = ethers.utils.parseEther(ticketPriceEth);
+      const ticketPrice = ethers.utils.parseUnits(ticketPriceEth, 6); // USDT uses 6 decimals
       const duration = Math.floor(durationDays * 24 * 60 * 60); // Convert days to seconds (must be integer)
       const nftAddress = nftContract || ethers.constants.AddressZero;
 
@@ -105,7 +105,7 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
         name,
         description,
         ticketPrice: ticketPrice.toString(),
-        ticketPriceEth: ethers.utils.formatEther(ticketPrice),
+        ticketPriceUSDT: ethers.utils.formatUnits(ticketPrice, 6),
         maxTickets,
         duration,
         durationDays,
@@ -242,19 +242,18 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
       const raffleInfo = await contract.raffles(raffleId);
       console.log('Raffle info from contract:', {
         name: raffleInfo.name,
-        ticketPrice: ethers.utils.formatEther(raffleInfo.ticketPrice),
+        ticketPrice: ethers.utils.formatUnits(raffleInfo.ticketPrice, 6),
         ticketsSold: raffleInfo.ticketsSold.toString(),
         maxTickets: raffleInfo.maxTickets.toString(),
         isActive: raffleInfo.isActive,
       });
       
       const totalPrice = raffleInfo.ticketPrice.mul(quantity);
-      console.log('Ticket price:', ethers.utils.formatEther(raffleInfo.ticketPrice));
-      console.log('Total price:', ethers.utils.formatEther(totalPrice));
+      console.log('Ticket price:', ethers.utils.formatUnits(raffleInfo.ticketPrice, 6), 'USDT');
+      console.log('Total price:', ethers.utils.formatUnits(totalPrice, 6), 'USDT');
 
-      const tx = await contract.buyTickets(raffleId, quantity, {
-        value: totalPrice
-      });
+      // For USDT raffle, don't send ETH value - USDT is transferred via approve/transferFrom
+      const tx = await contract.buyTickets(raffleId, quantity);
 
       console.log('Transaction sent:', tx.hash);
       toast.loading('Purchasing tickets...', { id: 'buy-tickets' });
