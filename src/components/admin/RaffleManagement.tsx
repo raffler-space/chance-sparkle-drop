@@ -138,7 +138,7 @@ export const RaffleManagement = () => {
           formData.description,
           formData.ticket_price,
           parseInt(formData.max_tickets),
-          parseInt(formData.duration_days),
+          parseFloat(formData.duration_days),
           formData.nft_collection_address || undefined
         );
 
