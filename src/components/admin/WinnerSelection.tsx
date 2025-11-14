@@ -20,6 +20,7 @@ interface Raffle {
   winner_address: string | null;
   draw_tx_hash: string | null;
   contract_raffle_id?: number | null;
+  draw_date: string | null;
 }
 
 export const WinnerSelection = () => {
@@ -196,7 +197,10 @@ export const WinnerSelection = () => {
       <div className="grid gap-4">
         {raffles.map((raffle) => {
           const progress = (raffle.tickets_sold / raffle.max_tickets) * 100;
-          const canDraw = raffle.status === 'active' && raffle.tickets_sold > 0;
+          const now = new Date();
+          const drawDate = raffle.draw_date ? new Date(raffle.draw_date) : null;
+          const hasEnded = drawDate ? now >= drawDate : false;
+          const canDraw = raffle.status === 'active' && raffle.tickets_sold > 0 && hasEnded;
           
           return (
             <Card key={raffle.id} className="glass-card border-neon-gold/30 p-6">
@@ -318,7 +322,11 @@ export const WinnerSelection = () => {
                   
                   {!canDraw && raffle.status === 'active' && (
                     <p className="text-xs text-muted-foreground text-center mt-2">
-                      Waiting for at least 1 ticket to be sold
+                      {raffle.tickets_sold === 0 
+                        ? 'Waiting for at least 1 ticket to be sold'
+                        : !hasEnded && drawDate
+                        ? `Draw available on ${drawDate.toLocaleString()}`
+                        : 'Draw not available'}
                     </p>
                   )}
                 </div>
