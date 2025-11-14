@@ -79,8 +79,14 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
     durationDays: number,
     nftContract?: string
   ) => {
-    if (!contract) {
+    if (!contract || !chainId) {
       toast.error('Contract not initialized');
+      return null;
+    }
+
+    const networkConfig = getNetworkConfig(chainId);
+    if (!networkConfig) {
+      toast.error('Network configuration not found');
       return null;
     }
 
@@ -119,7 +125,7 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
           console.log('✓ Current raffle counter:', raffleCounter.toString());
         } catch (e: any) {
           console.error('✗ raffleCounter() failed:', e.message);
-          throw new Error('Contract ABI mismatch. The deployed contract at 0xFb60F5E74175089b944c673583Bb2d133A98F8A1 may not be the Raffle contract, or was compiled differently. Please verify on Sepolia Etherscan.');
+          throw new Error(`Contract ABI mismatch. The deployed contract at ${networkConfig.contracts.raffle} may not be the Raffle contract, or was compiled differently. Please verify on ${networkConfig.blockExplorer}.`);
         }
       } catch (e: any) {
         console.error('Contract verification failed:', e);
@@ -151,7 +157,7 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
         let errorMsg = 'Contract reverted. ';
         if (staticError.message.includes('CALL_EXCEPTION')) {
           errorMsg += 'Possible issues: 1) Contract is paused, 2) Missing required setup, 3) Invalid parameters. ';
-          errorMsg += 'Check Sepolia Etherscan for contract state: https://sepolia.etherscan.io/address/0xFb60F5E74175089b944c673583Bb2d133A98F8A1#readContract';
+          errorMsg += `Check ${networkConfig.name} explorer for contract state: ${networkConfig.blockExplorer}/address/${networkConfig.contracts.raffle}#readContract`;
         }
         throw new Error(errorMsg);
       }
