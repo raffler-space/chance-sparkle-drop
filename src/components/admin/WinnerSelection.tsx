@@ -202,19 +202,6 @@ export const WinnerSelection = () => {
           const hasEnded = drawDate ? now >= drawDate : false;
           const canDraw = raffle.status === 'active' && raffle.tickets_sold > 0 && hasEnded;
           
-          // Debug logging
-          if (raffle.tickets_sold === raffle.max_tickets) {
-            console.log(`Raffle ${raffle.id} (${raffle.name}):`, {
-              status: raffle.status,
-              tickets_sold: raffle.tickets_sold,
-              draw_date: raffle.draw_date,
-              drawDate: drawDate,
-              now: now,
-              hasEnded,
-              canDraw
-            });
-          }
-          
           return (
             <Card key={raffle.id} className="glass-card border-neon-gold/30 p-6">
               <div className="flex justify-between items-start">

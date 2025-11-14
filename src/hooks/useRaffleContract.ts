@@ -229,7 +229,7 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
   const buyTickets = useCallback(async (raffleId: number, quantity: number) => {
     if (!contract) {
       toast.error('Contract not initialized');
-      return false;
+      return { success: false, txHash: null };
     }
 
     try {
@@ -242,14 +242,14 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
       });
 
       toast.loading('Purchasing tickets...', { id: 'buy-tickets' });
-      await tx.wait();
+      const receipt = await tx.wait();
 
       toast.success(`Successfully purchased ${quantity} ticket(s)!`, { id: 'buy-tickets' });
-      return true;
+      return { success: true, txHash: receipt.transactionHash };
     } catch (error: any) {
       console.error('Error buying tickets:', error);
       toast.error(error.reason || 'Failed to purchase tickets', { id: 'buy-tickets' });
-      return false;
+      return { success: false, txHash: null };
     }
   }, [contract]);
 
