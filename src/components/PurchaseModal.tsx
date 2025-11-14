@@ -62,11 +62,22 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
   };
 
   const fetchContractTicketPrice = async () => {
-    if (!contract || (!raffle.contract_raffle_id && raffle.contract_raffle_id !== 0)) return;
+    console.log('fetchContractTicketPrice called', { 
+      hasContract: !!contract, 
+      contractRaffleId: raffle.contract_raffle_id,
+      raffleId: raffle.id 
+    });
+    
+    if (!contract || (!raffle.contract_raffle_id && raffle.contract_raffle_id !== 0)) {
+      console.log('Skipping fetch - missing contract or contract_raffle_id');
+      return;
+    }
 
     setIsLoadingPrice(true);
     try {
+      console.log('Calling contract.raffles with ID:', raffle.contract_raffle_id);
       const raffleInfo = await contract.raffles(raffle.contract_raffle_id);
+      console.log('Raw raffle info from contract:', raffleInfo);
       // USDT uses 6 decimals
       const priceInUSDT = ethers.utils.formatUnits(raffleInfo.ticketPrice, 6);
       setContractTicketPrice(priceInUSDT);

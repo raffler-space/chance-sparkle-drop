@@ -96,7 +96,7 @@ export const RAFFLE_ABI = [
   "function withdrawFees()",
   "function getUserEntries(uint256 raffleId, address user) view returns (uint256[])",
   "function getRaffleEntries(uint256 raffleId) view returns (uint256[])",
-  "function raffles(uint256) view returns (string name, string description, uint256 ticketPrice, uint256 maxTickets, uint256 ticketsSold, uint256 endTime, address winner, bool isActive, bool vrfRequested, address nftContract, uint256[] entries)",
+  "function raffles(uint256) view returns (string name, string description, uint256 ticketPrice, uint256 maxTickets, uint256 ticketsSold, uint256 endTime, address winner, bool isActive, bool vrfRequested, address nftContract)",
   "function raffleCounter() view returns (uint256)",
   "function platformFee() view returns (uint256)",
   "function usdtToken() view returns (address)",
