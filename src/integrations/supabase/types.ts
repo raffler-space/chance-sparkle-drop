@@ -17,6 +17,7 @@ export type Database = {
       raffles: {
         Row: {
           completed_at: string | null
+          contract_raffle_id: number | null
           created_at: string
           description: string | null
           draw_date: string | null
@@ -34,6 +35,7 @@ export type Database = {
         }
         Insert: {
           completed_at?: string | null
+          contract_raffle_id?: number | null
           created_at?: string
           description?: string | null
           draw_date?: string | null
@@ -51,6 +53,7 @@ export type Database = {
         }
         Update: {
           completed_at?: string | null
+          contract_raffle_id?: number | null
           created_at?: string
           description?: string | null
           draw_date?: string | null
