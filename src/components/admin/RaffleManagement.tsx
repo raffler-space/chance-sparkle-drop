@@ -147,7 +147,7 @@ export const RaffleManagement = () => {
           
           // Now save to Supabase with contract raffle ID
           const drawDate = new Date();
-          drawDate.setDate(drawDate.getDate() + parseInt(formData.duration_days));
+          drawDate.setDate(drawDate.getDate() + parseFloat(formData.duration_days));
 
           const { error } = await supabase
             .from('raffles')
