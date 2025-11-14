@@ -37,8 +37,8 @@ export const sepoliaConfig: NetworkConfig = {
     usdt: "0x11BBef28D8effD775F9674798cd219394F9C1969", // Sepolia USDT mock
   },
   chainlink: {
-    vrfCoordinator: "0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B",
-    gasLane: "0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c",
+    vrfCoordinator: "0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B", // VRF v2.5
+    gasLane: "0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae", // 500 gwei Key Hash
   },
 };
 
