@@ -24,6 +24,7 @@ interface Raffle {
   draw_date: string | null;
   winner_address: string | null;
   image_url: string | null;
+  contract_raffle_id: number | null;
 }
 
 export default function Raffles() {
@@ -238,6 +239,7 @@ export default function Raffles() {
             ticketPrice: selectedRaffle.ticket_price,
             maxTickets: selectedRaffle.max_tickets,
             ticketsSold: selectedRaffle.tickets_sold,
+            contract_raffle_id: selectedRaffle.contract_raffle_id,
           }}
           account={account}
           onPurchaseSuccess={fetchRaffles}
