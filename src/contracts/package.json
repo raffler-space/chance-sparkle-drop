@@ -4,7 +4,7 @@
   "description": "Raffle smart contract deployment",
   "scripts": {
     "compile": "hardhat compile",
-    "deploy:sepolia": "hardhat run deploy.js --network sepolia",
+    "deploy:sepolia": "hardhat run deploy-usdt.js --network sepolia",
     "deploy:mainnet": "hardhat run deploy.js --network mainnet",
     "verify": "hardhat verify"
   },
