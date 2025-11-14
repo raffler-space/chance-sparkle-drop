@@ -4,9 +4,9 @@ const fs = require("fs");
 async function main() {
   console.log("Starting Raffle contract deployment...\n");
 
-  // Sepolia Testnet Chainlink VRF V2 Configuration
-  const VRF_COORDINATOR = "0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B";
-  const GAS_LANE = "0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c";
+  // Sepolia Testnet Chainlink VRF V2.5 Configuration
+  const VRF_COORDINATOR = "0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B"; // VRF v2.5 Coordinator
+  const GAS_LANE = "0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae"; // 500 gwei Key Hash
   const CALLBACK_GAS_LIMIT = 500000;
   
   // IMPORTANT: Replace with your actual Chainlink VRF Subscription ID
