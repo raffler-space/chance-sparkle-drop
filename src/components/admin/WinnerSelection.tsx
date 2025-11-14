@@ -310,7 +310,7 @@ export const WinnerSelection = () => {
                 <div className="ml-4">
                   <Button
                     onClick={() => handleTriggerDraw(raffle.id, raffle.contract_raffle_id)}
-                    disabled={!canDraw || processing === raffle.id || raffle.status === 'drawing' || raffle.status === 'completed' || !raffle.contract_raffle_id}
+                    disabled={!canDraw || processing === raffle.id || raffle.status === 'drawing' || raffle.status === 'completed' || raffle.contract_raffle_id === null || raffle.contract_raffle_id === undefined}
                     className="bg-gradient-to-r from-neon-gold to-neon-cyan hover:opacity-90"
                   >
                     {processing === raffle.id ? (
