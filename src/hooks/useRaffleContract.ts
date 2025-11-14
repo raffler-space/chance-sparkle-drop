@@ -92,8 +92,14 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
 
     try {
       const ticketPrice = ethers.utils.parseEther(ticketPriceEth);
-      const duration = durationDays * 24 * 60 * 60; // Convert days to seconds
+      const duration = Math.floor(durationDays * 24 * 60 * 60); // Convert days to seconds (must be integer)
       const nftAddress = nftContract || ethers.constants.AddressZero;
+
+      // Validate duration
+      if (duration < 1) {
+        toast.error('Duration must be at least 1 second (0.0000116 days)');
+        return null;
+      }
 
       console.log('Creating raffle with params:', {
         name,
