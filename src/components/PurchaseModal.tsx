@@ -7,6 +7,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useRaffleContract } from '@/hooks/useRaffleContract';
 import { useWeb3 } from '@/hooks/useWeb3';
+import { useUSDTContract } from '@/hooks/useUSDTContract';
+import { getNetworkConfig } from '@/config/contracts';
 import { ethers } from 'ethers';
 
 interface PurchaseModalProps {
@@ -27,48 +29,48 @@ interface PurchaseModalProps {
 export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSuccess }: PurchaseModalProps) => {
   const [quantity, setQuantity] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [ethBalance, setEthBalance] = useState<string | null>(null);
+  const [usdtBalance, setUsdtBalance] = useState<string | null>(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [contractTicketPrice, setContractTicketPrice] = useState<string | null>(null);
   const [isLoadingPrice, setIsLoadingPrice] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [hasApproval, setHasApproval] = useState(false);
   
   const { chainId } = useWeb3();
   const { buyTickets, isContractReady, contract } = useRaffleContract(chainId, account);
+  const { getBalance, approve, getAllowance, isContractReady: isUSDTReady } = useUSDTContract(chainId, account);
 
-  const ticketPriceInEth = contractTicketPrice ? parseFloat(contractTicketPrice) : 0;
-  const totalPrice = ticketPriceInEth * quantity;
+  const ticketPriceInUSDT = contractTicketPrice ? parseFloat(contractTicketPrice) : 0;
+  const totalPrice = ticketPriceInUSDT * quantity;
   const availableTickets = raffle.maxTickets - raffle.ticketsSold;
-  const hasInsufficientBalance = ethBalance !== null && parseFloat(ethBalance) < totalPrice;
+  const hasInsufficientBalance = usdtBalance !== null && parseFloat(usdtBalance) < totalPrice;
 
-  const fetchETHBalance = async () => {
-    if (!account || !window.ethereum) return;
+  const fetchUSDTBalance = async () => {
+    if (!account || !isUSDTReady) return;
 
     setIsLoadingBalance(true);
     try {
-      const balance = await window.ethereum.request({
-        method: 'eth_getBalance',
-        params: [account, 'latest'],
-      });
-
-      const balanceInETH = ethers.utils.formatEther(balance);
-      setEthBalance(balanceInETH);
+      const balance = await getBalance(account);
+      setUsdtBalance(balance);
+      console.log('USDT Balance:', balance);
     } catch (error) {
-      console.error('Error fetching ETH balance:', error);
-      setEthBalance(null);
+      console.error('Error fetching USDT balance:', error);
+      setUsdtBalance(null);
     } finally {
       setIsLoadingBalance(false);
     }
   };
 
   const fetchContractTicketPrice = async () => {
-    if (!contract || !raffle.contract_raffle_id && raffle.contract_raffle_id !== 0) return;
+    if (!contract || (!raffle.contract_raffle_id && raffle.contract_raffle_id !== 0)) return;
 
     setIsLoadingPrice(true);
     try {
       const raffleInfo = await contract.raffles(raffle.contract_raffle_id);
-      const priceInEth = ethers.utils.formatEther(raffleInfo.ticketPrice);
-      setContractTicketPrice(priceInEth);
-      console.log('Fetched ticket price from contract:', priceInEth, 'ETH');
+      // USDT uses 6 decimals
+      const priceInUSDT = ethers.utils.formatUnits(raffleInfo.ticketPrice, 6);
+      setContractTicketPrice(priceInUSDT);
+      console.log('Fetched ticket price from contract:', priceInUSDT, 'USDT');
     } catch (error) {
       console.error('Error fetching ticket price from contract:', error);
       setContractTicketPrice(null);
@@ -77,17 +79,39 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
     }
   };
 
-  useEffect(() => {
-    if (isOpen && account) {
-      fetchETHBalance();
+  const checkApproval = async () => {
+    if (!account || !contract || !isUSDTReady) return;
+
+    try {
+      const networkConfig = getNetworkConfig(chainId);
+      if (!networkConfig) return;
+
+      const allowance = await getAllowance(account, networkConfig.contracts.raffle);
+      const allowanceNum = parseFloat(allowance);
+      setHasApproval(allowanceNum >= totalPrice);
+    } catch (error) {
+      console.error('Error checking approval:', error);
+      setHasApproval(false);
     }
-  }, [isOpen, account]);
+  };
+
+  useEffect(() => {
+    if (isOpen && account && isUSDTReady) {
+      fetchUSDTBalance();
+    }
+  }, [isOpen, account, isUSDTReady]);
 
   useEffect(() => {
     if (isOpen && contract && (raffle.contract_raffle_id || raffle.contract_raffle_id === 0)) {
       fetchContractTicketPrice();
     }
   }, [isOpen, contract, raffle.contract_raffle_id]);
+
+  useEffect(() => {
+    if (isOpen && contractTicketPrice && account && isUSDTReady) {
+      checkApproval();
+    }
+  }, [isOpen, contractTicketPrice, totalPrice, account, isUSDTReady]);
 
   const handleQuantityChange = (delta: number) => {
     const newQuantity = quantity + delta;
@@ -121,7 +145,39 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
     setIsProcessing(true);
 
     try {
-      // Call buyTickets on the smart contract
+      // Step 1: Check and handle USDT approval
+      if (!hasApproval) {
+        toast.info('Approving USDT...', {
+          description: 'Please confirm the approval transaction',
+        });
+        
+        setIsApproving(true);
+        try {
+          const networkConfig = getNetworkConfig(chainId);
+          if (!networkConfig) throw new Error('Network configuration not found');
+
+          const approveTx = await approve(networkConfig.contracts.raffle, totalPrice.toString());
+          await approveTx.wait();
+          
+          toast.success('USDT approved successfully');
+          setHasApproval(true);
+          setIsApproving(false);
+        } catch (approveError: any) {
+          setIsApproving(false);
+          if (approveError.code === 4001) {
+            toast.error('Approval rejected');
+          } else {
+            toast.error('Failed to approve USDT');
+          }
+          return;
+        }
+      }
+
+      // Step 2: Purchase tickets
+      toast.info('Purchasing tickets...', {
+        description: 'Please confirm the purchase transaction',
+      });
+
       console.log('Calling buyTickets on contract...');
       const result = await buyTickets(raffle.contract_raffle_id, quantity);
       console.log('BuyTickets result:', result);
@@ -199,15 +255,15 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* ETH Balance Display */}
+          {/* USDT Balance Display */}
           <div className="glass-card p-3 border-neon-gold/20">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-foreground/70">Your ETH Balance</span>
+              <span className="text-sm text-foreground/70">Your USDT Balance</span>
               <span className="font-rajdhani text-lg text-neon-gold">
                 {isLoadingBalance ? (
                   <span className="animate-pulse">Loading...</span>
-                ) : ethBalance !== null ? (
-                  `${parseFloat(ethBalance).toFixed(4)} ETH`
+                ) : usdtBalance !== null ? (
+                  `${parseFloat(usdtBalance).toFixed(2)} USDT`
                 ) : (
                   'Unable to load'
                 )}
@@ -215,12 +271,22 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
             </div>
           </div>
 
+          {/* Approval Status */}
+          {!hasApproval && contractTicketPrice && (
+            <Alert className="border-neon-purple/50 bg-neon-purple/10">
+              <AlertTriangle className="h-4 w-4 text-neon-purple" />
+              <AlertDescription className="text-foreground/80">
+                You need to approve USDT spending before purchasing. This will happen automatically when you click "Confirm Purchase".
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Insufficient Balance Warning */}
           {hasInsufficientBalance && contractTicketPrice && (
             <Alert className="border-destructive/50 bg-destructive/10">
               <AlertTriangle className="h-4 w-4 text-destructive" />
               <AlertDescription className="text-destructive">
-                Insufficient ETH balance. You need {totalPrice.toFixed(4)} ETH but only have {ethBalance ? parseFloat(ethBalance).toFixed(4) : '0'} ETH.
+                Insufficient USDT balance. You need {totalPrice.toFixed(2)} USDT but only have {usdtBalance ? parseFloat(usdtBalance).toFixed(2) : '0'} USDT.
               </AlertDescription>
             </Alert>
           )}
@@ -268,7 +334,7 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
                 {isLoadingPrice ? (
                   <span className="animate-pulse">Loading...</span>
                 ) : contractTicketPrice !== null ? (
-                  `${parseFloat(contractTicketPrice).toFixed(4)} ETH`
+                  `${parseFloat(contractTicketPrice).toFixed(2)} USDT`
                 ) : (
                   'Unable to load'
                 )}
@@ -282,7 +348,7 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
               <div className="flex justify-between items-center">
                 <span className="font-rajdhani text-lg">Total</span>
                 <span className="font-orbitron text-2xl text-neon-cyan glow-text-cyan">
-                  {contractTicketPrice !== null ? `${totalPrice.toFixed(4)} ETH` : 'Loading...'}
+                  {contractTicketPrice !== null ? `${totalPrice.toFixed(2)} USDT` : 'Loading...'}
                 </span>
               </div>
             </div>
@@ -291,19 +357,18 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
           {/* Purchase Button */}
           <Button
             onClick={handlePurchase}
-            disabled={isProcessing || !account || hasInsufficientBalance || !contractTicketPrice || isLoadingPrice}
+            disabled={isProcessing || isApproving || !account || hasInsufficientBalance || !contractTicketPrice || isLoadingPrice}
             className="w-full bg-gradient-to-r from-neon-cyan to-neon-purple hover:opacity-90 text-white font-orbitron text-lg h-12 disabled:opacity-50"
           >
-            {isProcessing ? (
+            {isProcessing || isApproving ? (
               <>
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
-                Processing...
+                {isApproving ? 'Approving USDT...' : 'Processing...'}
               </>
+            ) : hasApproval ? (
+              'Confirm Purchase'
             ) : (
-              <>
-                <Ticket className="mr-2" />
-                Confirm Purchase
-              </>
+              'Approve & Purchase'
             )}
           </Button>
 

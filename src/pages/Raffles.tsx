@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { Loader2, Ticket, Trophy, ExternalLink, Loader2 as LoaderIcon } from 'lucide-react';
 import { PurchaseModal } from '@/components/PurchaseModal';
+import { GetTestUSDT } from '@/components/GetTestUSDT';
 
 interface Raffle {
   id: number;
@@ -113,9 +114,12 @@ export default function Raffles() {
           <h1 className="text-4xl md:text-6xl font-orbitron font-bold mb-4">
             <span className="gradient-text">All Raffles</span>
           </h1>
-          <p className="text-muted-foreground font-rajdhani text-lg max-w-2xl mx-auto">
+          <p className="text-muted-foreground font-rajdhani text-lg max-w-2xl mx-auto mb-4">
             Browse all active and completed raffles. Enter for a chance to win amazing prizes!
           </p>
+          <div className="flex justify-center">
+            <GetTestUSDT />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
