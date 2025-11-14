@@ -29,11 +29,14 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
   const [isProcessing, setIsProcessing] = useState(false);
   const [ethBalance, setEthBalance] = useState<string | null>(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [contractTicketPrice, setContractTicketPrice] = useState<string | null>(null);
+  const [isLoadingPrice, setIsLoadingPrice] = useState(false);
   
   const { chainId } = useWeb3();
-  const { buyTickets, isContractReady } = useRaffleContract(chainId, account);
+  const { buyTickets, isContractReady, contract } = useRaffleContract(chainId, account);
 
-  const totalPrice = raffle.ticketPrice * quantity;
+  const ticketPriceInEth = contractTicketPrice ? parseFloat(contractTicketPrice) : 0;
+  const totalPrice = ticketPriceInEth * quantity;
   const availableTickets = raffle.maxTickets - raffle.ticketsSold;
   const hasInsufficientBalance = ethBalance !== null && parseFloat(ethBalance) < totalPrice;
 
@@ -57,11 +60,34 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
     }
   };
 
+  const fetchContractTicketPrice = async () => {
+    if (!contract || !raffle.contract_raffle_id && raffle.contract_raffle_id !== 0) return;
+
+    setIsLoadingPrice(true);
+    try {
+      const raffleInfo = await contract.raffles(raffle.contract_raffle_id);
+      const priceInEth = ethers.utils.formatEther(raffleInfo.ticketPrice);
+      setContractTicketPrice(priceInEth);
+      console.log('Fetched ticket price from contract:', priceInEth, 'ETH');
+    } catch (error) {
+      console.error('Error fetching ticket price from contract:', error);
+      setContractTicketPrice(null);
+    } finally {
+      setIsLoadingPrice(false);
+    }
+  };
+
   useEffect(() => {
     if (isOpen && account) {
       fetchETHBalance();
     }
   }, [isOpen, account]);
+
+  useEffect(() => {
+    if (isOpen && contract && (raffle.contract_raffle_id || raffle.contract_raffle_id === 0)) {
+      fetchContractTicketPrice();
+    }
+  }, [isOpen, contract, raffle.contract_raffle_id]);
 
   const handleQuantityChange = (delta: number) => {
     const newQuantity = quantity + delta;
@@ -190,7 +216,7 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
           </div>
 
           {/* Insufficient Balance Warning */}
-          {hasInsufficientBalance && (
+          {hasInsufficientBalance && contractTicketPrice && (
             <Alert className="border-destructive/50 bg-destructive/10">
               <AlertTriangle className="h-4 w-4 text-destructive" />
               <AlertDescription className="text-destructive">
@@ -238,7 +264,15 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
           <div className="glass-card p-4 space-y-2 border-neon-purple/30">
             <div className="flex justify-between text-sm">
               <span className="text-foreground/70">Price per ticket</span>
-              <span className="font-rajdhani text-neon-gold">{raffle.ticketPrice.toFixed(2)} USDT</span>
+              <span className="font-rajdhani text-neon-gold">
+                {isLoadingPrice ? (
+                  <span className="animate-pulse">Loading...</span>
+                ) : contractTicketPrice !== null ? (
+                  `${parseFloat(contractTicketPrice).toFixed(4)} ETH`
+                ) : (
+                  'Unable to load'
+                )}
+              </span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-foreground/70">Quantity</span>
@@ -248,7 +282,7 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
               <div className="flex justify-between items-center">
                 <span className="font-rajdhani text-lg">Total</span>
                 <span className="font-orbitron text-2xl text-neon-cyan glow-text-cyan">
-                  {totalPrice.toFixed(2)} USDT
+                  {contractTicketPrice !== null ? `${totalPrice.toFixed(4)} ETH` : 'Loading...'}
                 </span>
               </div>
             </div>
@@ -257,7 +291,7 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
           {/* Purchase Button */}
           <Button
             onClick={handlePurchase}
-            disabled={isProcessing || !account || hasInsufficientBalance}
+            disabled={isProcessing || !account || hasInsufficientBalance || !contractTicketPrice || isLoadingPrice}
             className="w-full bg-gradient-to-r from-neon-cyan to-neon-purple hover:opacity-90 text-white font-orbitron text-lg h-12 disabled:opacity-50"
           >
             {isProcessing ? (
