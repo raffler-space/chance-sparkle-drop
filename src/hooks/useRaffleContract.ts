@@ -233,16 +233,33 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
     }
 
     try {
+      console.log('=== Contract buyTickets Call ===');
+      console.log('Contract address:', contract.address);
+      console.log('Raffle ID:', raffleId);
+      console.log('Quantity:', quantity);
+      
       // Get raffle info to calculate price
       const raffleInfo = await contract.raffles(raffleId);
+      console.log('Raffle info from contract:', {
+        name: raffleInfo.name,
+        ticketPrice: ethers.utils.formatEther(raffleInfo.ticketPrice),
+        ticketsSold: raffleInfo.ticketsSold.toString(),
+        maxTickets: raffleInfo.maxTickets.toString(),
+        isActive: raffleInfo.isActive,
+      });
+      
       const totalPrice = raffleInfo.ticketPrice.mul(quantity);
+      console.log('Ticket price:', ethers.utils.formatEther(raffleInfo.ticketPrice));
+      console.log('Total price:', ethers.utils.formatEther(totalPrice));
 
       const tx = await contract.buyTickets(raffleId, quantity, {
         value: totalPrice
       });
 
+      console.log('Transaction sent:', tx.hash);
       toast.loading('Purchasing tickets...', { id: 'buy-tickets' });
       const receipt = await tx.wait();
+      console.log('Transaction confirmed:', receipt);
 
       toast.success(`Successfully purchased ${quantity} ticket(s)!`, { id: 'buy-tickets' });
       return { success: true, txHash: receipt.transactionHash };
@@ -261,10 +278,30 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
     }
 
     try {
+      console.log('=== Select Winner Call ===');
+      console.log('Raffle ID:', raffleId);
+      
+      // Check raffle state on blockchain
+      const raffleInfo = await contract.raffles(raffleId);
+      console.log('Raffle info before selection:', {
+        name: raffleInfo.name,
+        ticketsSold: raffleInfo.ticketsSold.toString(),
+        maxTickets: raffleInfo.maxTickets.toString(),
+        isActive: raffleInfo.isActive,
+        endTime: new Date(raffleInfo.endTime.toNumber() * 1000).toISOString(),
+      });
+
+      // Get entries for this raffle
+      const entries = await contract.getRaffleEntries(raffleId);
+      console.log('Total entries on blockchain:', entries.length);
+      console.log('First 5 entries:', entries.slice(0, 5).map((e: any) => e.toString()));
+
       const tx = await contract.selectWinner(raffleId);
 
+      console.log('VRF request transaction sent:', tx.hash);
       toast.loading('Requesting winner selection...', { id: 'select-winner' });
       await tx.wait();
+      console.log('VRF request confirmed');
 
       toast.success('Winner selection requested! Waiting for Chainlink VRF...', { id: 'select-winner' });
       return true;

@@ -86,11 +86,19 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
       return;
     }
 
+    console.log('=== Ticket Purchase Debug ===');
+    console.log('Raffle ID (DB):', raffle.id);
+    console.log('Raffle ID (Contract):', raffle.contract_raffle_id);
+    console.log('Quantity:', quantity);
+    console.log('Account:', account);
+
     setIsProcessing(true);
 
     try {
       // Call buyTickets on the smart contract
+      console.log('Calling buyTickets on contract...');
       const result = await buyTickets(raffle.contract_raffle_id, quantity);
+      console.log('BuyTickets result:', result);
 
       if (!result.success || !result.txHash) {
         toast.error('Failed to purchase tickets');
