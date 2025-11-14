@@ -146,8 +146,7 @@ export const RaffleManagement = () => {
           toast.success('Raffle created on blockchain!', { id: 'blockchain-tx' });
           
           // Now save to Supabase with contract raffle ID
-          const drawDate = new Date();
-          drawDate.setDate(drawDate.getDate() + parseFloat(formData.duration_days));
+          const drawDate = new Date(Date.now() + parseFloat(formData.duration_days) * 24 * 60 * 60 * 1000);
 
           const { error } = await supabase
             .from('raffles')
