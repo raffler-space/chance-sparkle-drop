@@ -109,7 +109,7 @@ export const WinnerSelection = () => {
       return;
     }
 
-    if (!contractRaffleId) {
+    if (contractRaffleId === null || contractRaffleId === undefined) {
       toast.error('This raffle was not created on the blockchain. Please create a new raffle.');
       return;
     }
