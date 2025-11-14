@@ -82,7 +82,7 @@ export const isSupportedNetwork = (chainId: number): boolean => {
 // Default to Sepolia for development
 export const defaultNetwork = sepoliaConfig;
 
-// Contract ABI will be imported after compilation
+// Contract ABIs
 export const RAFFLE_ABI = [
   // Ownable functions
   "function owner() view returns (address)",
@@ -90,7 +90,7 @@ export const RAFFLE_ABI = [
   
   // Raffle functions
   "function createRaffle(string name, string description, uint256 ticketPrice, uint256 maxTickets, uint256 duration, address nftContract) returns (uint256)",
-  "function buyTickets(uint256 raffleId, uint256 quantity) payable",
+  "function buyTickets(uint256 raffleId, uint256 quantity)",
   "function selectWinner(uint256 raffleId)",
   "function claimPrize(uint256 raffleId)",
   "function withdrawFees()",
@@ -99,6 +99,7 @@ export const RAFFLE_ABI = [
   "function raffles(uint256) view returns (string name, string description, uint256 ticketPrice, uint256 maxTickets, uint256 ticketsSold, uint256 endTime, address winner, bool isActive, bool vrfRequested, address nftContract)",
   "function raffleCounter() view returns (uint256)",
   "function platformFee() view returns (uint256)",
+  "function usdtToken() view returns (address)",
   
   // Events
   "event RaffleCreated(uint256 indexed raffleId, string name, uint256 ticketPrice, uint256 maxTickets)",
@@ -106,4 +107,16 @@ export const RAFFLE_ABI = [
   "event WinnerRequested(uint256 indexed raffleId, uint256 requestId)",
   "event WinnerSelected(uint256 indexed raffleId, address indexed winner, uint256 winningEntry)",
   "event PrizeClaimed(uint256 indexed raffleId, address indexed winner)"
+] as const;
+
+export const USDT_ABI = [
+  "function balanceOf(address owner) view returns (uint256)",
+  "function decimals() view returns (uint8)",
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function mint(address to, uint256 amount)",
+  "function mintWithDecimals(address to, uint256 amount)",
+  "function transfer(address to, uint256 amount) returns (bool)",
+  "function name() view returns (string)",
+  "function symbol() view returns (string)",
 ] as const;
