@@ -7,13 +7,12 @@ import "@chainlink/contracts/src/v0.8/vrf/dev/interfaces/IVRFCoordinatorV2Plus.s
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title RaffleUSDT
  * @dev NFT-gated raffle system using USDT payments and Chainlink VRF for provably fair winner selection
  */
-contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard, Ownable {
+contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard {
     IVRFCoordinatorV2Plus private immutable i_vrfCoordinator;
     IERC20 public immutable usdtToken;
     
@@ -59,7 +58,7 @@ contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard, Ownable {
         bytes32 gasLane,
         uint32 callbackGasLimit,
         address _usdtToken
-    ) VRFConsumerBaseV2Plus(vrfCoordinatorV2) Ownable(msg.sender) {
+    ) VRFConsumerBaseV2Plus(vrfCoordinatorV2) {
         require(_usdtToken != address(0), "Invalid USDT token address");
         i_vrfCoordinator = IVRFCoordinatorV2Plus(vrfCoordinatorV2);
         i_subscriptionId = subscriptionId;
