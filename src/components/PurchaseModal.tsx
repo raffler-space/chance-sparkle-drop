@@ -5,6 +5,9 @@ import { Minus, Plus, Ticket, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
+import { useRaffleContract } from '@/hooks/useRaffleContract';
+import { useWeb3 } from '@/hooks/useWeb3';
+import { ethers } from 'ethers';
 
 interface PurchaseModalProps {
   isOpen: boolean;
@@ -15,46 +18,40 @@ interface PurchaseModalProps {
     ticketPrice: number;
     maxTickets: number;
     ticketsSold: number;
+    contract_raffle_id?: number | null;
   };
   account: string | null;
   onPurchaseSuccess?: () => void;
 }
 
-const USDT_CONTRACT_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7'; // USDT on Ethereum mainnet
-const RAFFLE_CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000000'; // TODO: Replace with deployed contract
-
 export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSuccess }: PurchaseModalProps) => {
   const [quantity, setQuantity] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [usdtBalance, setUsdtBalance] = useState<number | null>(null);
+  const [ethBalance, setEthBalance] = useState<string | null>(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  
+  const { chainId } = useWeb3();
+  const { buyTickets, isContractReady } = useRaffleContract(chainId, account);
 
   const totalPrice = raffle.ticketPrice * quantity;
   const availableTickets = raffle.maxTickets - raffle.ticketsSold;
-  const hasInsufficientBalance = usdtBalance !== null && usdtBalance < totalPrice;
+  const hasInsufficientBalance = ethBalance !== null && parseFloat(ethBalance) < totalPrice;
 
-  const fetchUSDTBalance = async () => {
+  const fetchETHBalance = async () => {
     if (!account || !window.ethereum) return;
 
     setIsLoadingBalance(true);
     try {
-      // balanceOf(address) function signature: 0x70a08231
-      const data = `0x70a08231000000000000000000000000${account.slice(2)}`;
-      
       const balance = await window.ethereum.request({
-        method: 'eth_call',
-        params: [{
-          to: USDT_CONTRACT_ADDRESS,
-          data: data,
-        }, 'latest'],
+        method: 'eth_getBalance',
+        params: [account, 'latest'],
       });
 
-      // USDT uses 6 decimals
-      const balanceInUSDT = parseInt(balance, 16) / 1e6;
-      setUsdtBalance(balanceInUSDT);
+      const balanceInETH = ethers.utils.formatEther(balance);
+      setEthBalance(balanceInETH);
     } catch (error) {
-      console.error('Error fetching USDT balance:', error);
-      setUsdtBalance(null);
+      console.error('Error fetching ETH balance:', error);
+      setEthBalance(null);
     } finally {
       setIsLoadingBalance(false);
     }
@@ -62,7 +59,7 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
 
   useEffect(() => {
     if (isOpen && account) {
-      fetchUSDTBalance();
+      fetchETHBalance();
     }
   }, [isOpen, account]);
 
@@ -79,36 +76,28 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
       return;
     }
 
-    if (!window.ethereum) {
-      toast.error('MetaMask not detected');
+    if (!isContractReady) {
+      toast.error('Contract not ready. Please try again.');
+      return;
+    }
+
+    if (!raffle.contract_raffle_id && raffle.contract_raffle_id !== 0) {
+      toast.error('This raffle is not available for purchase yet.');
       return;
     }
 
     setIsProcessing(true);
 
     try {
-      // USDT uses 6 decimals
-      const amountInSmallestUnit = Math.floor(raffle.ticketPrice * quantity * 1e6);
-      const amountHex = amountInSmallestUnit.toString(16).padStart(64, '0');
-      
-      // Remove '0x' prefix from address and pad to 32 bytes (64 hex chars)
-      const recipientAddress = RAFFLE_CONTRACT_ADDRESS.slice(2).padStart(64, '0');
-      
-      // ERC20 transfer(address,uint256) function signature: 0xa9059cbb
-      const data = `0xa9059cbb${recipientAddress}${amountHex}`;
-      
-      const transferData = window.ethereum.request({
-        method: 'eth_sendTransaction',
-        params: [{
-          from: account,
-          to: USDT_CONTRACT_ADDRESS,
-          data: data,
-        }],
-      });
+      // Call buyTickets on the smart contract
+      const result = await buyTickets(raffle.contract_raffle_id, quantity);
 
-      const txHash = await transferData;
+      if (!result.success || !result.txHash) {
+        toast.error('Failed to purchase tickets');
+        return;
+      }
 
-      // Update database after successful transaction
+      // Update database after successful blockchain transaction
       try {
         const { data: { user } } = await supabase.auth.getUser();
         
@@ -121,7 +110,7 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
         const ticketRecords = Array.from({ length: quantity }, (_, i) => ({
           user_id: user.id,
           raffle_id: raffle.id,
-          tx_hash: txHash,
+          tx_hash: result.txHash,
           wallet_address: account,
           ticket_number: raffle.ticketsSold + i + 1,
           quantity: 1,
@@ -176,15 +165,15 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* USDT Balance Display */}
+          {/* ETH Balance Display */}
           <div className="glass-card p-3 border-neon-gold/20">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-foreground/70">Your USDT Balance</span>
+              <span className="text-sm text-foreground/70">Your ETH Balance</span>
               <span className="font-rajdhani text-lg text-neon-gold">
                 {isLoadingBalance ? (
                   <span className="animate-pulse">Loading...</span>
-                ) : usdtBalance !== null ? (
-                  `${usdtBalance.toFixed(2)} USDT`
+                ) : ethBalance !== null ? (
+                  `${parseFloat(ethBalance).toFixed(4)} ETH`
                 ) : (
                   'Unable to load'
                 )}
@@ -197,7 +186,7 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
             <Alert className="border-destructive/50 bg-destructive/10">
               <AlertTriangle className="h-4 w-4 text-destructive" />
               <AlertDescription className="text-destructive">
-                Insufficient USDT balance. You need {totalPrice.toFixed(2)} USDT but only have {usdtBalance?.toFixed(2)} USDT.
+                Insufficient ETH balance. You need {totalPrice.toFixed(4)} ETH but only have {ethBalance ? parseFloat(ethBalance).toFixed(4) : '0'} ETH.
               </AlertDescription>
             </Alert>
           )}
