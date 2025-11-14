@@ -33,7 +33,7 @@ export const sepoliaConfig: NetworkConfig = {
     decimals: 18,
   },
   contracts: {
-    raffle: "0x56FC54c193C30886996EC65C904DFCCfC5847a1a",
+    raffle: "0x094e1309187D5f546067Ee22138Be6F0A39d1800",
     usdt: "0x11BBef28D8effD775F9674798cd219394F9C1969", // Sepolia USDT mock
   },
   chainlink: {
