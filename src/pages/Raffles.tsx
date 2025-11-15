@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { useWeb3 } from '@/hooks/useWeb3';
+import { useRaffleContract } from '@/hooks/useRaffleContract';
 import { Loader2, Ticket, Trophy, ExternalLink, Loader2 as LoaderIcon } from 'lucide-react';
 import { PurchaseModal } from '@/components/PurchaseModal';
 import { GetTestUSDT } from '@/components/GetTestUSDT';
+import { ethers } from 'ethers';
 
 interface Raffle {
   id: number;
@@ -29,7 +31,8 @@ interface Raffle {
 
 export default function Raffles() {
   const navigate = useNavigate();
-  const { account, isConnecting, connectWallet } = useWeb3();
+  const { account, isConnecting, connectWallet, chainId } = useWeb3();
+  const { contract, isContractReady } = useRaffleContract(chainId, account);
   const [raffles, setRaffles] = useState<Raffle[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRaffle, setSelectedRaffle] = useState<Raffle | null>(null);
@@ -38,6 +41,48 @@ export default function Raffles() {
   useEffect(() => {
     fetchRaffles();
   }, []);
+
+  // Poll contract state for "drawing" raffles to sync with blockchain
+  useEffect(() => {
+    if (!contract || !isContractReady) return;
+
+    const syncRaffleStates = async () => {
+      const drawingRaffles = raffles.filter(r => r.status === 'drawing' && r.contract_raffle_id !== null);
+      
+      for (const raffle of drawingRaffles) {
+        try {
+          const contractInfo = await contract.raffles(raffle.contract_raffle_id);
+          const winner = contractInfo.winner;
+          
+          // If winner is set on contract but not in DB, sync it
+          if (winner && winner !== ethers.constants.AddressZero && !raffle.winner_address) {
+            console.log(`Syncing winner for raffle ${raffle.id}: ${winner}`);
+            
+            await supabase
+              .from('raffles')
+              .update({
+                status: 'completed',
+                winner_address: winner,
+                completed_at: new Date().toISOString(),
+              })
+              .eq('id', raffle.id);
+            
+            fetchRaffles(); // Refresh the list
+          }
+        } catch (error) {
+          console.error(`Error checking raffle ${raffle.id}:`, error);
+        }
+      }
+    };
+
+    // Initial sync
+    syncRaffleStates();
+
+    // Poll every 10 seconds
+    const interval = setInterval(syncRaffleStates, 10000);
+
+    return () => clearInterval(interval);
+  }, [contract, isContractReady, raffles]);
 
   const fetchRaffles = async () => {
     const { data, error } = await supabase
@@ -78,6 +123,9 @@ export default function Raffles() {
   const getStatusBadge = (status: string, drawDate: string | null, ticketsSold: number) => {
     if (status === 'completed') {
       return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">✅ COMPLETED</Badge>;
+    }
+    if (status === 'drawing') {
+      return <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">🎲 DRAWING WINNER...</Badge>;
     }
     if (ticketsSold === 0 && drawDate && new Date(drawDate) > new Date()) {
       return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">⏳ PENDING</Badge>;
