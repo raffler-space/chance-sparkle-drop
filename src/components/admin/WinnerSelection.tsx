@@ -90,6 +90,49 @@ export const WinnerSelection = () => {
     };
   }, [contract]);
 
+  // Poll contract state for "drawing" raffles to sync with blockchain
+  useEffect(() => {
+    if (!contract || !isContractReady) return;
+
+    const syncRaffleStates = async () => {
+      const drawingRaffles = raffles.filter(r => r.status === 'drawing' && r.contract_raffle_id !== null);
+      
+      for (const raffle of drawingRaffles) {
+        try {
+          const contractInfo = await contract.raffles(raffle.contract_raffle_id);
+          const winner = contractInfo.winner;
+          
+          // If winner is set on contract but not in DB, sync it
+          if (winner && winner !== ethers.constants.AddressZero && !raffle.winner_address) {
+            console.log(`Syncing winner for raffle ${raffle.id}: ${winner}`);
+            
+            await supabase
+              .from('raffles')
+              .update({
+                status: 'completed',
+                winner_address: winner,
+                completed_at: new Date().toISOString(),
+              })
+              .eq('id', raffle.id);
+            
+            toast.success(`Winner found: ${winner.slice(0, 6)}...${winner.slice(-4)}`);
+            fetchRaffles();
+          }
+        } catch (error) {
+          console.error(`Error checking raffle ${raffle.id}:`, error);
+        }
+      }
+    };
+
+    // Initial sync
+    syncRaffleStates();
+
+    // Poll every 10 seconds
+    const interval = setInterval(syncRaffleStates, 10000);
+
+    return () => clearInterval(interval);
+  }, [contract, isContractReady, raffles]);
+
   const fetchRaffles = async () => {
     const { data, error } = await supabase
       .from('raffles')
