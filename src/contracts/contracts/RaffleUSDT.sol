@@ -36,10 +36,12 @@ contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard {
         bool vrfRequested;
         address nftContract; // NFT contract address for gating
         uint256[] entries; // Array of entry IDs
+        address[] participants; // Array of participant addresses
     }
 
     mapping(uint256 => RaffleInfo) public raffles;
     mapping(uint256 => mapping(address => uint256[])) public userEntries; // raffleId => user => entryIds
+    mapping(uint256 => mapping(address => bool)) public hasParticipated; // raffleId => address => has participated
     mapping(uint256 => uint256) public vrfRequestToRaffleId; // VRF request ID to raffle ID
     
     uint256 public raffleCounter;
@@ -94,7 +96,8 @@ contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard {
             isActive: true,
             vrfRequested: false,
             nftContract: nftContract,
-            entries: new uint256[](0)
+            entries: new uint256[](0),
+            participants: new address[](0)
         });
 
         emit RaffleCreated(raffleId, name, ticketPrice, maxTickets);
@@ -133,6 +136,12 @@ contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard {
             usdtToken.transferFrom(msg.sender, address(this), totalCost),
             "USDT transfer failed"
         );
+
+        // Track participant if first time
+        if (!hasParticipated[raffleId][msg.sender]) {
+            raffle.participants.push(msg.sender);
+            hasParticipated[raffleId][msg.sender] = true;
+        }
 
         // Record entries
         for (uint256 i = 0; i < quantity; i++) {
@@ -196,10 +205,10 @@ contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard {
         uint256 winningIndex = randomWords[0] % raffle.entries.length;
         uint256 winningEntry = raffle.entries[winningIndex];
 
-        // Find winner
+        // Find winner by checking each participant's entries
         address winner = address(0);
-        for (uint256 i = 0; i < raffle.entries.length; i++) {
-            address participant = getParticipantAtIndex(raffleId, i);
+        for (uint256 i = 0; i < raffle.participants.length; i++) {
+            address participant = raffle.participants[i];
             uint256[] memory entries = userEntries[raffleId][participant];
             
             for (uint256 j = 0; j < entries.length; j++) {
@@ -278,14 +287,13 @@ contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard {
     }
 
     /**
-     * @dev Helper to get participant at index (simplified)
+     * @dev Get all participants for a raffle
      */
-    function getParticipantAtIndex(uint256 raffleId, uint256 index) 
-        private 
+    function getRaffleParticipants(uint256 raffleId) 
+        external 
         view 
-        returns (address) 
+        returns (address[] memory) 
     {
-        // This is a simplified version - in production you'd want a better way to track participants
-        return address(0);
+        return raffles[raffleId].participants;
     }
 }

@@ -9,6 +9,7 @@ import { Ticket, TrendingUp, History, Loader2 } from 'lucide-react';
 import { UserTickets } from '@/components/dashboard/UserTickets';
 import { ActiveRaffles } from '@/components/dashboard/ActiveRaffles';
 import { TransactionHistory } from '@/components/dashboard/TransactionHistory';
+import { WinnerNotification } from '@/components/dashboard/WinnerNotification';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { toast } from 'sonner';
 
@@ -69,6 +70,8 @@ export default function Dashboard() {
             Track your tickets, raffles, and transactions
           </p>
         </div>
+
+        <WinnerNotification userId={user?.id} />
 
         <Tabs defaultValue="tickets" className="space-y-6">
           <TabsList className="glass-card border-neon-cyan/30 p-1">
