@@ -7,7 +7,7 @@ import '@rainbow-me/rainbowkit/styles.css';
 
 const config = getDefaultConfig({
   appName: 'Raffler',
-  projectId: 'YOUR_WALLET_CONNECT_PROJECT_ID', // Get free from https://cloud.walletconnect.com
+  projectId: '2df0f6c681b062523668597d1c63f31d',
   chains: [sepolia, mainnet],
   transports: {
     [sepolia.id]: http('https://sepolia.drpc.org'),
