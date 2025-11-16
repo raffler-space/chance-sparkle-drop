@@ -530,7 +530,7 @@ export const RaffleManagement = () => {
                   value={formData.duration_days}
                   onChange={(e) => setFormData({ ...formData, duration_days: e.target.value })}
                   required
-                  disabled={!!editingRaffle}
+                  disabled={editingRaffle?.status === 'active' || editingRaffle?.status === 'completed'}
                   placeholder="0.001 = ~90 seconds"
                 />
               </div>
