@@ -45,6 +45,7 @@ export const RaffleManagement = () => {
     nft_collection_address: '',
     image_url: '',
     duration_days: '7', // 7 days default
+    status: 'active', // 'active' or 'draft'
   });
 
   useEffect(() => {
@@ -192,6 +193,7 @@ export const RaffleManagement = () => {
       nft_collection_address: raffle.nft_collection_address,
       image_url: raffle.image_url || '',
       duration_days: '7',
+      status: 'active',
     });
     setDialogOpen(true);
   };
@@ -213,16 +215,17 @@ export const RaffleManagement = () => {
   };
 
   const resetForm = () => {
-    setFormData({
-      name: '',
-      description: '',
-      prize_description: '',
-      ticket_price: '',
-      max_tickets: '',
-      nft_collection_address: '',
-      image_url: '',
-      duration_days: '7',
-    });
+      setFormData({
+        name: '',
+        description: '',
+        prize_description: '',
+        ticket_price: '',
+        max_tickets: '',
+        nft_collection_address: '',
+        image_url: '',
+        duration_days: '7',
+        status: 'active',
+      });
   };
 
   if (loading) {
