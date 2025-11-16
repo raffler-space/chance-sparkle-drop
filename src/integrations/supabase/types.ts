@@ -58,6 +58,7 @@ export type Database = {
           contract_raffle_id: number | null
           created_at: string
           description: string | null
+          display_order: number | null
           draw_date: string | null
           draw_tx_hash: string | null
           id: number
@@ -77,6 +78,7 @@ export type Database = {
           contract_raffle_id?: number | null
           created_at?: string
           description?: string | null
+          display_order?: number | null
           draw_date?: string | null
           draw_tx_hash?: string | null
           id?: number
@@ -96,6 +98,7 @@ export type Database = {
           contract_raffle_id?: number | null
           created_at?: string
           description?: string | null
+          display_order?: number | null
           draw_date?: string | null
           draw_tx_hash?: string | null
           id?: number

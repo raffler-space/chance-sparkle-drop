@@ -27,6 +27,7 @@ interface Raffle {
   image_url: string | null;
   contract_raffle_id: number | null;
   launch_time: string | null;
+  display_order: number;
 }
 
 export default function Raffles() {
@@ -98,6 +99,7 @@ export default function Raffles() {
     const { data, error } = await supabase
       .from('raffles')
       .select('*')
+      .order('display_order', { ascending: true })
       .order('created_at', { ascending: false });
 
     if (error) {
