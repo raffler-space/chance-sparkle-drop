@@ -16,7 +16,7 @@ import { useWeb3 } from "./hooks/useWeb3";
 const queryClient = new QueryClient();
 
 const App = () => {
-  const { account, isConnecting, connectWallet } = useWeb3();
+  const { account, isConnecting, connectWallet, disconnectWallet } = useWeb3();
   
   return (
     <QueryClientProvider client={queryClient}>
@@ -36,7 +36,8 @@ const App = () => {
                 <HowItWorks 
                   account={account} 
                   isConnecting={isConnecting} 
-                  onConnectWallet={connectWallet} 
+                  onConnectWallet={connectWallet}
+                  onDisconnectWallet={disconnectWallet}
                 />
               } 
             />
@@ -46,7 +47,8 @@ const App = () => {
                 <Referrals 
                   account={account} 
                   isConnecting={isConnecting} 
-                  onConnectWallet={connectWallet} 
+                  onConnectWallet={connectWallet}
+                  onDisconnectWallet={disconnectWallet}
                 />
               } 
             />

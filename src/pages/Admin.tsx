@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 
 export default function Admin() {
   const navigate = useNavigate();
-  const { account, isConnecting, connectWallet } = useWeb3();
+  const { account, isConnecting, connectWallet, disconnectWallet } = useWeb3();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -56,6 +56,7 @@ export default function Admin() {
         <AnimatedBackground />
         <Navbar 
           onConnectWallet={connectWallet}
+          onDisconnectWallet={disconnectWallet}
           walletAddress={account}
           isConnecting={isConnecting}
         />
@@ -73,6 +74,7 @@ export default function Admin() {
       <AnimatedBackground />
       <Navbar 
         onConnectWallet={connectWallet}
+        onDisconnectWallet={disconnectWallet}
         walletAddress={account}
         isConnecting={isConnecting}
       />
