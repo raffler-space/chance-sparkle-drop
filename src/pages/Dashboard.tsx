@@ -24,29 +24,31 @@ export default function Dashboard() {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        if (!session?.user) {
-          toast.error('Please sign in to view your dashboard');
-          navigate('/');
-          return;
-        }
-        setUser(session.user);
-        setLoading(false);
+        setUser(session?.user ?? null);
       }
     );
 
     // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session?.user) {
-        toast.error('Please sign in to view your dashboard');
-        navigate('/');
-        return;
-      }
-      setUser(session.user);
-      setLoading(false);
+      setUser(session?.user ?? null);
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, []);
+
+  // Check authentication - allow access with either email login OR wallet connection
+  useEffect(() => {
+    if (!loading && !user && !account) {
+      toast.error('Please sign in to view your dashboard');
+      navigate('/');
+    }
+  }, [user, account, loading, navigate]);
+
+  // Set loading to false once we've checked auth
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   if (loading) {
     return (

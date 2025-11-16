@@ -169,6 +169,12 @@ export const Navbar = ({ onConnectWallet, onDisconnectWallet, walletAddress, isC
                     <Wallet className="mr-2 h-4 w-4" />
                     Disconnect Wallet
                   </DropdownMenuItem>
+                  {user && (
+                    <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer font-rajdhani text-destructive hover:text-destructive">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Log Out
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleEmailLogin} className="cursor-pointer font-rajdhani">
                     <Mail className="mr-2 h-4 w-4" />
