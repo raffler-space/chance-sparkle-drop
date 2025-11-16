@@ -37,6 +37,7 @@ export default function Raffles() {
   const [selectedRaffle, setSelectedRaffle] = useState<Raffle | null>(null);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [showUpcoming, setShowUpcoming] = useState(false);
 
   useEffect(() => {
     fetchRaffles();
@@ -106,6 +107,11 @@ export default function Raffles() {
     setLoading(false);
   };
 
+  // Filter raffles based on showUpcoming toggle
+  const filteredRaffles = showUpcoming 
+    ? raffles.filter(r => r.status === 'draft')
+    : raffles.filter(r => r.status !== 'draft');
+
   const getTimeRemaining = (drawDate: string | null) => {
     if (!drawDate) return 'Launching Soon';
     
@@ -129,6 +135,9 @@ export default function Raffles() {
   };
 
   const getStatusBadge = (status: string, drawDate: string | null, ticketsSold: number) => {
+    if (status === 'draft') {
+      return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">📅 UPCOMING</Badge>;
+    }
     if (status === 'completed') {
       return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">✅ COMPLETED</Badge>;
     }
@@ -171,15 +180,35 @@ export default function Raffles() {
       <main className="relative z-10 container mx-auto px-4 py-8 mt-20">
         <div className="mb-8 text-center">
           <h1 className="text-4xl md:text-6xl font-orbitron font-bold mb-4">
-            <span className="gradient-text">All Raffles</span>
+            <span className="gradient-text">{showUpcoming ? 'Upcoming Raffles' : 'All Raffles'}</span>
           </h1>
           <p className="text-muted-foreground font-rajdhani text-lg max-w-2xl mx-auto">
-            Browse all active and completed raffles. Enter for a chance to win amazing prizes!
+            {showUpcoming 
+              ? 'Preview upcoming raffles that will be available soon!'
+              : 'Browse all active and completed raffles. Enter for a chance to win amazing prizes!'
+            }
           </p>
+          
+          <div className="mt-6 flex justify-center gap-3">
+            <Button 
+              variant={!showUpcoming ? "default" : "outline"}
+              onClick={() => setShowUpcoming(false)}
+              className="font-rajdhani"
+            >
+              Live Raffles
+            </Button>
+            <Button 
+              variant={showUpcoming ? "default" : "outline"}
+              onClick={() => setShowUpcoming(true)}
+              className="font-rajdhani"
+            >
+              Upcoming Raffles
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {raffles.map((raffle) => {
+          {filteredRaffles.map((raffle) => {
             const progress = (raffle.tickets_sold / raffle.max_tickets) * 100;
             const isActive = raffle.status === 'active';
             const isCompleted = raffle.status === 'completed';
