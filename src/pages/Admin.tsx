@@ -4,9 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Navbar } from '@/components/Navbar';
 import { AnimatedBackground } from '@/components/AnimatedBackground';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, Plus, Trophy, Loader2 } from 'lucide-react';
+import { Shield, Plus, Trophy, Loader2, BarChart3, Wallet } from 'lucide-react';
 import { RaffleManagement } from '@/components/admin/RaffleManagement';
 import { WinnerSelection } from '@/components/admin/WinnerSelection';
+import { AdminAnalytics } from '@/components/admin/AdminAnalytics';
+import { WithdrawFees } from '@/components/admin/WithdrawFees';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { toast } from 'sonner';
 
@@ -103,6 +105,20 @@ export default function Admin() {
               <Trophy className="w-4 h-4 mr-2" />
               Select Winners
             </TabsTrigger>
+            <TabsTrigger 
+              value="analytics"
+              className="font-rajdhani data-[state=active]:bg-neon-purple/20 data-[state=active]:text-neon-purple"
+            >
+              <BarChart3 className="w-4 h-4 mr-2" />
+              Analytics
+            </TabsTrigger>
+            <TabsTrigger 
+              value="fees"
+              className="font-rajdhani data-[state=active]:bg-secondary/20 data-[state=active]:text-secondary"
+            >
+              <Wallet className="w-4 h-4 mr-2" />
+              Withdraw Fees
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="raffles" className="space-y-4">
@@ -111,6 +127,14 @@ export default function Admin() {
 
           <TabsContent value="winners" className="space-y-4">
             <WinnerSelection />
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-4">
+            <AdminAnalytics />
+          </TabsContent>
+
+          <TabsContent value="fees" className="space-y-4">
+            <WithdrawFees />
           </TabsContent>
         </Tabs>
       </main>
