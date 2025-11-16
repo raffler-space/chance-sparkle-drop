@@ -5,14 +5,18 @@ import "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 import "@chainlink/contracts/src/v0.8/vrf/dev/interfaces/IVRFCoordinatorV2Plus.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title RaffleUSDT
  * @dev NFT-gated raffle system using USDT payments and Chainlink VRF for provably fair winner selection
  */
-contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard {
+contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard, Ownable {
+    using SafeERC20 for IERC20;
+    
     IVRFCoordinatorV2Plus private immutable i_vrfCoordinator;
     IERC20 public immutable usdtToken;
     
@@ -37,6 +41,7 @@ contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard {
         address nftContract; // NFT contract address for gating
         uint256[] entries; // Array of entry IDs
         address[] participants; // Array of participant addresses
+        uint256 collectedFees; // Track fees for this raffle
     }
 
     mapping(uint256 => RaffleInfo) public raffles;
@@ -46,6 +51,7 @@ contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard {
     
     uint256 public raffleCounter;
     uint256 public platformFee = 5; // 5% platform fee
+    uint256 public withdrawableFees; // Track total withdrawable fees
 
     // Events
     event RaffleCreated(uint256 indexed raffleId, string name, uint256 ticketPrice, uint256 maxTickets);
@@ -60,7 +66,7 @@ contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard {
         bytes32 gasLane,
         uint32 callbackGasLimit,
         address _usdtToken
-    ) VRFConsumerBaseV2Plus(vrfCoordinatorV2) {
+    ) VRFConsumerBaseV2Plus(vrfCoordinatorV2) Ownable(msg.sender) {
         require(_usdtToken != address(0), "Invalid USDT token address");
         i_vrfCoordinator = IVRFCoordinatorV2Plus(vrfCoordinatorV2);
         i_subscriptionId = subscriptionId;
@@ -97,7 +103,8 @@ contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard {
             vrfRequested: false,
             nftContract: nftContract,
             entries: new uint256[](0),
-            participants: new address[](0)
+            participants: new address[](0),
+            collectedFees: 0
         });
 
         emit RaffleCreated(raffleId, name, ticketPrice, maxTickets);
@@ -116,6 +123,7 @@ contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard {
         RaffleInfo storage raffle = raffles[raffleId];
         
         require(raffle.isActive, "Raffle is not active");
+        require(!raffle.vrfRequested, "Winner selection in progress");
         require(block.timestamp < raffle.endTime, "Raffle has ended");
         require(quantity > 0, "Must purchase at least one ticket");
         require(raffle.ticketsSold + quantity <= raffle.maxTickets, "Not enough tickets available");
@@ -131,11 +139,8 @@ contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard {
         // Calculate total cost
         uint256 totalCost = raffle.ticketPrice * quantity;
         
-        // Transfer USDT from buyer to contract
-        require(
-            usdtToken.transferFrom(msg.sender, address(this), totalCost),
-            "USDT transfer failed"
-        );
+        // Transfer USDT from buyer to contract using SafeERC20
+        usdtToken.safeTransferFrom(msg.sender, address(this), totalCost);
 
         // Track participant if first time
         if (!hasParticipated[raffleId][msg.sender]) {
@@ -221,6 +226,11 @@ contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard {
             if (winner != address(0)) break;
         }
 
+        // Calculate and store fees for this raffle
+        uint256 totalPrize = raffle.ticketPrice * raffle.ticketsSold;
+        uint256 fee = (totalPrize * platformFee) / 100;
+        raffle.collectedFees = fee;
+
         raffle.winner = winner;
         raffle.isActive = false;
 
@@ -238,16 +248,16 @@ contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard {
         require(raffle.winner != address(0), "Prize already claimed");
 
         address winner = raffle.winner;
-        raffle.winner = address(0); // Prevent re-claim
-
         uint256 totalPrize = raffle.ticketPrice * raffle.ticketsSold;
-        uint256 fee = (totalPrize * platformFee) / 100;
+        uint256 fee = raffle.collectedFees;
         uint256 prize = totalPrize - fee;
 
-        require(
-            usdtToken.transfer(winner, prize),
-            "Prize transfer failed"
-        );
+        // CEI pattern: update state before external call
+        raffle.winner = address(0); // Prevent re-claim
+        withdrawableFees += fee; // Add fees to withdrawable pool
+
+        // Safe transfer to winner
+        usdtToken.safeTransfer(winner, prize);
 
         emit PrizeClaimed(raffleId, winner);
     }
@@ -256,12 +266,14 @@ contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard {
      * @dev Withdraw platform fees (owner only)
      */
     function withdrawFees() external onlyOwner nonReentrant {
-        uint256 balance = usdtToken.balanceOf(address(this));
-        require(balance > 0, "No fees to withdraw");
-        require(
-            usdtToken.transfer(owner(), balance),
-            "Fee withdrawal failed"
-        );
+        uint256 amount = withdrawableFees;
+        require(amount > 0, "No fees to withdraw");
+        
+        // Update state before transfer
+        withdrawableFees = 0;
+        
+        // Safe transfer fees
+        usdtToken.safeTransfer(owner(), amount);
     }
 
     /**
