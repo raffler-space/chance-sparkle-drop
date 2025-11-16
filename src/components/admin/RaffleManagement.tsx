@@ -27,6 +27,7 @@ interface Raffle {
   status: string;
   created_at: string;
   draw_tx_hash: string | null;
+  launch_time: string | null;
 }
 
 export const RaffleManagement = () => {
@@ -47,6 +48,7 @@ export const RaffleManagement = () => {
     image_url: '',
     duration_days: '7', // 7 days default
     status: 'active', // 'active' or 'draft'
+    launch_time: '', // Launch time for draft raffles
   });
 
   useEffect(() => {
@@ -77,6 +79,7 @@ export const RaffleManagement = () => {
       nft_collection_address: formData.nft_collection_address,
       image_url: formData.image_url || null,
       status: formData.status,
+      launch_time: formData.status === 'draft' && formData.launch_time ? new Date(formData.launch_time).toISOString() : null,
     };
 
     if (editingRaffle) {
@@ -229,6 +232,7 @@ export const RaffleManagement = () => {
       image_url: raffle.image_url || '',
       duration_days: '7',
       status: raffle.status || 'draft',
+      launch_time: raffle.launch_time ? new Date(raffle.launch_time).toISOString().slice(0, 16) : '',
     });
     setDialogOpen(true);
   };
@@ -260,6 +264,7 @@ export const RaffleManagement = () => {
       image_url: '',
       duration_days: '7',
       status: 'draft', // Default to draft
+      launch_time: '',
     });
     setEditingRaffle(null);
     setDialogOpen(false);
@@ -550,6 +555,22 @@ export const RaffleManagement = () => {
                 Draft raffles can be activated later from the raffle list
               </p>
             </div>
+
+            {formData.status === 'draft' && (
+              <div className="space-y-2">
+                <Label htmlFor="launch_time">Launch Time (Optional)</Label>
+                <Input
+                  id="launch_time"
+                  type="datetime-local"
+                  value={formData.launch_time}
+                  onChange={(e) => setFormData({ ...formData, launch_time: e.target.value })}
+                  className="font-rajdhani"
+                />
+                <p className="text-sm text-muted-foreground font-rajdhani">
+                  Set a countdown timer for when this raffle will be available
+                </p>
+              </div>
+            )}
 
             <div className="flex justify-end gap-2">
               <Button

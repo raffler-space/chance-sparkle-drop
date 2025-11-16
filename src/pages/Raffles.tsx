@@ -26,6 +26,7 @@ interface Raffle {
   winner_address: string | null;
   image_url: string | null;
   contract_raffle_id: number | null;
+  launch_time: string | null;
 }
 
 export default function Raffles() {
@@ -37,7 +38,7 @@ export default function Raffles() {
   const [selectedRaffle, setSelectedRaffle] = useState<Raffle | null>(null);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
-  const [showUpcoming, setShowUpcoming] = useState(false);
+  const [filterView, setFilterView] = useState<'all' | 'live' | 'upcoming'>('all');
 
   useEffect(() => {
     fetchRaffles();
@@ -107,16 +108,37 @@ export default function Raffles() {
     setLoading(false);
   };
 
-  // Filter raffles based on showUpcoming toggle
-  const filteredRaffles = showUpcoming 
+  // Filter raffles based on selected view
+  const filteredRaffles = filterView === 'all'
+    ? raffles
+    : filterView === 'upcoming'
     ? raffles.filter(r => r.status === 'draft')
     : raffles.filter(r => r.status !== 'draft');
 
-  const getTimeRemaining = (drawDate: string | null) => {
-    if (!drawDate) return 'Launching Soon';
+  const getTimeRemaining = (raffle: Raffle) => {
+    // For draft raffles, show countdown to launch
+    if (raffle.status === 'draft') {
+      if (!raffle.launch_time) return 'Launch Time TBA';
+      
+      const now = new Date().getTime();
+      const launch = new Date(raffle.launch_time).getTime();
+      const diff = launch - now;
+
+      if (diff <= 0) return 'Ready to Launch';
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      return `Launches in: ${days}d ${hours}h ${minutes}m ${seconds}s`;
+    }
+    
+    // For active raffles, show time to draw
+    if (!raffle.draw_date) return 'Draw Date TBA';
     
     const now = new Date().getTime();
-    const draw = new Date(drawDate).getTime();
+    const draw = new Date(raffle.draw_date).getTime();
     const diff = draw - now;
 
     if (diff <= 0) return 'Draw Complete';
@@ -180,26 +202,37 @@ export default function Raffles() {
       <main className="relative z-10 container mx-auto px-4 py-8 mt-20">
         <div className="mb-8 text-center">
           <h1 className="text-4xl md:text-6xl font-orbitron font-bold mb-4">
-            <span className="gradient-text">{showUpcoming ? 'Upcoming Raffles' : 'All Raffles'}</span>
+            <span className="gradient-text">
+              {filterView === 'all' ? 'All Raffles' : filterView === 'upcoming' ? 'Upcoming Raffles' : 'Live Raffles'}
+            </span>
           </h1>
           <p className="text-muted-foreground font-rajdhani text-lg max-w-2xl mx-auto">
-            {showUpcoming 
+            {filterView === 'all'
+              ? 'Browse all raffles - active, upcoming, and completed. Enter for a chance to win amazing prizes!'
+              : filterView === 'upcoming' 
               ? 'Preview upcoming raffles that will be available soon!'
-              : 'Browse all active and completed raffles. Enter for a chance to win amazing prizes!'
+              : 'Browse active and completed raffles. Enter for a chance to win amazing prizes!'
             }
           </p>
           
           <div className="mt-6 flex justify-center gap-3">
             <Button 
-              variant={!showUpcoming ? "default" : "outline"}
-              onClick={() => setShowUpcoming(false)}
+              variant={filterView === 'all' ? "default" : "outline"}
+              onClick={() => setFilterView('all')}
+              className="font-rajdhani"
+            >
+              All Raffles
+            </Button>
+            <Button 
+              variant={filterView === 'live' ? "default" : "outline"}
+              onClick={() => setFilterView('live')}
               className="font-rajdhani"
             >
               Live Raffles
             </Button>
             <Button 
-              variant={showUpcoming ? "default" : "outline"}
-              onClick={() => setShowUpcoming(true)}
+              variant={filterView === 'upcoming' ? "default" : "outline"}
+              onClick={() => setFilterView('upcoming')}
               className="font-rajdhani"
             >
               Upcoming Raffles
@@ -291,7 +324,7 @@ export default function Raffles() {
                   ) : (
                     <div className="pt-2 border-t border-neon-cyan/20 space-y-3">
                       <div className="text-center text-sm font-rajdhani text-neon-cyan">
-                        {getTimeRemaining(raffle.draw_date)}
+                        {getTimeRemaining(raffle)}
                       </div>
                       <Button
                         onClick={() => handleBuyTicket(raffle)}
