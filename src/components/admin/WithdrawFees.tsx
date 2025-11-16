@@ -4,12 +4,15 @@ import { Button } from '@/components/ui/button';
 import { Wallet, Loader2, DollarSign } from 'lucide-react';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { useRaffleContract } from '@/hooks/useRaffleContract';
+import { useUSDTContract } from '@/hooks/useUSDTContract';
 import { toast } from 'sonner';
 import { ethers } from 'ethers';
+import { getNetworkConfig } from '@/config/contracts';
 
 export const WithdrawFees = () => {
   const { account, chainId } = useWeb3();
   const { contract, isContractReady } = useRaffleContract(chainId, account);
+  const { getBalance } = useUSDTContract(chainId, account);
   const [contractBalance, setContractBalance] = useState('0');
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -21,15 +24,23 @@ export const WithdrawFees = () => {
   }, [contract, isContractReady]);
 
   const fetchBalance = async () => {
-    if (!contract || !isContractReady) return;
+    if (!contract || !isContractReady || !chainId) return;
     
     try {
-      // Get contract's USDT balance - you'll need to add this function to your contract
-      // For now, showing placeholder
-      setContractBalance('0');
+      const network = getNetworkConfig(chainId);
+      if (!network) {
+        setLoading(false);
+        return;
+      }
+
+      // Get the raffle contract address to check its USDT balance
+      const raffleContractAddress = network.contracts.raffle;
+      const balance = await getBalance(raffleContractAddress);
+      setContractBalance(balance);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching balance:', error);
+      setContractBalance('0');
       setLoading(false);
     }
   };
@@ -46,10 +57,10 @@ export const WithdrawFees = () => {
         description: 'Please confirm the transaction in your wallet',
       });
 
-      // Call contract withdraw function
-      // You'll need to add a withdraw function to your smart contract
-      // const tx = await contract.withdrawFees();
-      // await tx.wait();
+      // Call the withdrawFees function on the raffle contract
+      const tx = await contract.withdrawFees();
+      toast.info('Transaction submitted, waiting for confirmation...');
+      await tx.wait();
 
       toast.success('Fees withdrawn successfully!');
       fetchBalance();

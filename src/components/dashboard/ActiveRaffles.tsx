@@ -36,12 +36,10 @@ export const ActiveRaffles = ({ userId }: { userId: string }) => {
   }, [userId, account]);
 
   const fetchData = async () => {
-    // Fetch all active raffles AND completed raffles where user won
-    const { data: rafflesData } = await supabase
-      .from('raffles')
-      .select('*')
-      .or(`status.eq.active,and(status.eq.completed,winner_address.eq.${account?.toLowerCase()})`)
-      .order('created_at', { ascending: false });
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
 
     // Fetch user's tickets to see which raffles they're participating in
     const { data: ticketsData } = await supabase
@@ -49,9 +47,18 @@ export const ActiveRaffles = ({ userId }: { userId: string }) => {
       .select('raffle_id')
       .eq('user_id', userId);
 
-    if (rafflesData) setRaffles(rafflesData);
     if (ticketsData) {
-      setParticipatingRaffleIds(new Set(ticketsData.map(t => t.raffle_id)));
+      const raffleIds = ticketsData.map(t => t.raffle_id);
+      setParticipatingRaffleIds(new Set(raffleIds));
+      
+      // Fetch all raffles where user has tickets (both active and completed)
+      const { data: rafflesData } = await supabase
+        .from('raffles')
+        .select('*')
+        .in('id', raffleIds)
+        .order('created_at', { ascending: false });
+
+      if (rafflesData) setRaffles(rafflesData);
     }
     
     setLoading(false);

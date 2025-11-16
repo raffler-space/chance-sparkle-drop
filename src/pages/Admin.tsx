@@ -4,11 +4,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { Navbar } from '@/components/Navbar';
 import { AnimatedBackground } from '@/components/AnimatedBackground';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, Plus, Trophy, Loader2, BarChart3, Wallet } from 'lucide-react';
+import { Shield, Plus, Trophy, Loader2, BarChart3, Wallet, Package } from 'lucide-react';
 import { RaffleManagement } from '@/components/admin/RaffleManagement';
 import { WinnerSelection } from '@/components/admin/WinnerSelection';
 import { AdminAnalytics } from '@/components/admin/AdminAnalytics';
 import { WithdrawFees } from '@/components/admin/WithdrawFees';
+import { PrizeClaimsManager } from '@/components/admin/PrizeClaimsManager';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { toast } from 'sonner';
 
@@ -119,6 +120,13 @@ export default function Admin() {
               <Wallet className="w-4 h-4 mr-2" />
               Withdraw Fees
             </TabsTrigger>
+            <TabsTrigger 
+              value="claims"
+              className="font-rajdhani data-[state=active]:bg-neon-gold/20 data-[state=active]:text-neon-gold"
+            >
+              <Package className="w-4 h-4 mr-2" />
+              Prize Claims
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="raffles" className="space-y-4">
@@ -135,6 +143,10 @@ export default function Admin() {
 
           <TabsContent value="fees" className="space-y-4">
             <WithdrawFees />
+          </TabsContent>
+
+          <TabsContent value="claims" className="space-y-4">
+            <PrizeClaimsManager />
           </TabsContent>
         </Tabs>
       </main>
