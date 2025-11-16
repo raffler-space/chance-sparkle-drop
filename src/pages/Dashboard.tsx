@@ -10,6 +10,7 @@ import { UserTickets } from '@/components/dashboard/UserTickets';
 import { ActiveRaffles } from '@/components/dashboard/ActiveRaffles';
 import { TransactionHistory } from '@/components/dashboard/TransactionHistory';
 import { WinnerNotification } from '@/components/dashboard/WinnerNotification';
+import { GetTestUSDT } from '@/components/GetTestUSDT';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { toast } from 'sonner';
 
@@ -62,13 +63,16 @@ export default function Dashboard() {
       />
       
       <main className="relative z-10 container mx-auto px-4 py-8 mt-20">
-        <div className="mb-8">
-          <h1 className="text-4xl md:text-5xl font-orbitron font-bold mb-2 text-neon-cyan glow-text-cyan">
-            My Dashboard
-          </h1>
-          <p className="text-muted-foreground font-rajdhani text-lg">
-            Track your tickets, raffles, and transactions
-          </p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl md:text-5xl font-orbitron font-bold mb-2 text-neon-cyan glow-text-cyan">
+              My Dashboard
+            </h1>
+            <p className="text-muted-foreground font-rajdhani text-lg">
+              Track your tickets, raffles, and transactions
+            </p>
+          </div>
+          <GetTestUSDT />
         </div>
 
         <WinnerNotification userId={user?.id} />

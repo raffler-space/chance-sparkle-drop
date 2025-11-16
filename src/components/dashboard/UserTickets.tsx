@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Ticket, ExternalLink, Loader2 } from 'lucide-react';
+import { Ticket, ExternalLink, Loader2, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { formatDistanceToNow } from 'date-fns';
 
 interface Ticket {
   id: string;
@@ -98,6 +99,11 @@ export const UserTickets = ({ userId }: { userId: string }) => {
               <p className="text-muted-foreground">Price</p>
               <p className="font-rajdhani font-bold text-neon-gold">{ticket.purchase_price} USDT</p>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2 mb-4 text-sm text-muted-foreground">
+            <Clock className="w-4 h-4" />
+            <span>Purchased {formatDistanceToNow(new Date(ticket.purchased_at), { addSuffix: true })}</span>
           </div>
 
           <Button
