@@ -62,6 +62,7 @@ export type Database = {
           draw_tx_hash: string | null
           id: number
           image_url: string | null
+          launch_time: string | null
           max_tickets: number
           name: string
           nft_collection_address: string
@@ -80,6 +81,7 @@ export type Database = {
           draw_tx_hash?: string | null
           id?: number
           image_url?: string | null
+          launch_time?: string | null
           max_tickets: number
           name: string
           nft_collection_address: string
@@ -98,6 +100,7 @@ export type Database = {
           draw_tx_hash?: string | null
           id?: number
           image_url?: string | null
+          launch_time?: string | null
           max_tickets?: number
           name?: string
           nft_collection_address?: string
