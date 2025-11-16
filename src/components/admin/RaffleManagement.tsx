@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { useRaffleContract } from '@/hooks/useRaffleContract';
 import { getNetworkConfig } from '@/config/contracts';
+import { ethers } from 'ethers';
 
 interface Raffle {
   id: number;
@@ -193,7 +194,7 @@ export const RaffleManagement = () => {
       nft_collection_address: raffle.nft_collection_address,
       image_url: raffle.image_url || '',
       duration_days: '7',
-      status: 'active',
+      status: raffle.status || 'draft',
     });
     setDialogOpen(true);
   };
@@ -215,17 +216,73 @@ export const RaffleManagement = () => {
   };
 
   const resetForm = () => {
-      setFormData({
-        name: '',
-        description: '',
-        prize_description: '',
-        ticket_price: '',
-        max_tickets: '',
-        nft_collection_address: '',
-        image_url: '',
-        duration_days: '7',
-        status: 'active',
+    setFormData({
+      name: '',
+      description: '',
+      prize_description: '',
+      ticket_price: '',
+      max_tickets: '',
+      nft_collection_address: '',
+      image_url: '',
+      duration_days: '7',
+      status: 'draft', // Default to draft
+    });
+    setEditingRaffle(null);
+    setDialogOpen(false);
+  };
+
+  const handleActivateRaffle = async (raffle: Raffle) => {
+    if (!account || !raffleContract.isContractReady || !raffleContract.contract) {
+      toast.error('Please connect your wallet to activate raffle');
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      toast.info('Activating raffle on blockchain...', {
+        description: 'Please confirm the transaction in your wallet',
       });
+
+      // Create raffle on blockchain
+      const network = chainId ? getNetworkConfig(chainId) : null;
+      const usdtAddress = network?.contracts.usdt || '';
+
+      const tx = await raffleContract.contract.createRaffle(
+        ethers.utils.parseUnits(raffle.ticket_price.toString(), 6),
+        raffle.max_tickets,
+        Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // 7 days from now
+        raffle.nft_collection_address,
+        usdtAddress
+      );
+
+      toast.info('Transaction submitted, waiting for confirmation...');
+      const receipt = await tx.wait();
+      
+      // Get raffle ID from event
+      const event = receipt.events?.find((e: any) => e.event === 'RaffleCreated');
+      const contractRaffleId = event?.args?.raffleId?.toNumber();
+
+      // Update raffle status to active
+      const { error } = await supabase
+        .from('raffles')
+        .update({ 
+          status: 'active',
+          contract_raffle_id: contractRaffleId 
+        })
+        .eq('id', raffle.id);
+
+      if (error) throw error;
+
+      toast.success('Raffle activated successfully!');
+      fetchRaffles();
+    } catch (error: any) {
+      console.error('Error activating raffle:', error);
+      toast.error('Failed to activate raffle', {
+        description: error.message || 'Please try again',
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   if (loading) {
@@ -257,7 +314,29 @@ export const RaffleManagement = () => {
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
                   <h3 className="font-orbitron font-bold text-xl">{raffle.name}</h3>
-                  <Badge>{raffle.status}</Badge>
+                  <Badge 
+                    className={
+                      raffle.status === 'active' 
+                        ? 'bg-neon-cyan/20 text-neon-cyan border-neon-cyan/30' 
+                        : raffle.status === 'completed'
+                        ? 'bg-neon-gold/20 text-neon-gold border-neon-gold/30'
+                        : raffle.status === 'draft'
+                        ? 'bg-muted/20 text-muted-foreground border-muted/30'
+                        : 'bg-muted/20 text-muted-foreground border-muted/30'
+                    }
+                  >
+                    {raffle.status?.toUpperCase()}
+                  </Badge>
+                  {raffle.status === 'draft' && (
+                    <Button
+                      size="sm"
+                      onClick={() => handleActivateRaffle(raffle)}
+                      disabled={isProcessing}
+                      className="bg-gradient-to-r from-neon-cyan to-neon-purple hover:opacity-90"
+                    >
+                      Activate Raffle
+                    </Button>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground mb-4">{raffle.description}</p>
                 
@@ -420,6 +499,22 @@ export const RaffleManagement = () => {
                 onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
                 placeholder="https://..."
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="status">Raffle Status</Label>
+              <select
+                id="status"
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                className="w-full px-3 py-2 bg-background border border-border rounded-md font-rajdhani"
+              >
+                <option value="draft">Draft (Create without activating)</option>
+                <option value="active">Active (Deploy to blockchain immediately)</option>
+              </select>
+              <p className="text-sm text-muted-foreground font-rajdhani">
+                Draft raffles can be activated later from the raffle list
+              </p>
             </div>
 
             <div className="flex justify-end gap-2">

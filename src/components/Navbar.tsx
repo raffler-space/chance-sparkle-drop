@@ -147,44 +147,27 @@ export const Navbar = ({ onConnectWallet, walletAddress, isConnecting }: NavbarP
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56 glass-effect border-border/50">
-                  {user && (
-                    <>
-                      <DropdownMenuLabel className="font-rajdhani">
-                        <div className="flex flex-col space-y-1">
-                          <p className="text-sm font-medium">Account</p>
-                          <p className="text-xs text-muted-foreground">{user.email}</p>
-                        </div>
-                      </DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link to="/dashboard" className="cursor-pointer font-rajdhani">
-                          <LayoutDashboard className="mr-2 h-4 w-4" />
-                          Dashboard
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/referrals" className="cursor-pointer font-rajdhani">
-                          <Gift className="mr-2 h-4 w-4" />
-                          Referrals
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleEmailLogin} className="cursor-pointer font-rajdhani">
-                        <Mail className="mr-2 h-4 w-4" />
-                        Email Login
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer font-rajdhani text-destructive focus:text-destructive">
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Log Out
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                  {!user && (
-                    <DropdownMenuItem onClick={handleEmailLogin} className="cursor-pointer font-rajdhani">
-                      <LogIn className="mr-2 h-4 w-4" />
-                      Email Login
-                    </DropdownMenuItem>
-                  )}
+                  <DropdownMenuLabel className="font-rajdhani">
+                    {formatAddress(walletAddress)}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard" className="cursor-pointer font-rajdhani">
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/referrals" className="cursor-pointer font-rajdhani">
+                      <Gift className="mr-2 h-4 w-4" />
+                      Referrals
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleEmailLogin} className="cursor-pointer font-rajdhani">
+                    <Mail className="mr-2 h-4 w-4" />
+                    Email Login
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}

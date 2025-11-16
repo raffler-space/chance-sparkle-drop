@@ -29,6 +29,11 @@ export const TransactionHistory = ({ userId, walletAddress }: { userId: string; 
 
   useEffect(() => {
     const fetchTransactions = async () => {
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('transactions')
         .select(`
@@ -40,7 +45,9 @@ export const TransactionHistory = ({ userId, walletAddress }: { userId: string; 
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
-      if (!error && data) {
+      if (error) {
+        console.error('Error fetching transactions:', error);
+      } else if (data) {
         setTransactions(data as any);
         setFilteredTransactions(data as any);
       }
