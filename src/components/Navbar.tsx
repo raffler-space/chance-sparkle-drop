@@ -130,7 +130,7 @@ export const Navbar = ({ onConnectWallet, onDisconnectWallet, walletAddress, isC
                 <DropdownMenuContent align="end" className="w-56 glass-effect border-border/50">
                   <DropdownMenuItem onClick={onConnectWallet} className="cursor-pointer font-rajdhani">
                     <Wallet className="mr-2 h-4 w-4" />
-                    Connect MetaMask
+                    Connect Wallet
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleEmailLogin} className="cursor-pointer font-rajdhani">
