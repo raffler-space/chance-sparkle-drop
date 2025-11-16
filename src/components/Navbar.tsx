@@ -17,11 +17,12 @@ import {
 
 interface NavbarProps {
   onConnectWallet: () => void;
+  onDisconnectWallet: () => void;
   walletAddress: string | null;
   isConnecting: boolean;
 }
 
-export const Navbar = ({ onConnectWallet, walletAddress, isConnecting }: NavbarProps) => {
+export const Navbar = ({ onConnectWallet, onDisconnectWallet, walletAddress, isConnecting }: NavbarProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -164,6 +165,11 @@ export const Navbar = ({ onConnectWallet, walletAddress, isConnecting }: NavbarP
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={onDisconnectWallet} className="cursor-pointer font-rajdhani">
+                    <Wallet className="mr-2 h-4 w-4" />
+                    Disconnect Wallet
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleEmailLogin} className="cursor-pointer font-rajdhani">
                     <Mail className="mr-2 h-4 w-4" />
                     Email Login
@@ -247,6 +253,17 @@ export const Navbar = ({ onConnectWallet, walletAddress, isConnecting }: NavbarP
                   </Link>
                   <Button
                     onClick={() => {
+                      onDisconnectWallet();
+                      setMobileMenuOpen(false);
+                    }}
+                    variant="outline"
+                    className="w-full font-orbitron"
+                  >
+                    <Wallet className="mr-2 h-4 w-4" />
+                    Disconnect Wallet
+                  </Button>
+                  <Button
+                    onClick={() => {
                       handleSignOut();
                       setMobileMenuOpen(false);
                     }}
@@ -258,17 +275,30 @@ export const Navbar = ({ onConnectWallet, walletAddress, isConnecting }: NavbarP
                   </Button>
                 </>
               ) : (
-                <Button
-                  onClick={() => {
-                    handleEmailLogin();
-                    setMobileMenuOpen(false);
-                  }}
-                  variant="outline"
-                  className="w-full font-orbitron"
-                >
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Email Login
-                </Button>
+                <>
+                  <Button
+                    onClick={() => {
+                      onDisconnectWallet();
+                      setMobileMenuOpen(false);
+                    }}
+                    variant="outline"
+                    className="w-full font-orbitron"
+                  >
+                    <Wallet className="mr-2 h-4 w-4" />
+                    Disconnect Wallet
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      handleEmailLogin();
+                      setMobileMenuOpen(false);
+                    }}
+                    variant="outline"
+                    className="w-full font-orbitron"
+                  >
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Email Login
+                  </Button>
+                </>
               )}
             </div>
           </div>

@@ -89,13 +89,14 @@ const mockRaffles = [
 ];
 
 const Index = () => {
-  const { account, isConnecting, connectWallet } = useWeb3();
+  const { account, isConnecting, connectWallet, disconnectWallet } = useWeb3();
 
   return (
     <div className="min-h-screen">
       <AnimatedBackground />
       <Navbar
         onConnectWallet={connectWallet}
+        onDisconnectWallet={disconnectWallet}
         walletAddress={account}
         isConnecting={isConnecting}
       />

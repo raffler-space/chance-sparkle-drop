@@ -30,7 +30,7 @@ interface Raffle {
 
 export default function Raffles() {
   const navigate = useNavigate();
-  const { account, isConnecting, connectWallet, chainId } = useWeb3();
+  const { account, isConnecting, connectWallet, disconnectWallet, chainId } = useWeb3();
   const { contract, isContractReady } = useRaffleContract(chainId, account);
   const [raffles, setRaffles] = useState<Raffle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,6 +147,7 @@ export default function Raffles() {
         <AnimatedBackground />
         <Navbar 
           onConnectWallet={connectWallet}
+          onDisconnectWallet={disconnectWallet}
           walletAddress={account}
           isConnecting={isConnecting}
         />
@@ -162,6 +163,7 @@ export default function Raffles() {
       <AnimatedBackground />
       <Navbar 
         onConnectWallet={connectWallet}
+        onDisconnectWallet={disconnectWallet}
         walletAddress={account}
         isConnecting={isConnecting}
       />

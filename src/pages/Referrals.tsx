@@ -10,9 +10,10 @@ interface ReferralsProps {
   account: string | null;
   isConnecting: boolean;
   onConnectWallet: () => void;
+  onDisconnectWallet: () => void;
 }
 
-export default function Referrals({ account, isConnecting, onConnectWallet }: ReferralsProps) {
+export default function Referrals({ account, isConnecting, onConnectWallet, onDisconnectWallet }: ReferralsProps) {
   const [user, setUser] = useState<User | null>(null);
   const [referralCode, setReferralCode] = useState('');
   const [stats, setStats] = useState({
@@ -85,6 +86,7 @@ export default function Referrals({ account, isConnecting, onConnectWallet }: Re
       <AnimatedBackground />
       <Navbar 
         onConnectWallet={onConnectWallet}
+        onDisconnectWallet={onDisconnectWallet}
         walletAddress={account}
         isConnecting={isConnecting}
       />

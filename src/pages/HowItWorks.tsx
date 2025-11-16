@@ -5,9 +5,10 @@ interface HowItWorksProps {
   account: string | null;
   isConnecting: boolean;
   onConnectWallet: () => void;
+  onDisconnectWallet: () => void;
 }
 
-export default function HowItWorks({ account, isConnecting, onConnectWallet }: HowItWorksProps) {
+export default function HowItWorks({ account, isConnecting, onConnectWallet, onDisconnectWallet }: HowItWorksProps) {
   const steps = [
     {
       step: 1,
@@ -52,6 +53,7 @@ export default function HowItWorks({ account, isConnecting, onConnectWallet }: H
       <AnimatedBackground />
       <Navbar 
         onConnectWallet={onConnectWallet}
+        onDisconnectWallet={onDisconnectWallet}
         walletAddress={account}
         isConnecting={isConnecting}
       />
