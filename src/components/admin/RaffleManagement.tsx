@@ -28,6 +28,7 @@ interface Raffle {
   created_at: string;
   draw_tx_hash: string | null;
   launch_time: string | null;
+  display_order: number;
 }
 
 export const RaffleManagement = () => {
@@ -49,6 +50,7 @@ export const RaffleManagement = () => {
     duration_days: '7', // 7 days default
     status: 'active', // 'active' or 'draft'
     launch_time: '', // Launch time for draft raffles
+    display_order: '1',
   });
 
   useEffect(() => {
@@ -80,6 +82,7 @@ export const RaffleManagement = () => {
       image_url: formData.image_url || null,
       status: formData.status,
       launch_time: formData.status === 'draft' && formData.launch_time ? new Date(formData.launch_time).toISOString() : null,
+      display_order: parseInt(formData.display_order),
     };
 
     if (editingRaffle) {
@@ -233,6 +236,7 @@ export const RaffleManagement = () => {
       duration_days: '7',
       status: raffle.status || 'draft',
       launch_time: raffle.launch_time ? new Date(raffle.launch_time).toISOString().slice(0, 16) : '',
+      display_order: raffle.display_order.toString(),
     });
     setDialogOpen(true);
   };
@@ -265,6 +269,7 @@ export const RaffleManagement = () => {
       duration_days: '7',
       status: 'draft', // Default to draft
       launch_time: '',
+      display_order: '1',
     });
     setEditingRaffle(null);
     setDialogOpen(false);
@@ -379,6 +384,14 @@ export const RaffleManagement = () => {
                 </div>
                 <p className="text-sm text-muted-foreground mb-4">{raffle.description}</p>
                 
+                {raffle.status === 'draft' && raffle.launch_time && (
+                  <div className="mb-4 p-3 bg-neon-cyan/10 border border-neon-cyan/30 rounded-lg">
+                    <p className="text-xs text-neon-cyan font-rajdhani">
+                      Scheduled Launch: {new Date(raffle.launch_time).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+                
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">Prize:</span>
@@ -395,6 +408,10 @@ export const RaffleManagement = () => {
                   <div>
                     <span className="text-muted-foreground">Collection:</span>
                     <p className="font-mono text-xs truncate">{raffle.nft_collection_address}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Position:</span>
+                    <p className="font-rajdhani font-bold">#{raffle.display_order}</p>
                   </div>
                 </div>
                 {raffle.draw_tx_hash && chainId && getNetworkConfig(chainId) && (
@@ -571,6 +588,21 @@ export const RaffleManagement = () => {
                 </p>
               </div>
             )}
+
+            <div className="space-y-2">
+              <Label htmlFor="display_order">Display Position</Label>
+              <Input
+                id="display_order"
+                type="number"
+                min="1"
+                value={formData.display_order}
+                onChange={(e) => setFormData({ ...formData, display_order: e.target.value })}
+                className="font-rajdhani"
+              />
+              <p className="text-sm text-muted-foreground font-rajdhani">
+                Lower numbers appear first on the raffles page
+              </p>
+            </div>
 
             <div className="flex justify-end gap-2">
               <Button
