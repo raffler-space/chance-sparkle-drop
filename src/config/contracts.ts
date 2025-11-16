@@ -33,7 +33,7 @@ export const sepoliaConfig: NetworkConfig = {
     decimals: 18,
   },
   contracts: {
-    raffle: "0x0ad0680940D23AA86b830D2884bC57927a4b12D7",
+    raffle: "0x9523f7DA3021f1Bf35d6F9952D44975b9e8CF081",
     usdt: "0x11BBef28D8effD775F9674798cd219394F9C1969", // Sepolia USDT mock
   },
   chainlink: {
@@ -93,7 +93,7 @@ export const RAFFLE_ABI = [
   "function buyTickets(uint256 raffleId, uint256 quantity)",
   "function selectWinner(uint256 raffleId)",
   "function claimPrize(uint256 raffleId)",
-  "function withdrawFees()",
+  "function withdrawFees(uint256 amount)",
   "function getUserEntries(uint256 raffleId, address user) view returns (uint256[])",
   "function getRaffleEntries(uint256 raffleId) view returns (uint256[])",
   "function raffles(uint256) view returns (string name, string description, uint256 ticketPrice, uint256 maxTickets, uint256 ticketsSold, uint256 endTime, address winner, bool isActive, bool vrfRequested, address nftContract)",
