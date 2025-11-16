@@ -61,7 +61,7 @@ export const RaffleManagement = () => {
     const { data, error } = await supabase
       .from('raffles')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('display_order', { ascending: true });
 
     if (!error && data) {
       setRaffles(data);
