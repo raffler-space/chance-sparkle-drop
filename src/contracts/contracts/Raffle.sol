@@ -6,12 +6,13 @@ import "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 import "@chainlink/contracts/src/v0.8/vrf/dev/interfaces/IVRFCoordinatorV2Plus.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title Raffle
  * @dev NFT-gated raffle system using Chainlink VRF for provably fair winner selection
  */
-contract Raffle is VRFConsumerBaseV2Plus, ReentrancyGuard {
+contract Raffle is VRFConsumerBaseV2Plus, ReentrancyGuard, Ownable {
     IVRFCoordinatorV2Plus private immutable i_vrfCoordinator;
     
     // Chainlink VRF Configuration
@@ -34,14 +35,17 @@ contract Raffle is VRFConsumerBaseV2Plus, ReentrancyGuard {
         bool vrfRequested;
         address nftContract; // NFT contract address for gating
         uint256[] entries; // Array of entry IDs
+        uint256 collectedFees; // Track fees for this raffle
     }
 
     mapping(uint256 => RaffleInfo) public raffles;
     mapping(uint256 => mapping(address => uint256[])) public userEntries; // raffleId => user => entryIds
     mapping(uint256 => uint256) public vrfRequestToRaffleId; // VRF request ID to raffle ID
+    mapping(uint256 => address[]) private participants; // raffleId => participants array
     
     uint256 public raffleCounter;
     uint256 public platformFee = 5; // 5% platform fee
+    uint256 public withdrawableFees; // Track total withdrawable fees
 
     // Events
     event RaffleCreated(uint256 indexed raffleId, string name, uint256 ticketPrice, uint256 maxTickets);
@@ -55,7 +59,7 @@ contract Raffle is VRFConsumerBaseV2Plus, ReentrancyGuard {
         uint256 subscriptionId,
         bytes32 gasLane,
         uint32 callbackGasLimit
-    ) VRFConsumerBaseV2Plus(vrfCoordinatorV2) {
+    ) VRFConsumerBaseV2Plus(vrfCoordinatorV2) Ownable(msg.sender) {
         i_vrfCoordinator = IVRFCoordinatorV2Plus(vrfCoordinatorV2);
         i_subscriptionId = subscriptionId;
         i_gasLane = gasLane;
@@ -89,7 +93,8 @@ contract Raffle is VRFConsumerBaseV2Plus, ReentrancyGuard {
             isActive: true,
             vrfRequested: false,
             nftContract: nftContract,
-            entries: new uint256[](0)
+            entries: new uint256[](0),
+            collectedFees: 0
         });
 
         emit RaffleCreated(raffleId, name, ticketPrice, maxTickets);
@@ -109,6 +114,7 @@ contract Raffle is VRFConsumerBaseV2Plus, ReentrancyGuard {
         RaffleInfo storage raffle = raffles[raffleId];
         
         require(raffle.isActive, "Raffle is not active");
+        require(!raffle.vrfRequested, "Winner selection in progress");
         require(block.timestamp < raffle.endTime, "Raffle has ended");
         require(raffle.ticketsSold + quantity <= raffle.maxTickets, "Not enough tickets available");
         require(msg.value == raffle.ticketPrice * quantity, "Incorrect payment amount");
@@ -119,6 +125,11 @@ contract Raffle is VRFConsumerBaseV2Plus, ReentrancyGuard {
                 IERC721(raffle.nftContract).balanceOf(msg.sender) > 0,
                 "Must own NFT to participate"
             );
+        }
+
+        // Track participant if first time
+        if (userEntries[raffleId][msg.sender].length == 0) {
+            participants[raffleId].push(msg.sender);
         }
 
         // Add entries
@@ -179,8 +190,9 @@ contract Raffle is VRFConsumerBaseV2Plus, ReentrancyGuard {
 
         // Find the winner
         address winner;
-        for (uint256 i = 0; i < raffle.ticketsSold; i++) {
-            address participant = getParticipantAtIndex(raffleId, i);
+        address[] memory raffleParticipants = participants[raffleId];
+        for (uint256 i = 0; i < raffleParticipants.length; i++) {
+            address participant = raffleParticipants[i];
             uint256[] memory entries = userEntries[raffleId][participant];
             
             for (uint256 j = 0; j < entries.length; j++) {
@@ -192,6 +204,11 @@ contract Raffle is VRFConsumerBaseV2Plus, ReentrancyGuard {
             
             if (winner != address(0)) break;
         }
+
+        // Calculate and store fees for this raffle
+        uint256 totalPrize = raffle.ticketPrice * raffle.ticketsSold;
+        uint256 fee = (totalPrize * platformFee) / 100;
+        raffle.collectedFees = fee;
 
         raffle.winner = winner;
         raffle.isActive = false;
@@ -207,23 +224,34 @@ contract Raffle is VRFConsumerBaseV2Plus, ReentrancyGuard {
         
         require(raffle.winner == msg.sender, "You are not the winner");
         require(!raffle.isActive, "Raffle still active");
+        require(raffle.winner != address(0), "Prize already claimed");
 
         uint256 totalPrize = raffle.ticketPrice * raffle.ticketsSold;
-        uint256 fee = (totalPrize * platformFee) / 100;
+        uint256 fee = raffle.collectedFees;
         uint256 winnerAmount = totalPrize - fee;
 
-        (bool success, ) = payable(msg.sender).call{value: winnerAmount}("");
+        // CEI pattern: update state before external call
+        address winner = raffle.winner;
+        raffle.winner = address(0); // Prevent re-claim
+        withdrawableFees += fee; // Add fees to withdrawable pool
+
+        (bool success, ) = payable(winner).call{value: winnerAmount}("");
         require(success, "Transfer failed");
 
-        emit PrizeClaimed(raffleId, msg.sender);
+        emit PrizeClaimed(raffleId, winner);
     }
 
     /**
      * @dev Withdraw platform fees
      */
-    function withdrawFees() external onlyOwner {
-        uint256 balance = address(this).balance;
-        (bool success, ) = payable(owner()).call{value: balance}("");
+    function withdrawFees() external onlyOwner nonReentrant {
+        uint256 amount = withdrawableFees;
+        require(amount > 0, "No fees to withdraw");
+        
+        // Update state before transfer
+        withdrawableFees = 0;
+        
+        (bool success, ) = payable(owner()).call{value: amount}("");
         require(success, "Withdrawal failed");
     }
 
@@ -250,14 +278,13 @@ contract Raffle is VRFConsumerBaseV2Plus, ReentrancyGuard {
     }
 
     /**
-     * @dev Helper function to get participant at index
+     * @dev Get all participants for a raffle
      */
-    function getParticipantAtIndex(uint256 raffleId, uint256 index) 
-        private 
+    function getRaffleParticipants(uint256 raffleId) 
+        external 
         view 
-        returns (address) 
+        returns (address[] memory) 
     {
-        // This is a simplified version - in production, maintain a separate participants array
-        return address(0); // Placeholder
+        return participants[raffleId];
     }
 }
