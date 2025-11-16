@@ -41,17 +41,16 @@ contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard, Ownable {
         address nftContract; // NFT contract address for gating
         uint256[] entries; // Array of entry IDs
         address[] participants; // Array of participant addresses
-        uint256 collectedFees; // Track fees for this raffle
     }
 
     mapping(uint256 => RaffleInfo) public raffles;
     mapping(uint256 => mapping(address => uint256[])) public userEntries; // raffleId => user => entryIds
     mapping(uint256 => mapping(address => bool)) public hasParticipated; // raffleId => address => has participated
+    mapping(uint256 => mapping(uint256 => address)) public entryOwner; // raffleId => entryId => owner (O(1) winner lookup)
     mapping(uint256 => uint256) public vrfRequestToRaffleId; // VRF request ID to raffle ID
     
     uint256 public raffleCounter;
     uint256 public platformFee = 5; // 5% platform fee
-    uint256 public withdrawableFees; // Track total withdrawable fees
 
     // Events
     event RaffleCreated(uint256 indexed raffleId, string name, uint256 ticketPrice, uint256 maxTickets);
@@ -103,8 +102,7 @@ contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard, Ownable {
             vrfRequested: false,
             nftContract: nftContract,
             entries: new uint256[](0),
-            participants: new address[](0),
-            collectedFees: 0
+            participants: new address[](0)
         });
 
         emit RaffleCreated(raffleId, name, ticketPrice, maxTickets);
@@ -153,6 +151,7 @@ contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard, Ownable {
             uint256 entryId = raffle.ticketsSold + i;
             raffle.entries.push(entryId);
             userEntries[raffleId][msg.sender].push(entryId);
+            entryOwner[raffleId][entryId] = msg.sender; // O(1) winner lookup
         }
 
         raffle.ticketsSold += quantity;
@@ -210,26 +209,8 @@ contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard, Ownable {
         uint256 winningIndex = randomWords[0] % raffle.entries.length;
         uint256 winningEntry = raffle.entries[winningIndex];
 
-        // Find winner by checking each participant's entries
-        address winner = address(0);
-        for (uint256 i = 0; i < raffle.participants.length; i++) {
-            address participant = raffle.participants[i];
-            uint256[] memory entries = userEntries[raffleId][participant];
-            
-            for (uint256 j = 0; j < entries.length; j++) {
-                if (entries[j] == winningEntry) {
-                    winner = participant;
-                    break;
-                }
-            }
-            
-            if (winner != address(0)) break;
-        }
-
-        // Calculate and store fees for this raffle
-        uint256 totalPrize = raffle.ticketPrice * raffle.ticketsSold;
-        uint256 fee = (totalPrize * platformFee) / 100;
-        raffle.collectedFees = fee;
+        // O(1) winner lookup using entryOwner mapping
+        address winner = entryOwner[raffleId][winningEntry];
 
         raffle.winner = winner;
         raffle.isActive = false;
@@ -249,12 +230,11 @@ contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard, Ownable {
 
         address winner = raffle.winner;
         uint256 totalPrize = raffle.ticketPrice * raffle.ticketsSold;
-        uint256 fee = raffle.collectedFees;
+        uint256 fee = (totalPrize * platformFee) / 100;
         uint256 prize = totalPrize - fee;
 
         // CEI pattern: update state before external call
         raffle.winner = address(0); // Prevent re-claim
-        withdrawableFees += fee; // Add fees to withdrawable pool
 
         // Safe transfer to winner
         usdtToken.safeTransfer(winner, prize);
@@ -263,17 +243,18 @@ contract RaffleUSDT is VRFConsumerBaseV2Plus, ReentrancyGuard, Ownable {
     }
 
     /**
-     * @dev Withdraw platform fees (owner only)
+     * @dev Withdraw funds from contract (owner only)
+     * @param amount Amount to withdraw (0 = withdraw all)
      */
-    function withdrawFees() external onlyOwner nonReentrant {
-        uint256 amount = withdrawableFees;
-        require(amount > 0, "No fees to withdraw");
+    function withdrawFees(uint256 amount) external onlyOwner nonReentrant {
+        uint256 balance = usdtToken.balanceOf(address(this));
+        require(balance > 0, "No funds to withdraw");
         
-        // Update state before transfer
-        withdrawableFees = 0;
+        uint256 withdrawAmount = amount == 0 ? balance : amount;
+        require(withdrawAmount <= balance, "Insufficient balance");
         
-        // Safe transfer fees
-        usdtToken.safeTransfer(owner(), amount);
+        // Safe transfer funds
+        usdtToken.safeTransfer(owner(), withdrawAmount);
     }
 
     /**
