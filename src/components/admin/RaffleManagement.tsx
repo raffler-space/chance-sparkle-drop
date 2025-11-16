@@ -68,29 +68,6 @@ export const RaffleManagement = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    console.log('=== Raffle Creation Debug ===');
-    console.log('Account:', account);
-    console.log('ChainId:', chainId);
-    console.log('Contract Ready:', raffleContract.isContractReady);
-    console.log('Contract object:', raffleContract.contract);
-
-    if (!account) {
-      toast.error('Please connect your wallet first');
-      return;
-    }
-
-    const network = chainId ? getNetworkConfig(chainId) : null;
-    if (!network) {
-      toast.error('Please connect to Sepolia or Mainnet');
-      return;
-    }
-    
-    if (!raffleContract.isContractReady || !raffleContract.contract) {
-      toast.error('Contract not initialized. Please ensure you are on the correct network.');
-      console.error('Contract not ready. ChainId:', chainId);
-      return;
-    }
-
     const raffleData = {
       name: formData.name,
       description: formData.description,
@@ -99,6 +76,7 @@ export const RaffleManagement = () => {
       max_tickets: parseInt(formData.max_tickets),
       nft_collection_address: formData.nft_collection_address,
       image_url: formData.image_url || null,
+      status: formData.status,
     };
 
     if (editingRaffle) {
@@ -114,40 +92,14 @@ export const RaffleManagement = () => {
         toast.success('Raffle updated successfully');
       }
     } else {
-      // Creating a new raffle - deploy to blockchain first
-      try {
-        setIsProcessing(true);
-        
-        // Check ownership first
-        console.log('Checking contract ownership...');
-        const owner = await raffleContract.checkOwner();
-        console.log('Contract owner:', owner);
-        console.log('Your address:', account);
-        
-        if (owner && owner.toLowerCase() !== account.toLowerCase()) {
-          toast.error(
-            `You are not the contract owner. Contract owner is: ${owner}. Your address: ${account}. You need to deploy your own contract.`,
-            { duration: 10000 }
-          );
-          setIsProcessing(false);
-          return;
-        }
-        
-        toast.loading('Creating raffle on blockchain...', { id: 'blockchain-tx' });
-        
-        const raffleId = await raffleContract.createRaffle(
-          formData.name,
-          formData.description,
-          formData.ticket_price,
-          parseInt(formData.max_tickets),
-          parseFloat(formData.duration_days),
-          formData.nft_collection_address || undefined
-        );
-
-        if (raffleId !== null) {
-          toast.success('Raffle created on blockchain!', { id: 'blockchain-tx' });
+      // Creating a new raffle
+      
+      // Check if this is a draft or active raffle
+      if (formData.status === 'draft') {
+        // Draft raffle - save to Supabase only, no blockchain deployment
+        try {
+          setIsProcessing(true);
           
-          // Now save to Supabase via secure Edge Function
           const drawDate = new Date(Date.now() + parseFloat(formData.duration_days) * 24 * 60 * 60 * 1000);
 
           const { data, error } = await supabase.functions.invoke('admin-create-raffle', {
@@ -156,24 +108,106 @@ export const RaffleManagement = () => {
                 ...raffleData,
                 draw_date: drawDate.toISOString(),
               },
-              contractRaffleId: raffleId,
+              contractRaffleId: null, // No contract ID for drafts
             },
           });
 
           if (error || !data?.success) {
-            toast.error('Saved to blockchain but failed to save to database');
+            toast.error('Failed to create draft raffle');
             console.error('Edge function error:', error);
           } else {
-            toast.success('Raffle created successfully!');
+            toast.success('Draft raffle created! You can activate it later from the raffle list.');
           }
-        } else {
-          toast.error('Failed to create raffle on blockchain', { id: 'blockchain-tx' });
+        } catch (error: any) {
+          toast.error(error.message || 'Failed to create draft raffle');
+          console.error('Error:', error);
+        } finally {
+          setIsProcessing(false);
         }
-      } catch (error: any) {
-        toast.error(error.message || 'Failed to create raffle', { id: 'blockchain-tx' });
-        console.error('Contract error:', error);
-      } finally {
-        setIsProcessing(false);
+      } else {
+        // Active raffle - deploy to blockchain first
+        console.log('=== Raffle Creation Debug ===');
+        console.log('Account:', account);
+        console.log('ChainId:', chainId);
+        console.log('Contract Ready:', raffleContract.isContractReady);
+
+        if (!account) {
+          toast.error('Please connect your wallet first');
+          return;
+        }
+
+        const network = chainId ? getNetworkConfig(chainId) : null;
+        if (!network) {
+          toast.error('Please connect to Sepolia or Mainnet');
+          return;
+        }
+        
+        if (!raffleContract.isContractReady || !raffleContract.contract) {
+          toast.error('Contract not initialized. Please ensure you are on the correct network.');
+          console.error('Contract not ready. ChainId:', chainId);
+          return;
+        }
+
+        try {
+          setIsProcessing(true);
+          
+          // Check ownership first
+          console.log('Checking contract ownership...');
+          const owner = await raffleContract.checkOwner();
+          console.log('Contract owner:', owner);
+          console.log('Your address:', account);
+          
+          if (owner && owner.toLowerCase() !== account.toLowerCase()) {
+            toast.error(
+              `You are not the contract owner. Contract owner is: ${owner}. Your address: ${account}. You need to deploy your own contract.`,
+              { duration: 10000 }
+            );
+            setIsProcessing(false);
+            return;
+          }
+          
+          toast.loading('Creating raffle on blockchain...', { id: 'blockchain-tx' });
+          
+          const raffleId = await raffleContract.createRaffle(
+            formData.name,
+            formData.description,
+            formData.ticket_price,
+            parseInt(formData.max_tickets),
+            parseFloat(formData.duration_days),
+            formData.nft_collection_address || undefined
+          );
+
+          if (raffleId !== null) {
+            toast.success('Raffle created on blockchain!', { id: 'blockchain-tx' });
+            
+            // Now save to Supabase via secure Edge Function
+            const drawDate = new Date(Date.now() + parseFloat(formData.duration_days) * 24 * 60 * 60 * 1000);
+
+            const { data, error } = await supabase.functions.invoke('admin-create-raffle', {
+              body: {
+                raffleData: {
+                  ...raffleData,
+                  draw_date: drawDate.toISOString(),
+                },
+                contractRaffleId: raffleId,
+              },
+            });
+
+            if (error || !data?.success) {
+              toast.error('Saved to blockchain but failed to save to database');
+              console.error('Edge function error:', error);
+            } else {
+              toast.success('Raffle created successfully!');
+            }
+          } else {
+            toast.error('Failed to create raffle on blockchain', { id: 'blockchain-tx' });
+          }
+        } catch (error: any) {
+          toast.error(error.message || 'Failed to create raffle', { id: 'blockchain-tx' });
+          console.error('Contract error:', error);
+        } finally {
+          setIsProcessing(false);
+        }
       }
     }
 
