@@ -145,20 +145,22 @@ export const RaffleManagement = () => {
         if (raffleId !== null) {
           toast.success('Raffle created on blockchain!', { id: 'blockchain-tx' });
           
-          // Now save to Supabase with contract raffle ID
+          // Now save to Supabase via secure Edge Function
           const drawDate = new Date(Date.now() + parseFloat(formData.duration_days) * 24 * 60 * 60 * 1000);
 
-          const { error } = await supabase
-            .from('raffles')
-            .insert([{
-              ...raffleData,
-              contract_raffle_id: raffleId,
-              draw_date: drawDate.toISOString(),
-            }]);
+          const { data, error } = await supabase.functions.invoke('admin-create-raffle', {
+            body: {
+              raffleData: {
+                ...raffleData,
+                draw_date: drawDate.toISOString(),
+              },
+              contractRaffleId: raffleId,
+            },
+          });
 
-          if (error) {
+          if (error || !data?.success) {
             toast.error('Saved to blockchain but failed to save to database');
-            console.error('Supabase error:', error);
+            console.error('Edge function error:', error);
           } else {
             toast.success('Raffle created successfully!');
           }

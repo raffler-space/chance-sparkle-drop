@@ -62,18 +62,17 @@ export const WinnerSelection = () => {
         return;
       }
 
-      // Update database with winner info
-      const { error } = await supabase
-        .from('raffles')
-        .update({
+      // Update database with winner info via secure Edge Function
+      const { data, error } = await supabase.functions.invoke('admin-update-raffle-winner', {
+        body: {
+          raffleId: raffleQuery.data.id,
+          winnerAddress: winner,
+          drawTxHash: txHash,
           status: 'completed',
-          winner_address: winner,
-          draw_tx_hash: txHash,
-          completed_at: new Date().toISOString(),
-        })
-        .eq('id', raffleQuery.data.id);
+        },
+      });
 
-      if (error) {
+      if (error || !data?.success) {
         console.error('Error updating winner in database:', error);
         toast.error('Failed to update winner information');
       } else {
@@ -106,14 +105,13 @@ export const WinnerSelection = () => {
           if (winner && winner !== ethers.constants.AddressZero && !raffle.winner_address) {
             console.log(`Syncing winner for raffle ${raffle.id}: ${winner}`);
             
-            await supabase
-              .from('raffles')
-              .update({
+            await supabase.functions.invoke('admin-update-raffle-winner', {
+              body: {
+                raffleId: raffle.id,
+                winnerAddress: winner,
                 status: 'completed',
-                winner_address: winner,
-                completed_at: new Date().toISOString(),
-              })
-              .eq('id', raffle.id);
+              },
+            });
             
             toast.success(`Winner found: ${winner.slice(0, 6)}...${winner.slice(-4)}`);
             fetchRaffles();
@@ -160,13 +158,15 @@ export const WinnerSelection = () => {
     setProcessing(raffleId);
 
     try {
-      // Update raffle status to drawing in database
-      const { error: updateError } = await supabase
-        .from('raffles')
-        .update({ status: 'drawing' })
-        .eq('id', raffleId);
+      // Update raffle status to drawing via secure Edge Function
+      const { data, error: updateError } = await supabase.functions.invoke('admin-update-raffle-winner', {
+        body: {
+          raffleId: raffleId,
+          status: 'drawing',
+        },
+      });
 
-      if (updateError) {
+      if (updateError || !data?.success) {
         toast.error('Failed to initiate draw');
         setProcessing(null);
         return;
