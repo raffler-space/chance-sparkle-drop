@@ -21,20 +21,31 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (!session?.user) {
+          toast.error('Please sign in to view your dashboard');
+          navigate('/');
+          return;
+        }
+        setUser(session.user);
+        setLoading(false);
+      }
+    );
+
+    // Check initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user) {
         toast.error('Please sign in to view your dashboard');
         navigate('/');
         return;
       }
-      
-      setUser(user);
+      setUser(session.user);
       setLoading(false);
-    };
+    });
 
-    checkAuth();
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   if (loading) {
