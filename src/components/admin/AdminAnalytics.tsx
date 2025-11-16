@@ -21,20 +21,19 @@ export const AdminAnalytics = () => {
 
   const fetchAnalytics = async () => {
     try {
-      // Fetch transactions for revenue
-      const { data: transactions } = await supabase
-        .from('transactions')
-        .select('amount')
-        .eq('status', 'confirmed');
-
-      const totalRevenue = transactions?.reduce((sum, t) => sum + Number(t.amount), 0) || 0;
-
-      // Fetch unique users
+      // Fetch tickets for revenue
       const { data: tickets } = await supabase
+        .from('tickets')
+        .select('purchase_price, quantity');
+
+      const totalRevenue = tickets?.reduce((sum, t) => sum + (Number(t.purchase_price) * t.quantity), 0) || 0;
+
+      // Fetch unique users from the same tickets data
+      const { data: userTickets } = await supabase
         .from('tickets')
         .select('user_id');
 
-      const activeUsers = new Set(tickets?.map(t => t.user_id)).size;
+      const activeUsers = new Set(userTickets?.map(t => t.user_id)).size;
 
       // Fetch raffles data
       const { data: raffles } = await supabase
