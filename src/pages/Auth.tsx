@@ -55,7 +55,7 @@ export default function Auth() {
       
       const redirectUrl = `${window.location.origin}/`;
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: validated.email,
         password: validated.password,
         options: {
@@ -70,6 +70,28 @@ export default function Auth() {
           toast.error(error.message);
         }
       } else {
+        // Check for referral code in localStorage
+        const referralCode = localStorage.getItem('referralCode');
+        if (referralCode && data.user) {
+          try {
+            const { error: refError } = await supabase.functions.invoke('track-referral', {
+              body: {
+                referralCode,
+                userId: data.user.id
+              }
+            });
+
+            if (refError) {
+              console.error('Failed to track referral:', refError);
+            } else {
+              // Clear the referral code from localStorage
+              localStorage.removeItem('referralCode');
+            }
+          } catch (refError) {
+            console.error('Error tracking referral:', refError);
+          }
+        }
+
         toast.success('Account created successfully! You can now sign in.');
       }
     } catch (error) {

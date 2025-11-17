@@ -11,6 +11,7 @@ import Raffles from "./pages/Raffles";
 import Auth from "./pages/Auth";
 import HowItWorks from "./pages/HowItWorks";
 import Referrals from "./pages/Referrals";
+import ReferralRedirect from "./pages/ReferralRedirect";
 import NotFound from "./pages/NotFound";
 import { useWeb3 } from "./hooks/useWeb3";
 
@@ -49,6 +50,7 @@ const AppContent = () => {
                 />
               } 
             />
+            <Route path="/ref/:code" element={<ReferralRedirect />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
         </Routes>
