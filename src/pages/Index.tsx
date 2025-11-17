@@ -251,11 +251,55 @@ const Index = () => {
 
       {/* Footer */}
       <footer className="py-12 px-4 border-t border-border/50">
-        <div className="max-w-7xl mx-auto text-center text-muted-foreground">
-          <p className="font-rajdhani">
-            © 2024 Raffler. Powered by Ethereum & Chainlink VRF.
-          </p>
-          <p className="text-sm mt-2">Always gamble responsibly. Must be 18+ to participate.</p>
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+            {/* Company Info */}
+            <div>
+              <h3 className="font-orbitron text-lg font-semibold mb-3">Raffler</h3>
+              <p className="text-muted-foreground text-sm">
+                Transparent blockchain raffles powered by Ethereum & Chainlink VRF.
+              </p>
+              <p className="text-muted-foreground text-sm mt-3">
+                Credit to Geridos
+              </p>
+            </div>
+
+            {/* Legal Links */}
+            <div>
+              <h3 className="font-orbitron text-lg font-semibold mb-3">Legal</h3>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <a href="/terms" className="text-muted-foreground hover:text-foreground transition-colors">
+                    Terms of Service
+                  </a>
+                </li>
+                <li>
+                  <a href="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
+                    Privacy Policy
+                  </a>
+                </li>
+                <li>
+                  <a href="/disclaimer" className="text-muted-foreground hover:text-foreground transition-colors">
+                    Disclaimer
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Important Notice */}
+            <div>
+              <h3 className="font-orbitron text-lg font-semibold mb-3">Important</h3>
+              <p className="text-muted-foreground text-sm">
+                Always gamble responsibly. Must be 18+ to participate. Blockchain transactions are irreversible.
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-6 border-t border-border/50 text-center">
+            <p className="text-muted-foreground text-sm font-rajdhani">
+              © {new Date().getFullYear()} Raffler. All rights reserved.
+            </p>
+          </div>
         </div>
       </footer>
     </div>

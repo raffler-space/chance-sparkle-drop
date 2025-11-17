@@ -32,6 +32,7 @@ interface Raffle {
   display_order: number;
   show_on_home: boolean;
   show_on_raffles: boolean;
+  contract_raffle_id: number | null;
 }
 
 export const RaffleManagement = () => {
@@ -262,9 +263,9 @@ export const RaffleManagement = () => {
       nft_collection_address: raffle.nft_collection_address,
       image_url: raffle.image_url || '',
       duration_days: '7',
-      status: raffle.status || 'draft',
+      status: raffle.status || 'active',
       launch_time: raffle.launch_time ? new Date(raffle.launch_time).toISOString().slice(0, 16) : '',
-      display_order: raffle.display_order.toString(),
+      display_order: raffle.display_order?.toString() || '1',
       show_on_home: raffle.show_on_home,
       show_on_raffles: raffle.show_on_raffles,
     });
@@ -541,6 +542,14 @@ export const RaffleManagement = () => {
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {editingRaffle && editingRaffle.contract_raffle_id !== null && (
+              <div className="p-3 bg-warning/10 border border-warning rounded-md">
+                <p className="text-sm text-warning-foreground">
+                  ⚠️ This raffle is deployed on-chain. Only display fields (name, description, images, visibility) can be edited.
+                </p>
+              </div>
+            )}
+            
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Raffle Name</Label>
@@ -582,6 +591,7 @@ export const RaffleManagement = () => {
                   step="0.01"
                   value={formData.ticket_price}
                   onChange={(e) => setFormData({ ...formData, ticket_price: e.target.value })}
+                  disabled={editingRaffle?.contract_raffle_id !== null}
                   required
                 />
               </div>
@@ -593,6 +603,7 @@ export const RaffleManagement = () => {
                   type="number"
                   value={formData.max_tickets}
                   onChange={(e) => setFormData({ ...formData, max_tickets: e.target.value })}
+                  disabled={editingRaffle?.contract_raffle_id !== null}
                   required
                 />
               </div>
@@ -620,6 +631,7 @@ export const RaffleManagement = () => {
                 value={formData.nft_collection_address}
                 onChange={(e) => setFormData({ ...formData, nft_collection_address: e.target.value })}
                 placeholder="0x..."
+                disabled={editingRaffle?.contract_raffle_id !== null}
                 required
               />
             </div>

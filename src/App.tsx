@@ -12,6 +12,9 @@ import Auth from "./pages/Auth";
 import HowItWorks from "./pages/HowItWorks";
 import Referrals from "./pages/Referrals";
 import ReferralRedirect from "./pages/ReferralRedirect";
+import TermsOfService from "./pages/TermsOfService";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import Disclaimer from "./pages/Disclaimer";
 import NotFound from "./pages/NotFound";
 import { useWeb3 } from "./hooks/useWeb3";
 
@@ -51,6 +54,9 @@ const AppContent = () => {
               } 
             />
             <Route path="/ref/:code" element={<ReferralRedirect />} />
+            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/disclaimer" element={<Disclaimer />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
         </Routes>
