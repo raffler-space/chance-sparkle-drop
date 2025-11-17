@@ -64,7 +64,19 @@ export const RaffleManagement = () => {
       .order('display_order', { ascending: true });
 
     if (!error && data) {
-      setRaffles(data);
+      // Fetch blockchain data for each raffle with a contract_raffle_id
+      const rafflesWithBlockchainData = await Promise.all(
+        data.map(async (raffle) => {
+          if (raffle.contract_raffle_id !== null && raffleContract.isContractReady) {
+            const info = await raffleContract.getRaffleInfo(raffle.contract_raffle_id);
+            if (info) {
+              return { ...raffle, tickets_sold: info.ticketsSold };
+            }
+          }
+          return raffle;
+        })
+      );
+      setRaffles(rafflesWithBlockchainData);
     }
     setLoading(false);
   };
