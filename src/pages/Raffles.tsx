@@ -43,7 +43,7 @@ export default function Raffles() {
 
   useEffect(() => {
     fetchRaffles();
-  }, []);
+  }, [isContractReady]);
 
   // Update time every second for countdown timers
   useEffect(() => {
@@ -104,8 +104,30 @@ export default function Raffles() {
 
     if (error) {
       console.error('Error fetching raffles:', error);
-    } else {
-      setRaffles(data || []);
+    } else if (data) {
+      // Fetch blockchain data for accurate ticket counts
+      if (isContractReady && contract) {
+        const rafflesWithBlockchainData = await Promise.all(
+          data.map(async (raffle) => {
+            if (raffle.contract_raffle_id !== null && raffle.contract_raffle_id !== undefined) {
+              try {
+                const contractInfo = await contract.raffles(raffle.contract_raffle_id);
+                return { 
+                  ...raffle, 
+                  tickets_sold: contractInfo.ticketsSold.toNumber() 
+                };
+              } catch (error) {
+                console.error(`Error fetching blockchain data for raffle ${raffle.id}:`, error);
+                return raffle;
+              }
+            }
+            return raffle;
+          })
+        );
+        setRaffles(rafflesWithBlockchainData);
+      } else {
+        setRaffles(data);
+      }
     }
     setLoading(false);
   };
