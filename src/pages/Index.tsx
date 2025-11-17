@@ -104,7 +104,6 @@ const Index = () => {
       .from('raffles')
       .select('*')
       .eq('show_on_home', true)
-      .eq('status', 'active')
       .order('display_order', { ascending: true });
 
     if (!error && data) {
