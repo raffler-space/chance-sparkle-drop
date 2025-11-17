@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Users, Ticket, Trophy, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { PurchaseModal } from './PurchaseModal';
+import { useRaffleContract } from '@/hooks/useRaffleContract';
+import { useWeb3 } from '@/hooks/useWeb3';
 
 interface RaffleCardProps {
   id: number;
@@ -43,6 +45,26 @@ export const RaffleCard = ({
   contract_raffle_id,
 }: RaffleCardProps) => {
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
+  const [blockchainTicketsSold, setBlockchainTicketsSold] = useState<number | null>(null);
+  const { chainId } = useWeb3();
+  const { getRaffleInfo, isContractReady } = useRaffleContract(chainId, account);
+
+  // Fetch actual ticket count from blockchain
+  useEffect(() => {
+    const fetchBlockchainData = async () => {
+      if (!isContractReady || contract_raffle_id === null || contract_raffle_id === undefined) {
+        return;
+      }
+
+      const info = await getRaffleInfo(contract_raffle_id);
+      if (info) {
+        setBlockchainTicketsSold(info.ticketsSold);
+      }
+    };
+
+    fetchBlockchainData();
+  }, [isContractReady, contract_raffle_id, getRaffleInfo]);
+
   const timeRemaining = () => {
     const now = new Date();
     const diff = endDate.getTime() - now.getTime();
@@ -51,7 +73,9 @@ export const RaffleCard = ({
     return `${days}d ${hours}h`;
   };
 
-  const progressPercentage = (soldTickets / totalTickets) * 100;
+  // Use blockchain data if available, fallback to database
+  const actualSoldTickets = blockchainTicketsSold !== null ? blockchainTicketsSold : soldTickets;
+  const progressPercentage = (actualSoldTickets / totalTickets) * 100;
 
   return (
     <Card className="glass-effect border-border/50 hover:border-primary/50 transition-all duration-300 overflow-hidden group">
@@ -97,7 +121,7 @@ export const RaffleCard = ({
             <div className="text-xs text-muted-foreground mb-1">Sold</div>
             <div className="font-bold flex items-center justify-center gap-1">
               <Users className="h-4 w-4" />
-              {soldTickets}/{totalTickets}
+              {actualSoldTickets}/{totalTickets}
             </div>
           </div>
           <div className="text-center">
