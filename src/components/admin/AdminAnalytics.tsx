@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Loader2, DollarSign, Users, Trophy, TrendingUp } from 'lucide-react';
+import { useWeb3 } from '@/hooks/useWeb3';
+import { useRaffleContract } from '@/hooks/useRaffleContract';
 
 interface AnalyticsData {
   totalRevenue: number;
@@ -12,12 +14,14 @@ interface AnalyticsData {
 }
 
 export const AdminAnalytics = () => {
+  const { account, chainId } = useWeb3();
+  const raffleContract = useRaffleContract(chainId, account);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchAnalytics();
-  }, []);
+  }, [raffleContract.isContractReady]);
 
   const fetchAnalytics = async () => {
     try {
@@ -38,12 +42,25 @@ export const AdminAnalytics = () => {
       // Fetch raffles data
       const { data: raffles } = await supabase
         .from('raffles')
-        .select('status, tickets_sold');
+        .select('status, tickets_sold, contract_raffle_id');
 
-      const totalRaffles = raffles?.length || 0;
-      const completedRaffles = raffles?.filter(r => r.status === 'completed').length || 0;
-      const averageTicketsSold = raffles?.length 
-        ? raffles.reduce((sum, r) => sum + r.tickets_sold, 0) / raffles.length 
+      // Update tickets_sold from blockchain for more accurate data
+      const rafflesWithBlockchainData = await Promise.all(
+        (raffles || []).map(async (raffle) => {
+          if (raffle.contract_raffle_id !== null && raffleContract.isContractReady) {
+            const info = await raffleContract.getRaffleInfo(raffle.contract_raffle_id);
+            if (info) {
+              return { ...raffle, tickets_sold: info.ticketsSold };
+            }
+          }
+          return raffle;
+        })
+      );
+
+      const totalRaffles = rafflesWithBlockchainData?.length || 0;
+      const completedRaffles = rafflesWithBlockchainData?.filter(r => r.status === 'completed').length || 0;
+      const averageTicketsSold = rafflesWithBlockchainData?.length 
+        ? rafflesWithBlockchainData.reduce((sum, r) => sum + r.tickets_sold, 0) / rafflesWithBlockchainData.length 
         : 0;
 
       setAnalytics({

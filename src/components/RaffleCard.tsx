@@ -49,7 +49,7 @@ export const RaffleCard = ({
   const { chainId } = useWeb3();
   const { getRaffleInfo, isContractReady } = useRaffleContract(chainId, account);
 
-  // Fetch actual ticket count from blockchain
+  // Fetch actual ticket count from blockchain and refresh periodically
   useEffect(() => {
     const fetchBlockchainData = async () => {
       if (!isContractReady || contract_raffle_id === null || contract_raffle_id === undefined) {
@@ -63,6 +63,10 @@ export const RaffleCard = ({
     };
 
     fetchBlockchainData();
+    
+    // Refresh every 10 seconds to catch updates
+    const interval = setInterval(fetchBlockchainData, 10000);
+    return () => clearInterval(interval);
   }, [isContractReady, contract_raffle_id, getRaffleInfo]);
 
   const timeRemaining = () => {
