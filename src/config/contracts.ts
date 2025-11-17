@@ -54,12 +54,12 @@ export const mainnetConfig: NetworkConfig = {
     decimals: 18,
   },
   contracts: {
-    raffle: "0x0000000000000000000000000000000000000000", // UPDATE AFTER DEPLOYMENT
+    raffle: "0x227dA68261231DAA90b8beAc58b32BC3Dc7D7655",
     usdt: "0xdAC17F958D2ee523a2206206994597C13D831ec7", // Real USDT
   },
   chainlink: {
-    vrfCoordinator: "0x271682DEB8C4E0901D1a1550aD2e64D568E69909",
-    gasLane: "0x8af398995b04c28e9951adb9721ef74c74f93e6a478f39e7e0777be13527e7ef",
+    vrfCoordinator: "0xD7f86b4b8Cae7D942340FF628F82735b7a20893a", // VRF v2.5
+    gasLane: "0x9fe0eebf5e446e3c998ec9bb19951541aee00bb90ea201ae456421a2ded86805", // 500 gwei Key Hash
   },
 };
 
