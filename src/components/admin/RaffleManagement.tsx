@@ -156,7 +156,7 @@ export const RaffleManagement = () => {
 
         const network = chainId ? getNetworkConfig(chainId) : null;
         if (!network) {
-          toast.error('Please connect to Sepolia or Mainnet');
+          toast.error('Please connect to a supported network');
           return;
         }
         

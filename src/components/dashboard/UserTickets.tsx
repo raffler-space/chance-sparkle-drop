@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { useRaffleContract } from '@/hooks/useRaffleContract';
+import { getBlockExplorerUrl } from '@/utils/blockExplorer';
 
 interface Ticket {
   id: string;
@@ -179,7 +180,7 @@ export const UserTickets = ({ userId }: { userId: string }) => {
               variant="outline"
               size="sm"
               className="w-full border-neon-cyan/30 hover:border-neon-cyan"
-              onClick={() => window.open(`https://sepolia.etherscan.io/tx/${ticket.tx_hash}`, '_blank')}
+              onClick={() => window.open(getBlockExplorerUrl(chainId, 'tx', ticket.tx_hash), '_blank')}
             >
               <ExternalLink className="w-3 h-3 mr-2" />
               View Transaction

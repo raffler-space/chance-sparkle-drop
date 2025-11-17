@@ -6,6 +6,7 @@ import { Trophy, Sparkles, ExternalLink } from 'lucide-react';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { useRaffleContract } from '@/hooks/useRaffleContract';
 import { toast } from 'sonner';
+import { getBlockExplorerUrl } from '@/utils/blockExplorer';
 
 interface WonRaffle {
   id: number;
@@ -103,7 +104,7 @@ export const WinnerNotification = ({ userId }: { userId: string }) => {
                 
                 {raffle.draw_tx_hash && (
                   <a
-                    href={`https://sepolia.etherscan.io/tx/${raffle.draw_tx_hash}`}
+                    href={getBlockExplorerUrl(chainId, 'tx', raffle.draw_tx_hash)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-sm text-neon-cyan hover:text-neon-gold transition-colors"

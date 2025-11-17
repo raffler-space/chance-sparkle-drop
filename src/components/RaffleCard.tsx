@@ -6,6 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { PurchaseModal } from './PurchaseModal';
 import { useRaffleContract } from '@/hooks/useRaffleContract';
 import { useWeb3 } from '@/hooks/useWeb3';
+import { getBlockExplorerUrl } from '@/utils/blockExplorer';
 
 interface RaffleCardProps {
   id: number;
@@ -169,7 +170,7 @@ export const RaffleCard = ({
                 className="h-7 w-7 p-0"
               >
                 <a
-                  href={`https://sepolia.etherscan.io/address/${winnerAddress}`}
+                  href={getBlockExplorerUrl(chainId, 'address', winnerAddress)}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
