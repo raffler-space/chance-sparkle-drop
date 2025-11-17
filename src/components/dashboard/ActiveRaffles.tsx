@@ -59,7 +59,24 @@ export const ActiveRaffles = ({ userId }: { userId: string }) => {
           .order('created_at', { ascending: false });
 
         if (rafflesData) {
-          setRaffles(rafflesData);
+          // ALWAYS fetch blockchain data for tickets_sold to ensure accuracy
+          if (isContractReady) {
+            const updatedRaffles = await Promise.all(
+              rafflesData.map(async (raffle) => {
+                if (raffle.contract_raffle_id !== null && raffle.contract_raffle_id !== undefined) {
+                  const blockchainData = await getRaffleInfo(raffle.contract_raffle_id);
+                  return {
+                    ...raffle,
+                    tickets_sold: blockchainData?.ticketsSold ?? raffle.tickets_sold,
+                  };
+                }
+                return raffle;
+              })
+            );
+            setRaffles(updatedRaffles);
+          } else {
+            setRaffles(rafflesData);
+          }
           setLoading(false);
           return;
         }

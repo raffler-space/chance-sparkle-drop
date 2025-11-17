@@ -55,7 +55,7 @@ export const RaffleManagement = () => {
 
   useEffect(() => {
     fetchRaffles();
-  }, []);
+  }, [raffleContract.isContractReady]);
 
   const fetchRaffles = async () => {
     const { data, error } = await supabase
