@@ -19,7 +19,7 @@ export const useWeb3 = () => {
 
   return {
     account: address || null,
-    chainId: chainId || null,
+    chainId: chainId || 11155111, // Default to Sepolia for read-only operations
     isConnecting,
     connectWallet,
     disconnectWallet,
