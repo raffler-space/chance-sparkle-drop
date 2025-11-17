@@ -69,6 +69,7 @@ export type Database = {
           nft_collection_address: string
           prize_description: string
           show_on_home: boolean
+          show_on_raffles: boolean
           status: string | null
           ticket_price: number
           tickets_sold: number | null
@@ -90,6 +91,7 @@ export type Database = {
           nft_collection_address: string
           prize_description: string
           show_on_home?: boolean
+          show_on_raffles?: boolean
           status?: string | null
           ticket_price: number
           tickets_sold?: number | null
@@ -111,6 +113,7 @@ export type Database = {
           nft_collection_address?: string
           prize_description?: string
           show_on_home?: boolean
+          show_on_raffles?: boolean
           status?: string | null
           ticket_price?: number
           tickets_sold?: number | null

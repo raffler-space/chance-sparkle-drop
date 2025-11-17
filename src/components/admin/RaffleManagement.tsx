@@ -31,6 +31,7 @@ interface Raffle {
   launch_time: string | null;
   display_order: number;
   show_on_home: boolean;
+  show_on_raffles: boolean;
 }
 
 export const RaffleManagement = () => {
@@ -54,6 +55,7 @@ export const RaffleManagement = () => {
     launch_time: '', // Launch time for draft raffles
     display_order: '1',
     show_on_home: true,
+    show_on_raffles: true,
   });
 
   useEffect(() => {
@@ -264,6 +266,7 @@ export const RaffleManagement = () => {
       launch_time: raffle.launch_time ? new Date(raffle.launch_time).toISOString().slice(0, 16) : '',
       display_order: raffle.display_order.toString(),
       show_on_home: raffle.show_on_home,
+      show_on_raffles: raffle.show_on_raffles,
     });
     setDialogOpen(true);
   };
@@ -298,6 +301,7 @@ export const RaffleManagement = () => {
       launch_time: '',
       display_order: '1',
       show_on_home: true,
+      show_on_raffles: true,
     });
     setEditingRaffle(null);
     setDialogOpen(false);
@@ -463,6 +467,27 @@ export const RaffleManagement = () => {
                     />
                     <label className="text-sm font-rajdhani">
                       Show on Home Page
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={raffle.show_on_raffles}
+                      onCheckedChange={async (checked) => {
+                        const { error } = await supabase
+                          .from('raffles')
+                          .update({ show_on_raffles: checked })
+                          .eq('id', raffle.id);
+                        
+                        if (error) {
+                          toast.error('Failed to update visibility');
+                        } else {
+                          toast.success(checked ? 'Raffle will show on raffles page' : 'Raffle hidden from raffles page');
+                          fetchRaffles();
+                        }
+                      }}
+                    />
+                    <label className="text-sm font-rajdhani">
+                      Show on Raffles Page
                     </label>
                   </div>
                 </div>
