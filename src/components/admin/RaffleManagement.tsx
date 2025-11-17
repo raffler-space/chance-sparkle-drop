@@ -64,19 +64,29 @@ export const RaffleManagement = () => {
       .order('display_order', { ascending: true });
 
     if (!error && data) {
-      // Fetch blockchain data for each raffle with a contract_raffle_id
-      const rafflesWithBlockchainData = await Promise.all(
-        data.map(async (raffle) => {
-          if (raffle.contract_raffle_id !== null && raffleContract.isContractReady) {
-            const info = await raffleContract.getRaffleInfo(raffle.contract_raffle_id);
-            if (info) {
-              return { ...raffle, tickets_sold: info.ticketsSold };
+      let updatedRaffles = data;
+
+      // Fetch blockchain data only if contract is ready
+      if (raffleContract.isContractReady && raffleContract.contract) {
+        const rafflesWithBlockchainData = await Promise.all(
+          data.map(async (raffle) => {
+            if (raffle.contract_raffle_id !== null) {
+              try {
+                const info = await raffleContract.getRaffleInfo(raffle.contract_raffle_id);
+                if (info) {
+                  return { ...raffle, tickets_sold: info.ticketsSold };
+                }
+              } catch (error) {
+                console.error(`Error fetching blockchain data for raffle ${raffle.id}:`, error);
+              }
             }
-          }
-          return raffle;
-        })
-      );
-      setRaffles(rafflesWithBlockchainData);
+            return raffle;
+          })
+        );
+        updatedRaffles = rafflesWithBlockchainData;
+      }
+
+      setRaffles(updatedRaffles);
     }
     setLoading(false);
   };
