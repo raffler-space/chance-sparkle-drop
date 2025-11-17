@@ -225,6 +225,45 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
     }
   }, [contract]);
 
+  // Get raffle details from contract
+  const getRaffleDetails = useCallback(async (raffleId: number) => {
+    if (!contract) {
+      console.error('Contract not initialized');
+      return null;
+    }
+
+    try {
+      const raffleInfo = await contract.raffles(raffleId);
+      return {
+        totalTickets: raffleInfo.totalTickets.toNumber(),
+        ticketsSold: raffleInfo.ticketsSold.toNumber(),
+        ticketPrice: ethers.utils.formatUnits(raffleInfo.ticketPrice, 6),
+        endTime: raffleInfo.endTime.toNumber(),
+        isActive: raffleInfo.isActive,
+        winner: raffleInfo.winner,
+      };
+    } catch (error) {
+      console.error('Error fetching raffle details:', error);
+      return null;
+    }
+  }, [contract]);
+
+  // Get user's ticket entries for a raffle
+  const getUserTickets = useCallback(async (raffleId: number, userAddress: string) => {
+    if (!contract) {
+      console.error('Contract not initialized');
+      return [];
+    }
+
+    try {
+      const entries = await contract.getUserEntries(raffleId, userAddress);
+      return entries.map((entry: any) => entry.toNumber());
+    } catch (error) {
+      console.error('Error fetching user tickets:', error);
+      return [];
+    }
+  }, [contract]);
+
   // Buy tickets for a raffle
   const buyTickets = useCallback(async (raffleId: number, quantity: number) => {
     if (!contract) {
