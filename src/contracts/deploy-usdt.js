@@ -7,13 +7,14 @@ async function main() {
   // Network detection and configuration
   const isMainnet = hre.network.name === "mainnet";
   
-  // Network-specific Chainlink VRF V2.5 Configuration
+  // Network-specific Chainlink VRF Configuration
+  // Note: Mainnet uses VRF V2, Sepolia uses VRF V2.5
   const VRF_COORDINATOR = isMainnet 
-    ? "0xD7f86b4b8Cae7D942340FF628F82735b7a20893a" // Mainnet VRF v2.5 Coordinator
+    ? "0x271682DEB8C4E0901D1a1550aD2e64D568E69909" // Mainnet VRF v2 Coordinator
     : "0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B"; // Sepolia VRF v2.5 Coordinator
   
   const GAS_LANE = isMainnet
-    ? "0x9fe0eebf5e446e3c998ec9bb19951541aee00bb90ea201ae456421a2ded86805" // Mainnet 500 gwei Key Hash
+    ? "0x8af398995b04c28e9951adb9721ef74c74f93e6a478f39e7e0777be13527e7ef" // Mainnet 200 gwei Key Hash
     : "0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae"; // Sepolia 500 gwei Key Hash
   
   const CALLBACK_GAS_LIMIT = 500000;
@@ -30,6 +31,7 @@ async function main() {
   console.log("Deployment Configuration:");
   console.log("========================");
   console.log("Network:", hre.network.name);
+  console.log("VRF Version:", isMainnet ? "V2" : "V2.5");
   console.log("VRF Coordinator:", VRF_COORDINATOR);
   console.log("Subscription ID:", SUBSCRIPTION_ID);
   console.log("Gas Lane:", GAS_LANE);
