@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, Loader2, ExternalLink } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, ExternalLink, Eye, EyeOff } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { useRaffleContract } from '@/hooks/useRaffleContract';
@@ -29,6 +30,7 @@ interface Raffle {
   draw_tx_hash: string | null;
   launch_time: string | null;
   display_order: number;
+  show_on_home: boolean;
 }
 
 export const RaffleManagement = () => {
@@ -51,6 +53,7 @@ export const RaffleManagement = () => {
     status: 'active', // 'active' or 'draft'
     launch_time: '', // Launch time for draft raffles
     display_order: '1',
+    show_on_home: true,
   });
 
   useEffect(() => {
@@ -105,6 +108,7 @@ export const RaffleManagement = () => {
       status: formData.status,
       launch_time: formData.status === 'draft' && formData.launch_time ? new Date(formData.launch_time).toISOString() : null,
       display_order: parseInt(formData.display_order),
+      show_on_home: formData.show_on_home,
     };
 
     if (editingRaffle) {
@@ -436,6 +440,30 @@ export const RaffleManagement = () => {
                     <p className="font-rajdhani font-bold">#{raffle.display_order}</p>
                   </div>
                 </div>
+                
+                <div className="flex items-center gap-4 mt-4 pt-4 border-t border-border/30">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={raffle.show_on_home}
+                      onCheckedChange={async (checked) => {
+                        const { error } = await supabase
+                          .from('raffles')
+                          .update({ show_on_home: checked })
+                          .eq('id', raffle.id);
+                        
+                        if (error) {
+                          toast.error('Failed to update visibility');
+                        } else {
+                          toast.success(checked ? 'Raffle will show on home page' : 'Raffle hidden from home page');
+                          fetchRaffles();
+                        }
+                      }}
+                    />
+                    <label className="text-sm font-rajdhani">
+                      Show on Home Page
+                    </label>
+                  </div>
+                </div>
                 {raffle.draw_tx_hash && chainId && getNetworkConfig(chainId) && (
                   <div className="mt-4">
                     <a
@@ -624,6 +652,17 @@ export const RaffleManagement = () => {
               <p className="text-sm text-muted-foreground font-rajdhani">
                 Lower numbers appear first on the raffles page
               </p>
+            </div>
+
+            <div className="flex items-center gap-2 p-4 bg-muted/20 rounded-lg border border-border/30">
+              <Switch
+                id="show_on_home"
+                checked={formData.show_on_home}
+                onCheckedChange={(checked) => setFormData({ ...formData, show_on_home: checked })}
+              />
+              <Label htmlFor="show_on_home" className="cursor-pointer font-rajdhani">
+                Show on Home Page
+              </Label>
             </div>
 
             <div className="flex justify-end gap-2">
