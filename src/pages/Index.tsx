@@ -92,7 +92,8 @@ const mockRaffles = [
 
 const Index = () => {
   const { account, isConnecting, connectWallet, disconnectWallet } = useWeb3();
-  const [raffles, setRaffles] = useState<any[]>([]);
+  const [activeRaffles, setActiveRaffles] = useState<any[]>([]);
+  const [upcomingRaffles, setUpcomingRaffles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -107,7 +108,11 @@ const Index = () => {
       .order('display_order', { ascending: true });
 
     if (!error && data) {
-      setRaffles(data);
+      // Separate active and draft raffles
+      const active = data.filter(raffle => raffle.status === 'active');
+      const upcoming = data.filter(raffle => raffle.status === 'draft');
+      setActiveRaffles(active);
+      setUpcomingRaffles(upcoming);
     }
     setLoading(false);
   };
@@ -125,7 +130,7 @@ const Index = () => {
       {/* Hero Section */}
       <Hero />
 
-      {/* Raffles Section */}
+      {/* Active Raffles Section */}
       <section id="raffles" className="py-20 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
@@ -141,13 +146,13 @@ const Index = () => {
             <div className="flex justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-neon-cyan" />
             </div>
-          ) : raffles.length === 0 ? (
+          ) : activeRaffles.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground text-lg">No active raffles at the moment. Check back soon!</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {raffles.map((raffle) => (
+              {activeRaffles.map((raffle) => (
                 <RaffleCard 
                   key={raffle.id} 
                   id={raffle.id}
@@ -171,6 +176,45 @@ const Index = () => {
           )}
         </div>
       </section>
+
+      {/* Upcoming Raffles Section */}
+      {upcomingRaffles.length > 0 && (
+        <section className="py-20 px-4 bg-background/50">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-4xl sm:text-5xl font-orbitron font-bold text-glow mb-4">
+                Upcoming Raffles
+              </h2>
+              <p className="text-muted-foreground text-lg">
+                Coming soon - get ready for these exciting prizes!
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {upcomingRaffles.map((raffle) => (
+                <RaffleCard 
+                  key={raffle.id} 
+                  id={raffle.id}
+                  title={raffle.name}
+                  description={raffle.description || raffle.prize_description}
+                  prize={raffle.prize_description}
+                  image={raffle.image_url || mockRaffles[0].image}
+                  ticketPrice={`${raffle.ticket_price} USDT`}
+                  ticketPriceNumeric={raffle.ticket_price}
+                  totalTickets={raffle.max_tickets}
+                  soldTickets={raffle.tickets_sold || 0}
+                  endDate={raffle.draw_date ? new Date(raffle.draw_date) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)}
+                  isActive={false}
+                  account={account} 
+                  status={raffle.status}
+                  winnerAddress={raffle.winner_address}
+                  contract_raffle_id={raffle.contract_raffle_id}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Why Choose Raffler */}
       <section className="py-20 px-4">
