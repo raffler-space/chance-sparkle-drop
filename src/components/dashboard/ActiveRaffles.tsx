@@ -8,6 +8,7 @@ import { TrendingUp, Trophy, Loader2, Calendar, Award } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ClaimRewardForm } from './ClaimRewardForm';
 import { useWeb3 } from '@/hooks/useWeb3';
+import { useRaffleContract } from '@/hooks/useRaffleContract';
 
 interface Raffle {
   id: number;
@@ -21,6 +22,7 @@ interface Raffle {
   draw_date: string | null;
   image_url: string | null;
   winner_address: string | null;
+  contract_raffle_id?: number | null;
 }
 
 export const ActiveRaffles = ({ userId }: { userId: string }) => {
@@ -29,36 +31,75 @@ export const ActiveRaffles = ({ userId }: { userId: string }) => {
   const [loading, setLoading] = useState(true);
   const [claimFormOpen, setClaimFormOpen] = useState(false);
   const [selectedRaffle, setSelectedRaffle] = useState<Raffle | null>(null);
-  const { account } = useWeb3();
+  const { account, chainId } = useWeb3();
+  const { getUserEntries, getRaffleInfo, isContractReady } = useRaffleContract(chainId, account || undefined);
 
   useEffect(() => {
     fetchData();
-  }, [userId, account]);
+  }, [userId, account, isContractReady]);
 
   const fetchData = async () => {
-    if (!userId) {
-      setLoading(false);
-      return;
+    setLoading(true);
+    
+    // Try to fetch from Supabase first if user is authenticated
+    if (userId) {
+      const { data: ticketsData } = await supabase
+        .from('tickets')
+        .select('raffle_id')
+        .eq('user_id', userId);
+
+      if (ticketsData && ticketsData.length > 0) {
+        const raffleIds = ticketsData.map(t => t.raffle_id);
+        setParticipatingRaffleIds(new Set(raffleIds));
+        
+        const { data: rafflesData } = await supabase
+          .from('raffles')
+          .select('*')
+          .in('id', raffleIds)
+          .order('created_at', { ascending: false });
+
+        if (rafflesData) {
+          setRaffles(rafflesData);
+          setLoading(false);
+          return;
+        }
+      }
     }
 
-    // Fetch user's tickets to see which raffles they're participating in
-    const { data: ticketsData } = await supabase
-      .from('tickets')
-      .select('raffle_id')
-      .eq('user_id', userId);
+    // Fallback to blockchain if no Supabase data or not authenticated
+    if (account && isContractReady) {
+      try {
+        // Fetch all raffles from Supabase to check which ones user participated in
+        const { data: allRaffles } = await supabase
+          .from('raffles')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-    if (ticketsData) {
-      const raffleIds = ticketsData.map(t => t.raffle_id);
-      setParticipatingRaffleIds(new Set(raffleIds));
-      
-      // Fetch all raffles where user has tickets (both active and completed)
-      const { data: rafflesData } = await supabase
-        .from('raffles')
-        .select('*')
-        .in('id', raffleIds)
-        .order('created_at', { ascending: false });
+        if (allRaffles) {
+          const participating: Raffle[] = [];
+          const participatingIds = new Set<number>();
 
-      if (rafflesData) setRaffles(rafflesData);
+          for (const raffle of allRaffles) {
+            if (raffle.contract_raffle_id !== null && raffle.contract_raffle_id !== undefined) {
+              const userTickets = await getUserEntries(raffle.contract_raffle_id, account);
+              if (userTickets.length > 0) {
+                // Fetch latest blockchain data
+                const blockchainData = await getRaffleInfo(raffle.contract_raffle_id);
+                participating.push({
+                  ...raffle,
+                  tickets_sold: blockchainData?.ticketsSold ?? raffle.tickets_sold,
+                });
+                participatingIds.add(raffle.id);
+              }
+            }
+          }
+
+          setRaffles(participating);
+          setParticipatingRaffleIds(participatingIds);
+        }
+      } catch (error) {
+        console.error('Error fetching blockchain data:', error);
+      }
     }
     
     setLoading(false);
