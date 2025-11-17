@@ -36,14 +36,57 @@ export default function Referrals({ account, isConnecting, onConnectWallet, onDi
   }, []);
 
   const loadReferralStats = async (userId: string) => {
-    // Placeholder for loading real stats from database
-    // In production, you would query a referrals table
-    setStats({
-      totalReferrals: 0,
-      earnings: 0,
-      commissionRate: 5,
-      rank: 0
-    });
+    try {
+      // Get total referrals
+      const { data: referrals, error: refError } = await supabase
+        .from('referrals')
+        .select('*')
+        .eq('referrer_id', userId);
+
+      if (refError) throw refError;
+
+      // Get earnings
+      const { data: earnings, error: earnError } = await supabase
+        .from('referral_earnings')
+        .select('amount')
+        .eq('referrer_id', userId);
+
+      if (earnError) throw earnError;
+
+      const totalEarnings = earnings?.reduce((sum, e) => sum + Number(e.amount), 0) || 0;
+
+      // Get leaderboard position
+      const { data: allEarnings, error: leaderError } = await supabase
+        .from('referral_earnings')
+        .select('referrer_id, amount');
+
+      if (leaderError) throw leaderError;
+
+      // Calculate rank
+      const earningsByUser = allEarnings?.reduce((acc, e) => {
+        acc[e.referrer_id] = (acc[e.referrer_id] || 0) + Number(e.amount);
+        return acc;
+      }, {} as Record<string, number>) || {};
+
+      const sortedUsers = Object.entries(earningsByUser)
+        .sort(([, a], [, b]) => b - a);
+      
+      const userRank = sortedUsers.findIndex(([id]) => id === userId) + 1;
+
+      setStats({
+        totalReferrals: referrals?.length || 0,
+        earnings: totalEarnings,
+        commissionRate: 5,
+        rank: userRank
+      });
+    } catch (error) {
+      console.error('Error loading referral stats:', error);
+      toast({
+        title: "Error loading stats",
+        description: "Failed to load referral statistics",
+        variant: "destructive",
+      });
+    }
   };
 
   const referralLink = user 

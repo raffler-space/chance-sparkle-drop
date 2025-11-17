@@ -115,6 +115,84 @@ export type Database = {
         }
         Relationships: []
       }
+      referral_earnings: {
+        Row: {
+          amount: number
+          commission_rate: number
+          created_at: string | null
+          id: string
+          paid_at: string | null
+          raffle_id: number
+          referred_id: string
+          referrer_id: string
+          status: string
+          ticket_id: string
+        }
+        Insert: {
+          amount: number
+          commission_rate?: number
+          created_at?: string | null
+          id?: string
+          paid_at?: string | null
+          raffle_id: number
+          referred_id: string
+          referrer_id: string
+          status?: string
+          ticket_id: string
+        }
+        Update: {
+          amount?: number
+          commission_rate?: number
+          created_at?: string | null
+          id?: string
+          paid_at?: string | null
+          raffle_id?: number
+          referred_id?: string
+          referrer_id?: string
+          status?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_earnings_raffle_id_fkey"
+            columns: ["raffle_id"]
+            isOneToOne: false
+            referencedRelation: "raffles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_earnings_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referrals: {
+        Row: {
+          created_at: string | null
+          id: string
+          referral_code: string
+          referred_id: string
+          referrer_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          referral_code: string
+          referred_id: string
+          referrer_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          referral_code?: string
+          referred_id?: string
+          referrer_id?: string
+        }
+        Relationships: []
+      }
       tickets: {
         Row: {
           id: string
