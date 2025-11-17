@@ -150,7 +150,7 @@ export const WinnerSelection = () => {
                 const contractInfo = await contract.raffles(raffle.contract_raffle_id);
                 return {
                   ...raffle,
-                  tickets_sold: contractInfo.totalEntries.toNumber(),
+                  tickets_sold: contractInfo.ticketsSold.toNumber(),
                 };
               } catch (error) {
                 console.error(`Error fetching blockchain data for raffle ${raffle.id}:`, error);
