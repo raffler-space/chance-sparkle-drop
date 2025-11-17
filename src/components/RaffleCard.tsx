@@ -25,6 +25,7 @@ interface RaffleCardProps {
   status?: string;
   winnerAddress?: string | null;
   contract_raffle_id?: number | null;
+  launchTime?: Date | null;
 }
 
 export const RaffleCard = ({
@@ -44,6 +45,7 @@ export const RaffleCard = ({
   status,
   winnerAddress,
   contract_raffle_id,
+  launchTime,
 }: RaffleCardProps) => {
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [blockchainTicketsSold, setBlockchainTicketsSold] = useState<number | null>(null);
@@ -72,11 +74,16 @@ export const RaffleCard = ({
 
   const timeRemaining = () => {
     const now = new Date();
-    const diff = endDate.getTime() - now.getTime();
+    // If launchTime is provided and in the future, count down to launch
+    const targetDate = launchTime && launchTime.getTime() > now.getTime() ? launchTime : endDate;
+    const diff = targetDate.getTime() - now.getTime();
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     return `${days}d ${hours}h`;
   };
+
+  // Determine if we should show "Starting In" or "Ends In"
+  const isUpcoming = launchTime && launchTime.getTime() > new Date().getTime();
 
   // Use blockchain data if available, fallback to database
   const actualSoldTickets = blockchainTicketsSold !== null ? blockchainTicketsSold : soldTickets;
@@ -130,7 +137,7 @@ export const RaffleCard = ({
             </div>
           </div>
           <div className="text-center">
-            <div className="text-xs text-muted-foreground mb-1">Ends In</div>
+            <div className="text-xs text-muted-foreground mb-1">{isUpcoming ? 'Starting In' : 'Ends In'}</div>
             <div className="font-bold flex items-center justify-center gap-1">
               <Clock className="h-4 w-4" />
               {timeRemaining()}

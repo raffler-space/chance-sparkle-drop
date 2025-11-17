@@ -20,7 +20,7 @@ export const Hero = () => {
           <Button
             size="lg"
             className="bg-gradient-to-r from-secondary to-purple hover:opacity-90 text-white font-orbitron text-lg px-8 py-6 neon-border animate-pulse-glow"
-            onClick={() => window.location.href = '/#raffles'}
+            onClick={() => window.location.href = '/raffles'}
           >
             <Sparkles className="mr-2 h-5 w-5" />
             Browse Raffles

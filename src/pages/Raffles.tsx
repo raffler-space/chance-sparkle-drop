@@ -100,6 +100,7 @@ export default function Raffles() {
     const { data, error } = await supabase
       .from('raffles')
       .select('*')
+      .eq('show_on_raffles', true)
       .order('display_order', { ascending: true })
       .order('created_at', { ascending: false });
 

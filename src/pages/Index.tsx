@@ -209,6 +209,7 @@ const Index = () => {
                   status={raffle.status}
                   winnerAddress={raffle.winner_address}
                   contract_raffle_id={raffle.contract_raffle_id}
+                  launchTime={raffle.launch_time ? new Date(raffle.launch_time) : null}
                 />
               ))}
             </div>
