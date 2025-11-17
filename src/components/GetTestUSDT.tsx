@@ -66,8 +66,8 @@ export const GetTestUSDT = () => {
           <div className="space-y-2">
             <p className="font-semibold">Instructions For Joining The Test:</p>
             <ol className="list-decimal list-inside space-y-1 text-sm">
-              <li>Switch to Sepolia network before connecting wallet.</li>
-              <li>Get Sepolia ETH here: <a href="https://shorturl.at/hMsxo" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">https://shorturl.at/hMsxo</a></li>
+              <li>Switch to Sepolia testnet before connecting wallet.</li>
+              <li>Get test ETH from a faucet: <a href="https://shorturl.at/hMsxo" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">https://shorturl.at/hMsxo</a></li>
               <li>Hop into your Dashboard and click on "Get Test USDT"</li>
               <li>Add mock USDT as a token - *OPTIONAL</li>
               <li>Buy Tickets (confirm spend→confirm purchase) and wait for results.</li>

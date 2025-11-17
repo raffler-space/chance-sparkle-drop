@@ -12,6 +12,7 @@ import { useRaffleContract } from '@/hooks/useRaffleContract';
 import { Loader2, Ticket, Trophy, ExternalLink, Loader2 as LoaderIcon } from 'lucide-react';
 import { PurchaseModal } from '@/components/PurchaseModal';
 import { ethers } from 'ethers';
+import { getBlockExplorerUrl } from '@/utils/blockExplorer';
 
 interface Raffle {
   id: number;
@@ -323,7 +324,7 @@ export default function Raffles() {
                             className="h-7 w-7 p-0"
                           >
                             <a
-                              href={`https://sepolia.etherscan.io/address/${raffle.winner_address}`}
+                              href={getBlockExplorerUrl(chainId, 'address', raffle.winner_address)}
                               target="_blank"
                               rel="noopener noreferrer"
                             >

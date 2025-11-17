@@ -27,7 +27,6 @@ export function Web3Provider({ children }: Web3ProviderProps) {
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider
-          initialChain={sepolia}
           theme={darkTheme({
             accentColor: 'hsl(185, 100%, 50%)', // Neon cyan
             accentColorForeground: 'hsl(225, 71%, 4%)',

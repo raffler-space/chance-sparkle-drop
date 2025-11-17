@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { useRaffleContract } from '@/hooks/useRaffleContract';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { ethers } from 'ethers';
+import { getBlockExplorerUrl } from '@/utils/blockExplorer';
 
 interface Raffle {
   id: number;
@@ -328,7 +329,7 @@ export const WinnerSelection = () => {
                               className="h-8 w-8 p-0"
                             >
                               <a
-                                href={`https://sepolia.etherscan.io/address/${raffle.winner_address}`}
+                                href={getBlockExplorerUrl(chainId, 'address', raffle.winner_address)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >
@@ -346,7 +347,7 @@ export const WinnerSelection = () => {
                                 className="h-8 px-2 text-xs"
                               >
                                 <a
-                                  href={`https://sepolia.etherscan.io/tx/${raffle.draw_tx_hash}`}
+                                  href={getBlockExplorerUrl(chainId, 'tx', raffle.draw_tx_hash)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                 >
