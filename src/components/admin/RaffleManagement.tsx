@@ -263,6 +263,7 @@ export const RaffleManagement = () => {
       status: raffle.status || 'draft',
       launch_time: raffle.launch_time ? new Date(raffle.launch_time).toISOString().slice(0, 16) : '',
       display_order: raffle.display_order.toString(),
+      show_on_home: raffle.show_on_home,
     });
     setDialogOpen(true);
   };
@@ -296,6 +297,7 @@ export const RaffleManagement = () => {
       status: 'draft', // Default to draft
       launch_time: '',
       display_order: '1',
+      show_on_home: true,
     });
     setEditingRaffle(null);
     setDialogOpen(false);

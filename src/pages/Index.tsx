@@ -138,11 +138,38 @@ const Index = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {mockRaffles.map((raffle) => (
-              <RaffleCard key={raffle.id} {...raffle} account={account} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-neon-cyan" />
+            </div>
+          ) : raffles.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground text-lg">No active raffles at the moment. Check back soon!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {raffles.map((raffle) => (
+                <RaffleCard 
+                  key={raffle.id} 
+                  id={raffle.id}
+                  title={raffle.name}
+                  description={raffle.description || raffle.prize_description}
+                  prize={raffle.prize_description}
+                  image={raffle.image_url || mockRaffles[0].image}
+                  ticketPrice={`${raffle.ticket_price} USDT`}
+                  ticketPriceNumeric={raffle.ticket_price}
+                  totalTickets={raffle.max_tickets}
+                  soldTickets={raffle.tickets_sold || 0}
+                  endDate={raffle.draw_date ? new Date(raffle.draw_date) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)}
+                  isActive={raffle.status === 'active'}
+                  account={account} 
+                  status={raffle.status}
+                  winnerAddress={raffle.winner_address}
+                  contract_raffle_id={raffle.contract_raffle_id}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
