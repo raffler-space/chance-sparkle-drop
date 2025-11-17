@@ -198,48 +198,50 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
         return;
       }
 
-      // Update database after successful blockchain transaction
+      // Update database after successful blockchain transaction (optional for wallet-only users)
       try {
         const { data: { user } } = await supabase.auth.getUser();
         
-        if (!user) {
-          toast.error('Please sign in to complete purchase');
-          return;
+        if (user) {
+          // Insert ticket records only if user is authenticated
+          const ticketRecords = Array.from({ length: quantity }, (_, i) => ({
+            user_id: user.id,
+            raffle_id: raffle.id,
+            tx_hash: result.txHash,
+            wallet_address: account,
+            ticket_number: raffle.ticketsSold + i + 1,
+            quantity: 1,
+            purchase_price: raffle.ticketPrice,
+          }));
+
+          const { error: ticketsError } = await supabase
+            .from('tickets')
+            .insert(ticketRecords);
+
+          if (ticketsError) throw ticketsError;
+
+          // Update raffle tickets_sold count
+          const { error: updateError } = await supabase
+            .from('raffles')
+            .update({ tickets_sold: raffle.ticketsSold + quantity })
+            .eq('id', raffle.id);
+
+          if (updateError) throw updateError;
+          
+          console.log('Database updated successfully');
+        } else {
+          console.log('No authenticated user - purchase recorded only on blockchain');
         }
-
-        // Insert ticket records
-        const ticketRecords = Array.from({ length: quantity }, (_, i) => ({
-          user_id: user.id,
-          raffle_id: raffle.id,
-          tx_hash: result.txHash,
-          wallet_address: account,
-          ticket_number: raffle.ticketsSold + i + 1,
-          quantity: 1,
-          purchase_price: raffle.ticketPrice,
-        }));
-
-        const { error: ticketsError } = await supabase
-          .from('tickets')
-          .insert(ticketRecords);
-
-        if (ticketsError) throw ticketsError;
-
-        // Update raffle tickets_sold count
-        const { error: updateError } = await supabase
-          .from('raffles')
-          .update({ tickets_sold: raffle.ticketsSold + quantity })
-          .eq('id', raffle.id);
-
-        if (updateError) throw updateError;
-
-        toast.success(`Successfully purchased ${quantity} ticket${quantity > 1 ? 's' : ''}!`);
-        setQuantity(1);
-        onClose();
-        onPurchaseSuccess?.();
       } catch (dbError) {
         console.error('Database update error:', dbError);
-        toast.error('Transaction succeeded but failed to update records. Please contact support.');
+        // Don't block success - purchase was successful on blockchain
       }
+
+      // Show success message regardless of database update
+      toast.success(`Successfully purchased ${quantity} ticket${quantity > 1 ? 's' : ''}!`);
+      setQuantity(1);
+      onClose();
+      onPurchaseSuccess?.();
     } catch (error: any) {
       console.error('Purchase error:', error);
       if (error.code === 4001) {
