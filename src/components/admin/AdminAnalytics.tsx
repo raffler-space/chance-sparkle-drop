@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
-import { Loader2, DollarSign, Users, Trophy, TrendingUp } from 'lucide-react';
+import { Loader2, DollarSign, Users, Trophy, TrendingUp, ArrowUpDown } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { useRaffleContract } from '@/hooks/useRaffleContract';
 
@@ -16,14 +17,31 @@ interface AnalyticsData {
   totalPaid?: number;
 }
 
+interface LeaderboardEntry {
+  walletAddress: string;
+  rafflesParticipated: number;
+  totalSpent: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+  ticketsPurchased: number;
+}
+
+type SortField = 'rafflesParticipated' | 'totalSpent' | 'winRate' | 'ticketsPurchased';
+type SortDirection = 'asc' | 'desc';
+
 export const AdminAnalytics = () => {
   const { account, chainId } = useWeb3();
   const raffleContract = useRaffleContract(chainId, account);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [sortField, setSortField] = useState<SortField>('totalSpent');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   useEffect(() => {
     fetchAnalytics();
+    fetchLeaderboard();
   }, [raffleContract.isContractReady]);
 
   const fetchAnalytics = async () => {
@@ -31,17 +49,14 @@ export const AdminAnalytics = () => {
       // Fetch all ticket data in one query for consistency
       const { data: tickets, error: ticketsError } = await supabase
         .from('tickets')
-        .select('purchase_price, quantity, user_id');
+        .select('purchase_price, quantity, wallet_address');
 
       if (ticketsError) {
         console.error('Error fetching tickets:', ticketsError);
       }
 
-      console.log('Fetched tickets:', tickets?.length || 0);
-      console.log('Unique user IDs:', tickets ? [...new Set(tickets.map(t => t.user_id))] : []);
-
       const totalRevenue = tickets?.reduce((sum, t) => sum + (Number(t.purchase_price) * t.quantity), 0) || 0;
-      const activeUsers = tickets ? new Set(tickets.map(t => t.user_id).filter(id => id)).size : 0;
+      const activeUsers = tickets ? new Set(tickets.map(t => t.wallet_address).filter(addr => addr)).size : 0;
 
       // Fetch raffles data
       const { data: raffles } = await supabase
@@ -99,6 +114,108 @@ export const AdminAnalytics = () => {
     }
   };
 
+  const fetchLeaderboard = async () => {
+    try {
+      // Fetch all tickets with wallet addresses
+      const { data: tickets } = await supabase
+        .from('tickets')
+        .select('wallet_address, purchase_price, quantity, raffle_id');
+
+      // Fetch raffles to determine winners
+      const { data: raffles } = await supabase
+        .from('raffles')
+        .select('id, winner_address, status');
+
+      if (!tickets) return;
+
+      // Group by wallet address
+      interface WalletStatsTemp {
+        walletAddress: string;
+        rafflesParticipated: Set<number>;
+        totalSpent: number;
+        wins: number;
+        losses: number;
+        winRate: number;
+        ticketsPurchased: number;
+      }
+
+      const walletStats = new Map<string, WalletStatsTemp>();
+
+      tickets.forEach(ticket => {
+        const addr = ticket.wallet_address;
+        if (!addr) return;
+
+        const existing = walletStats.get(addr) || {
+          walletAddress: addr,
+          rafflesParticipated: new Set<number>(),
+          totalSpent: 0,
+          wins: 0,
+          losses: 0,
+          winRate: 0,
+          ticketsPurchased: 0,
+        };
+
+        existing.rafflesParticipated.add(ticket.raffle_id);
+        existing.totalSpent += Number(ticket.purchase_price) * ticket.quantity;
+        existing.ticketsPurchased += ticket.quantity;
+
+        walletStats.set(addr, existing);
+      });
+
+      // Calculate wins and losses
+      raffles?.forEach(raffle => {
+        if (raffle.status === 'completed' && raffle.winner_address) {
+          const entry = walletStats.get(raffle.winner_address);
+          if (entry) {
+            entry.wins += 1;
+          }
+        }
+      });
+
+      // Calculate losses and win rate
+      const leaderboardData: LeaderboardEntry[] = Array.from(walletStats.values()).map(entry => {
+        const rafflesCount = entry.rafflesParticipated.size;
+        const completedRafflesParticipated = raffles?.filter(r => 
+          r.status === 'completed' && 
+          tickets.some(t => t.wallet_address === entry.walletAddress && t.raffle_id === r.id)
+        ).length || 0;
+        
+        const losses = completedRafflesParticipated - entry.wins;
+        const winRate = completedRafflesParticipated > 0 ? (entry.wins / completedRafflesParticipated) * 100 : 0;
+
+        return {
+          walletAddress: entry.walletAddress,
+          rafflesParticipated: rafflesCount,
+          totalSpent: entry.totalSpent,
+          wins: entry.wins,
+          losses: losses,
+          winRate: winRate,
+          ticketsPurchased: entry.ticketsPurchased,
+        };
+      });
+
+      setLeaderboard(leaderboardData);
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error);
+    }
+  };
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  const sortedLeaderboard = [...leaderboard].sort((a, b) => {
+    const aValue = a[sortField];
+    const bValue = b[sortField];
+    const multiplier = sortDirection === 'asc' ? 1 : -1;
+    return (aValue - bValue) * multiplier;
+  });
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -108,6 +225,10 @@ export const AdminAnalytics = () => {
   }
 
   if (!analytics) return null;
+
+  const formatWalletAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
 
   return (
     <div className="space-y-6">
@@ -206,6 +327,87 @@ export const AdminAnalytics = () => {
           </div>
         </Card>
       </div>
+
+      {/* Leaderboard Section */}
+      <Card className="glass-card border-neon-cyan/30 p-6">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-orbitron font-bold text-neon-cyan">Participant Leaderboard</h3>
+            <Trophy className="w-6 h-6 text-neon-gold" />
+          </div>
+          
+          {sortedLeaderboard.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border/50">
+                    <TableHead className="text-muted-foreground font-rajdhani">Wallet</TableHead>
+                    <TableHead 
+                      className="text-muted-foreground font-rajdhani cursor-pointer hover:text-neon-cyan"
+                      onClick={() => handleSort('rafflesParticipated')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Raffles Participated
+                        <ArrowUpDown className="w-4 h-4" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="text-muted-foreground font-rajdhani cursor-pointer hover:text-neon-cyan"
+                      onClick={() => handleSort('ticketsPurchased')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Tickets Purchased
+                        <ArrowUpDown className="w-4 h-4" />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="text-muted-foreground font-rajdhani cursor-pointer hover:text-neon-cyan"
+                      onClick={() => handleSort('totalSpent')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Total Spent (USDT)
+                        <ArrowUpDown className="w-4 h-4" />
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-muted-foreground font-rajdhani">Wins</TableHead>
+                    <TableHead className="text-muted-foreground font-rajdhani">Losses</TableHead>
+                    <TableHead 
+                      className="text-muted-foreground font-rajdhani cursor-pointer hover:text-neon-cyan"
+                      onClick={() => handleSort('winRate')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Win Rate
+                        <ArrowUpDown className="w-4 h-4" />
+                      </div>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedLeaderboard.map((entry, index) => (
+                    <TableRow key={entry.walletAddress} className="border-border/30">
+                      <TableCell className="font-mono text-sm">
+                        {formatWalletAddress(entry.walletAddress)}
+                      </TableCell>
+                      <TableCell className="font-rajdhani">{entry.rafflesParticipated}</TableCell>
+                      <TableCell className="font-rajdhani">{entry.ticketsPurchased}</TableCell>
+                      <TableCell className="font-rajdhani text-neon-gold">
+                        {entry.totalSpent.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="font-rajdhani text-green-500">{entry.wins}</TableCell>
+                      <TableCell className="font-rajdhani text-red-500">{entry.losses}</TableCell>
+                      <TableCell className="font-rajdhani text-neon-cyan">
+                        {entry.winRate.toFixed(1)}%
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-8">No participant data available yet.</p>
+          )}
+        </div>
+      </Card>
     </div>
   );
 };
