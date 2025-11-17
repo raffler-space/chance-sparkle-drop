@@ -11,6 +11,9 @@ interface AnalyticsData {
   totalRaffles: number;
   completedRaffles: number;
   averageTicketsSold: number;
+  totalReferrals?: number;
+  pendingPayouts?: number;
+  totalPaid?: number;
 }
 
 export const AdminAnalytics = () => {
@@ -63,12 +66,30 @@ export const AdminAnalytics = () => {
         ? rafflesWithBlockchainData.reduce((sum, r) => sum + r.tickets_sold, 0) / rafflesWithBlockchainData.length 
         : 0;
 
+      // Fetch referral data
+      const { data: referrals } = await supabase
+        .from('referrals')
+        .select('*');
+
+      const { data: earnings } = await supabase
+        .from('referral_earnings')
+        .select('amount, status');
+
+      const totalReferrals = referrals?.length || 0;
+      const pendingPayouts = earnings?.filter(e => e.status === 'pending')
+        .reduce((sum, e) => sum + Number(e.amount), 0) || 0;
+      const totalPaid = earnings?.filter(e => e.status === 'paid')
+        .reduce((sum, e) => sum + Number(e.amount), 0) || 0;
+
       setAnalytics({
         totalRevenue,
         activeUsers,
         totalRaffles,
         completedRaffles,
-        averageTicketsSold
+        averageTicketsSold,
+        totalReferrals,
+        pendingPayouts,
+        totalPaid,
       });
     } catch (error) {
       console.error('Error fetching analytics:', error);
@@ -139,6 +160,48 @@ export const AdminAnalytics = () => {
               <p className="text-xs text-muted-foreground">Per raffle</p>
             </div>
             <TrendingUp className="w-12 h-12 text-secondary/50" />
+          </div>
+        </Card>
+      </div>
+
+      {/* Referral Analytics Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="glass-card border-neon-purple/30 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground font-rajdhani">Total Referrals</p>
+              <p className="text-3xl font-orbitron font-bold text-neon-purple">
+                {analytics.totalReferrals || 0}
+              </p>
+              <p className="text-xs text-muted-foreground">Users referred</p>
+            </div>
+            <Users className="w-12 h-12 text-neon-purple/50" />
+          </div>
+        </Card>
+
+        <Card className="glass-card border-neon-gold/30 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground font-rajdhani">Pending Payouts</p>
+              <p className="text-3xl font-orbitron font-bold text-neon-gold">
+                {(analytics.pendingPayouts || 0).toFixed(2)}
+              </p>
+              <p className="text-xs text-muted-foreground">USDT</p>
+            </div>
+            <DollarSign className="w-12 h-12 text-neon-gold/50" />
+          </div>
+        </Card>
+
+        <Card className="glass-card border-neon-cyan/30 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground font-rajdhani">Total Paid Out</p>
+              <p className="text-3xl font-orbitron font-bold text-neon-cyan">
+                {(analytics.totalPaid || 0).toFixed(2)}
+              </p>
+              <p className="text-xs text-muted-foreground">USDT</p>
+            </div>
+            <TrendingUp className="w-12 h-12 text-neon-cyan/50" />
           </div>
         </Card>
       </div>
