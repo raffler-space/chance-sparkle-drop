@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AnimatedBackground } from '@/components/AnimatedBackground';
 import { Navbar } from '@/components/Navbar';
 import { Hero } from '@/components/Hero';
 import { RaffleCard } from '@/components/RaffleCard';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { Loader2 } from 'lucide-react';
 
 // Mock data for raffles
 const mockRaffles = [
@@ -90,6 +92,26 @@ const mockRaffles = [
 
 const Index = () => {
   const { account, isConnecting, connectWallet, disconnectWallet } = useWeb3();
+  const [raffles, setRaffles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchRaffles();
+  }, []);
+
+  const fetchRaffles = async () => {
+    const { data, error } = await supabase
+      .from('raffles')
+      .select('*')
+      .eq('show_on_home', true)
+      .eq('status', 'active')
+      .order('display_order', { ascending: true });
+
+    if (!error && data) {
+      setRaffles(data);
+    }
+    setLoading(false);
+  };
 
   return (
     <div className="min-h-screen">
