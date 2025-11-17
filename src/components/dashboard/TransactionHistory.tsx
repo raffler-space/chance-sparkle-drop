@@ -7,6 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { History, ExternalLink, Loader2, Search, Filter } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { ethers } from 'ethers';
+import { useWeb3 } from '@/hooks/useWeb3';
+import { getNetworkConfig, RAFFLE_ABI } from '@/config/contracts';
 
 interface Transaction {
   id: string;
@@ -26,36 +29,95 @@ export const TransactionHistory = ({ userId, walletAddress }: { userId: string; 
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const { chainId } = useWeb3();
 
   useEffect(() => {
     const fetchTransactions = async () => {
-      if (!userId) {
-        setLoading(false);
-        return;
+      setLoading(true);
+      
+      // Try Supabase first if user is authenticated
+      if (userId) {
+        const { data, error } = await supabase
+          .from('transactions')
+          .select(`
+            *,
+            raffles (
+              name
+            )
+          `)
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
+
+        if (!error && data && data.length > 0) {
+          setTransactions(data as any);
+          setFilteredTransactions(data as any);
+          setLoading(false);
+          return;
+        }
       }
 
-      const { data, error } = await supabase
-        .from('transactions')
-        .select(`
-          *,
-          raffles (
-            name
-          )
-        `)
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+      // Fallback to blockchain events if wallet is connected
+      if (walletAddress && chainId) {
+        try {
+          const networkConfig = getNetworkConfig(chainId);
+          if (!networkConfig) {
+            setLoading(false);
+            return;
+          }
 
-      if (error) {
-        console.error('Error fetching transactions:', error);
-      } else if (data) {
-        setTransactions(data as any);
-        setFilteredTransactions(data as any);
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const contract = new ethers.Contract(
+            networkConfig.contracts.raffle,
+            RAFFLE_ABI,
+            provider
+          );
+
+          // Fetch all raffles to map IDs to names
+          const { data: rafflesData } = await supabase
+            .from('raffles')
+            .select('id, name, contract_raffle_id');
+
+          const raffleMap = new Map(
+            rafflesData?.map(r => [r.contract_raffle_id, r.name]) || []
+          );
+
+          // Get TicketPurchased events for this user
+          const filter = contract.filters.TicketPurchased(null, walletAddress);
+          const events = await contract.queryFilter(filter);
+
+          const blockchainTxs: Transaction[] = await Promise.all(
+            events.map(async (event) => {
+              const block = await event.getBlock();
+              const raffleId = event.args?.[0]?.toNumber();
+              const quantity = event.args?.[2]?.toNumber();
+              const totalPrice = event.args?.[3];
+
+              return {
+                id: event.transactionHash,
+                tx_hash: event.transactionHash,
+                amount: totalPrice ? parseFloat(ethers.utils.formatUnits(totalPrice, 6)) : 0,
+                status: 'confirmed',
+                created_at: new Date(block.timestamp * 1000).toISOString(),
+                confirmed_at: new Date(block.timestamp * 1000).toISOString(),
+                raffles: {
+                  name: raffleMap.get(raffleId) || `Raffle #${raffleId}`,
+                },
+              };
+            })
+          );
+
+          setTransactions(blockchainTxs);
+          setFilteredTransactions(blockchainTxs);
+        } catch (error) {
+          console.error('Error fetching blockchain transactions:', error);
+        }
       }
+
       setLoading(false);
     };
 
     fetchTransactions();
-  }, [userId]);
+  }, [userId, walletAddress, chainId]);
 
   useEffect(() => {
     let filtered = transactions;
