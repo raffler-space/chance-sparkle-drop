@@ -4,9 +4,18 @@ const fs = require("fs");
 async function main() {
   console.log("Starting MockUSDT and RaffleUSDT deployment...\n");
 
-  // Sepolia Testnet Chainlink VRF V2.5 Configuration
-  const VRF_COORDINATOR = "0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B"; // VRF v2.5 Coordinator
-  const GAS_LANE = "0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae"; // 500 gwei Key Hash
+  // Network detection and configuration
+  const isMainnet = hre.network.name === "mainnet";
+  
+  // Network-specific Chainlink VRF V2.5 Configuration
+  const VRF_COORDINATOR = isMainnet 
+    ? "0xD7f86b4b8Cae7D942340FF628F82735b7a20893a" // Mainnet VRF v2.5 Coordinator
+    : "0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B"; // Sepolia VRF v2.5 Coordinator
+  
+  const GAS_LANE = isMainnet
+    ? "0x9fe0eebf5e446e3c998ec9bb19951541aee00bb90ea201ae456421a2ded86805" // Mainnet 500 gwei Key Hash
+    : "0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae"; // Sepolia 500 gwei Key Hash
+  
   const CALLBACK_GAS_LIMIT = 500000;
   
   // IMPORTANT: Replace with your actual Chainlink VRF Subscription ID
@@ -32,9 +41,12 @@ async function main() {
   console.log("Deploying from account:", deployer.address);
   console.log("Account balance:", hre.ethers.utils.formatEther(await deployer.getBalance()), "ETH\n");
 
-  // Step 1: Use existing MockUSDT
-  const EXISTING_USDT = "0x11BBef28D8effD775F9674798cd219394F9C1969";
-  console.log("1. Using existing MockUSDT at:", EXISTING_USDT);
+  // Step 1: Use existing USDT (real USDT on mainnet, MockUSDT on testnet)
+  const EXISTING_USDT = isMainnet
+    ? "0xdAC17F958D2ee523a2206206994597C13D831ec7" // Real USDT on Mainnet
+    : "0x11BBef28D8effD775F9674798cd219394F9C1969"; // MockUSDT on Sepolia
+  
+  console.log("1. Using", isMainnet ? "real USDT" : "MockUSDT", "at:", EXISTING_USDT);
   console.log("   (Skipping deployment - reusing deployed contract)\n");
 
   // Step 2: Deploy RaffleUSDT with USDT token address
