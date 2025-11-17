@@ -14,22 +14,20 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
       console.log('ChainId:', chainId);
       console.log('Account:', account);
       
-      if (!chainId || !account) {
-        console.log('Missing chainId or account');
+      // Use Sepolia as default if no chainId provided
+      const activeChainId = chainId || 11155111; // Default to Sepolia
+      
+      if (!isSupportedNetwork(activeChainId)) {
+        console.log('Unsupported network:', activeChainId);
+        if (account) {
+          toast.error('Unsupported network. Please switch to Sepolia or Ethereum Mainnet.');
+        }
         setContract(null);
         setIsContractReady(false);
         return;
       }
 
-      if (!isSupportedNetwork(chainId)) {
-        console.log('Unsupported network:', chainId);
-        toast.error('Unsupported network. Please switch to Sepolia or Ethereum Mainnet.');
-        setContract(null);
-        setIsContractReady(false);
-        return;
-      }
-
-      const networkConfig = getNetworkConfig(chainId);
+      const networkConfig = getNetworkConfig(activeChainId);
       if (!networkConfig) {
         console.log('No network config found');
         setIsContractReady(false);
@@ -42,27 +40,46 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
       // Check if contract address is set
       if (networkConfig.contracts.raffle === "0x0000000000000000000000000000000000000000") {
         console.log('Contract not deployed');
-        toast.error('Contract not deployed yet. Please deploy the contract first.');
+        if (account) {
+          toast.error('Contract not deployed yet. Please deploy the contract first.');
+        }
         setIsContractReady(false);
         return;
       }
 
       try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
-        const raffleContract = new ethers.Contract(
-          networkConfig.contracts.raffle,
-          RAFFLE_ABI,
-          signer
-        );
+        let raffleContract: ethers.Contract;
+        
+        if (account && window.ethereum) {
+          // If wallet is connected, use signer for write operations
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const signer = provider.getSigner();
+          raffleContract = new ethers.Contract(
+            networkConfig.contracts.raffle,
+            RAFFLE_ABI,
+            signer
+          );
+          setSigner(signer);
+          console.log('Contract initialized with signer');
+        } else {
+          // If no wallet connected, use read-only provider
+          const provider = new ethers.providers.JsonRpcProvider(networkConfig.rpcUrl);
+          raffleContract = new ethers.Contract(
+            networkConfig.contracts.raffle,
+            RAFFLE_ABI,
+            provider
+          );
+          setSigner(null);
+          console.log('Contract initialized in read-only mode');
+        }
 
-        console.log('Contract initialized successfully');
-        setSigner(signer);
         setContract(raffleContract);
         setIsContractReady(true);
       } catch (error) {
         console.error('Error initializing contract:', error);
-        toast.error('Failed to initialize contract');
+        if (account) {
+          toast.error('Failed to initialize contract');
+        }
         setIsContractReady(false);
       }
     };
