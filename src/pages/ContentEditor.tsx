@@ -136,7 +136,13 @@ const ContentEditor = () => {
   const fieldOrder: Record<string, string[]> = {
     home: [
       'hero_title',
-      'hero_subtitle', 
+      'hero_subtitle',
+      'hero_feature_1_title',
+      'hero_feature_1_description',
+      'hero_feature_2_title',
+      'hero_feature_2_description',
+      'hero_feature_3_title',
+      'hero_feature_3_description',
       'active_section_title',
       'active_section_subtitle',
       'upcoming_section_title',

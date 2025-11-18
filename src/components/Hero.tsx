@@ -1,7 +1,37 @@
 import { Button } from '@/components/ui/button';
 import { Sparkles, Trophy, Shield } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export const Hero = () => {
+  const [heroFeatures, setHeroFeatures] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    fetchHeroFeatures();
+  }, []);
+
+  const fetchHeroFeatures = async () => {
+    const { data, error } = await supabase
+      .from('site_content')
+      .select('*')
+      .eq('page', 'home')
+      .in('content_key', [
+        'hero_feature_1_title',
+        'hero_feature_1_description',
+        'hero_feature_2_title',
+        'hero_feature_2_description',
+        'hero_feature_3_title',
+        'hero_feature_3_description'
+      ]);
+
+    if (!error && data) {
+      const contentMap = data.reduce((acc, item) => {
+        acc[item.content_key] = item.content_value;
+        return acc;
+      }, {} as Record<string, string>);
+      setHeroFeatures(contentMap);
+    }
+  };
   return (
     <section className="min-h-screen flex items-center justify-center px-4 pt-20">
       <div className="max-w-5xl mx-auto text-center space-y-8">
@@ -42,9 +72,11 @@ export const Hero = () => {
             <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mx-auto">
               <Shield className="h-6 w-6 text-primary" />
             </div>
-            <h3 className="font-orbitron font-bold text-lg">Blockchain Secure</h3>
+            <h3 className="font-orbitron font-bold text-lg">
+              {heroFeatures.hero_feature_1_title || 'Blockchain Secure'}
+            </h3>
             <p className="text-muted-foreground text-sm">
-              Smart contracts ensure transparent and tamper-proof raffles
+              {heroFeatures.hero_feature_1_description || 'Smart contracts ensure transparent and tamper-proof raffles'}
             </p>
           </div>
 
@@ -52,9 +84,11 @@ export const Hero = () => {
             <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center mx-auto">
               <Trophy className="h-6 w-6 text-accent" />
             </div>
-            <h3 className="font-orbitron font-bold text-lg">Fair & Random</h3>
+            <h3 className="font-orbitron font-bold text-lg">
+              {heroFeatures.hero_feature_2_title || 'Fair & Random'}
+            </h3>
             <p className="text-muted-foreground text-sm">
-              Chainlink VRF ensures provably fair winner selection
+              {heroFeatures.hero_feature_2_description || 'Chainlink VRF ensures provably fair winner selection'}
             </p>
           </div>
 
@@ -62,9 +96,11 @@ export const Hero = () => {
             <div className="w-12 h-12 rounded-full bg-secondary/20 flex items-center justify-center mx-auto">
               <Sparkles className="h-6 w-6 text-secondary" />
             </div>
-            <h3 className="font-orbitron font-bold text-lg">Life Changing</h3>
+            <h3 className="font-orbitron font-bold text-lg">
+              {heroFeatures.hero_feature_3_title || 'Life Changing'}
+            </h3>
             <p className="text-muted-foreground text-sm">
-              Real life changing opportunities for an affordable entry price
+              {heroFeatures.hero_feature_3_description || 'Real life changing opportunities for an affordable entry price'}
             </p>
           </div>
         </div>
