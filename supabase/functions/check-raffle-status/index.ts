@@ -5,21 +5,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface Database {
-  public: {
-    Tables: {
-      raffles: {
-        Row: {
-          id: number
-          status: string | null
-          draw_date: string | null
-          tickets_sold: number | null
-          max_tickets: number
-          name: string
-        }
-      }
-    }
-  }
+interface Raffle {
+  id: number
+  name: string
+  status: string | null
+  draw_date: string | null
+  tickets_sold: number | null
+  max_tickets: number
 }
 
 Deno.serve(async (req) => {
@@ -28,7 +20,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient<Database>(
+    const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       {
@@ -45,7 +37,7 @@ Deno.serve(async (req) => {
       .from('raffles')
       .select('id, name, status, draw_date, tickets_sold, max_tickets')
       .in('status', ['active', 'live'])
-      .not('draw_date', 'is', null)
+      .not('draw_date', 'is', null) as { data: Raffle[] | null, error: any }
 
     if (fetchError) {
       console.error('Error fetching raffles:', fetchError)
@@ -119,8 +111,9 @@ Deno.serve(async (req) => {
     )
   } catch (error) {
     console.error('Error in check-raffle-status function:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     )
   }
