@@ -16,10 +16,15 @@ const authSchema = z.object({
   password: z.string().min(6, { message: "Password must be at least 6 characters" }).max(100, { message: "Password must be less than 100 characters" })
 });
 
+const resetPasswordSchema = z.object({
+  email: z.string().trim().email({ message: "Invalid email address" }).max(255, { message: "Email must be less than 255 characters" })
+});
+
 export default function Auth() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [resetEmail, setResetEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
@@ -138,6 +143,34 @@ export default function Auth() {
     }
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const validated = resetPasswordSchema.parse({ email: resetEmail });
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(validated.email, {
+        redirectTo: `${window.location.origin}/auth`,
+      });
+
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success('Password reset email sent! Check your inbox.');
+        setResetEmail('');
+      }
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.issues[0].message);
+      } else {
+        toast.error('An unexpected error occurred');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (checkingAuth) {
     return (
       <div className="min-h-screen bg-dark-900 text-foreground">
@@ -164,7 +197,7 @@ export default function Auth() {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 glass-card border-neon-cyan/30">
+            <TabsList className="grid w-full grid-cols-3 glass-card border-neon-cyan/30">
               <TabsTrigger 
                 value="signin"
                 className="font-rajdhani data-[state=active]:bg-neon-cyan/20 data-[state=active]:text-neon-cyan"
@@ -176,6 +209,12 @@ export default function Auth() {
                 className="font-rajdhani data-[state=active]:bg-neon-cyan/20 data-[state=active]:text-neon-cyan"
               >
                 Sign Up
+              </TabsTrigger>
+              <TabsTrigger 
+                value="reset"
+                className="font-rajdhani data-[state=active]:bg-neon-cyan/20 data-[state=active]:text-neon-cyan"
+              >
+                Reset
               </TabsTrigger>
             </TabsList>
             
@@ -259,6 +298,35 @@ export default function Auth() {
                   className="w-full bg-neon-cyan hover:bg-neon-cyan/80 text-dark-900 font-rajdhani font-bold"
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Sign Up'}
+                </Button>
+              </form>
+            </TabsContent>
+            
+            <TabsContent value="reset" className="space-y-4 mt-4">
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="reset-email" className="font-rajdhani">Email</Label>
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    required
+                    disabled={loading}
+                    className="glass-card border-neon-cyan/30 focus:border-neon-cyan font-rajdhani"
+                    maxLength={255}
+                  />
+                  <p className="text-xs text-muted-foreground font-rajdhani">
+                    Enter your email to receive a password reset link
+                  </p>
+                </div>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-neon-cyan hover:bg-neon-cyan/80 text-dark-900 font-rajdhani font-bold"
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send Reset Link'}
                 </Button>
               </form>
             </TabsContent>
