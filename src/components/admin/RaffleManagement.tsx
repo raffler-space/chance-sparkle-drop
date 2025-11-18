@@ -230,7 +230,7 @@ export const RaffleManagement = () => {
                   ...raffleData,
                   draw_date: drawDate.toISOString(),
                 },
-                contractRaffleId: raffleId,
+                contractRaffleId: raffleId !== null ? parseInt(raffleId) : null,
               },
             });
 
