@@ -54,7 +54,7 @@ export const mainnetConfig: NetworkConfig = {
     decimals: 18,
   },
   contracts: {
-    raffle: "0x227dA68261231DAA90b8beAc58b32BC3Dc7D7655",
+    raffle: "0x61ae76814a9245abE8524f33f0F1B330124B4677",
     usdt: "0xdAC17F958D2ee523a2206206994597C13D831ec7", // Real USDT
   },
   chainlink: {
