@@ -344,8 +344,26 @@ export const RaffleManagement = () => {
     try {
       setIsProcessing(true);
       
+      // Validate endTime from blockchain
+      if (!chainRaffle.endTime || chainRaffle.endTime === 0) {
+        toast.error('Invalid raffle end time from blockchain. Cannot sync.');
+        console.error('Invalid endTime:', chainRaffle.endTime);
+        setIsProcessing(false);
+        return;
+      }
+      
       // Calculate draw date (use endTime from blockchain)
       const drawDate = new Date(chainRaffle.endTime * 1000);
+      
+      // Validate the date object
+      if (isNaN(drawDate.getTime())) {
+        toast.error('Failed to parse raffle end time. Cannot sync.');
+        console.error('Invalid date from endTime:', chainRaffle.endTime);
+        setIsProcessing(false);
+        return;
+      }
+      
+      console.log('Syncing raffle with draw date:', drawDate.toISOString());
       
       const { data, error } = await supabase.functions.invoke('admin-create-raffle', {
         body: {
@@ -631,10 +649,16 @@ export const RaffleManagement = () => {
               <div className="flex gap-2 ml-4">
                 {(raffle as any)._blockchainOnly ? (
                   <>
-                    <Button
+                     <Button
                       variant="default"
                       size="sm"
-                      onClick={() => syncBlockchainRaffleToDatabase(raffle)}
+                      onClick={() => {
+                        console.log('=== Blockchain Raffle Debug ===');
+                        console.log('Full raffle object:', raffle);
+                        console.log('endTime value:', (raffle as any).endTime);
+                        console.log('endTime type:', typeof (raffle as any).endTime);
+                        syncBlockchainRaffleToDatabase(raffle);
+                      }}
                       disabled={isProcessing}
                       className="bg-neon-cyan text-background hover:bg-neon-cyan/90"
                     >
