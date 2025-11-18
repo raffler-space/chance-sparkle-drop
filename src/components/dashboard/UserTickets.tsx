@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Ticket as TicketIcon, ExternalLink, Loader2, Clock, ChevronDown, Trophy, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Progress } from '@/components/ui/progress';
 import { formatDistanceToNow } from 'date-fns';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { useRaffleContract } from '@/hooks/useRaffleContract';
@@ -26,6 +27,9 @@ interface Ticket {
     prize_description: string;
     contract_raffle_id?: number | null;
     winner_address?: string | null;
+    draw_date?: string | null;
+    max_tickets: number;
+    tickets_sold?: number | null;
   };
 }
 
@@ -41,12 +45,50 @@ export const UserTickets = ({ userId }: { userId: string }) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedRaffles, setExpandedRaffles] = useState<Set<number>>(new Set());
+  const [timeRemaining, setTimeRemaining] = useState<{ [key: number]: string }>({});
   const { account, chainId } = useWeb3();
   const { getUserEntries, isContractReady } = useRaffleContract(chainId, account);
 
   useEffect(() => {
     fetchTickets();
   }, [userId, account, isContractReady]);
+
+  useEffect(() => {
+    const updateTimers = () => {
+      const newTimeRemaining: { [key: number]: string } = {};
+      
+      tickets.forEach(ticket => {
+        if (ticket.raffles.draw_date && ticket.raffles.status === 'active') {
+          const endDate = new Date(ticket.raffles.draw_date);
+          const now = new Date();
+          const diff = endDate.getTime() - now.getTime();
+          
+          if (diff > 0) {
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+            
+            if (days > 0) {
+              newTimeRemaining[ticket.raffles.id] = `${days}d ${hours}h ${minutes}m`;
+            } else if (hours > 0) {
+              newTimeRemaining[ticket.raffles.id] = `${hours}h ${minutes}m ${seconds}s`;
+            } else {
+              newTimeRemaining[ticket.raffles.id] = `${minutes}m ${seconds}s`;
+            }
+          } else {
+            newTimeRemaining[ticket.raffles.id] = 'Ended';
+          }
+        }
+      });
+      
+      setTimeRemaining(newTimeRemaining);
+    };
+
+    updateTimers();
+    const interval = setInterval(updateTimers, 1000);
+    return () => clearInterval(interval);
+  }, [tickets]);
 
   const fetchTickets = async () => {
     setLoading(true);
@@ -62,7 +104,10 @@ export const UserTickets = ({ userId }: { userId: string }) => {
           status,
           prize_description,
           contract_raffle_id,
-          winner_address
+          winner_address,
+          draw_date,
+          max_tickets,
+          tickets_sold
         )
       `)
       .eq('user_id', userId)
@@ -118,6 +163,9 @@ export const UserTickets = ({ userId }: { userId: string }) => {
                   prize_description: raffle.prize_description,
                   contract_raffle_id: raffle.contract_raffle_id,
                   winner_address: raffle.winner_address,
+                  draw_date: raffle.draw_date,
+                  max_tickets: raffle.max_tickets,
+                  tickets_sold: raffle.tickets_sold,
                 },
               });
             });
@@ -247,6 +295,31 @@ export const UserTickets = ({ userId }: { userId: string }) => {
                       {getStatusBadge(group.raffle.status)}
                       <ChevronDown className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                     </div>
+                  </div>
+
+                  {/* Countdown Timer */}
+                  {group.raffle.status === 'active' && group.raffle.draw_date && (
+                    <div className="mb-3 flex items-center gap-2 text-sm">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Ends in:</span>
+                      <span className="font-rajdhani font-bold text-neon-cyan">
+                        {timeRemaining[group.raffle.id] || 'Calculating...'}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Ticket Sales Progress */}
+                  <div className="mb-4 space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Tickets Sold</span>
+                      <span className="font-rajdhani font-bold">
+                        {group.raffle.tickets_sold || 0} / {group.raffle.max_tickets}
+                      </span>
+                    </div>
+                    <Progress 
+                      value={((group.raffle.tickets_sold || 0) / group.raffle.max_tickets) * 100} 
+                      className="h-2"
+                    />
                   </div>
 
                   <div className="grid grid-cols-3 gap-4 text-sm">
