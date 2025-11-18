@@ -110,8 +110,8 @@ const Index = () => {
       .order('display_order', { ascending: true });
 
     if (!error && data) {
-      // Separate active and draft raffles
-      const active = data.filter(raffle => raffle.status === 'active');
+      // Separate active/completed and draft raffles
+      const active = data.filter(raffle => raffle.status === 'active' || raffle.status === 'completed');
       const upcoming = data.filter(raffle => raffle.status === 'draft');
       setActiveRaffles(active);
       setUpcomingRaffles(upcoming);
