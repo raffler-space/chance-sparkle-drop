@@ -624,7 +624,7 @@ export const RaffleManagement = () => {
                   step="0.01"
                   value={formData.ticket_price}
                   onChange={(e) => setFormData({ ...formData, ticket_price: e.target.value })}
-                  disabled={editingRaffle?.contract_raffle_id !== null}
+                  disabled={editingRaffle !== null && editingRaffle.contract_raffle_id !== null}
                   required
                 />
               </div>
@@ -636,7 +636,7 @@ export const RaffleManagement = () => {
                   type="number"
                   value={formData.max_tickets}
                   onChange={(e) => setFormData({ ...formData, max_tickets: e.target.value })}
-                  disabled={editingRaffle?.contract_raffle_id !== null}
+                  disabled={editingRaffle !== null && editingRaffle.contract_raffle_id !== null}
                   required
                 />
               </div>
@@ -664,7 +664,7 @@ export const RaffleManagement = () => {
                 value={formData.nft_collection_address}
                 onChange={(e) => setFormData({ ...formData, nft_collection_address: e.target.value })}
                 placeholder="0x..."
-                disabled={editingRaffle?.contract_raffle_id !== null}
+                disabled={editingRaffle !== null && editingRaffle.contract_raffle_id !== null}
                 required
               />
             </div>
