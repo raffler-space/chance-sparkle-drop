@@ -1,10 +1,31 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schema
+const raffleDataSchema = z.object({
+  name: z.string().min(1).max(200),
+  description: z.string().max(1000).optional().nullable(),
+  prize_description: z.string().min(1).max(500),
+  ticket_price: z.number().positive().max(1000000),
+  max_tickets: z.number().int().positive().max(1000000),
+  nft_collection_address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+  draw_date: z.string().datetime().optional().nullable(),
+  image_url: z.string().url().max(500).optional().nullable(),
+  detailed_description: z.string().max(5000).optional().nullable(),
+  rules: z.string().max(5000).optional().nullable(),
+  gallery_images: z.array(z.string().url()).optional().nullable(),
+});
+
+const createRaffleSchema = z.object({
+  raffleData: raffleDataSchema,
+  contractRaffleId: z.number().int().nonnegative().optional().nullable(),
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -45,16 +66,22 @@ serve(async (req) => {
       );
     }
 
-    // Parse request body
-    const { raffleData, contractRaffleId } = await req.json();
-
-    // Validate required fields
-    if (!raffleData || !raffleData.name || !raffleData.ticket_price || !raffleData.max_tickets) {
+    // Parse and validate input
+    const body = await req.json();
+    const validationResult = createRaffleSchema.safeParse(body);
+    
+    if (!validationResult.success) {
+      console.error('Validation error:', validationResult.error);
       return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: validationResult.error.errors 
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const { raffleData, contractRaffleId } = validationResult.data;
 
     // Insert raffle into database
     const { data: raffle, error: insertError } = await supabaseClient

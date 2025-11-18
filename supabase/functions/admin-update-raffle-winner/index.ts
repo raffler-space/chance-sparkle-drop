@@ -1,10 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schema
+const updateWinnerSchema = z.object({
+  raffleId: z.number().int().positive(),
+  winnerAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+  drawTxHash: z.string().regex(/^0x[a-fA-F0-9]{64}$/),
+  status: z.enum(['active', 'drawing', 'completed', 'cancelled', 'Refunding']).optional(),
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -45,43 +54,53 @@ serve(async (req) => {
       );
     }
 
-    // Parse request body
-    const { raffleId, winnerAddress, drawTxHash, status } = await req.json();
-
-    // Validate required fields
-    if (!raffleId) {
+    // Parse and validate input
+    const body = await req.json();
+    const validationResult = updateWinnerSchema.safeParse(body);
+    
+    if (!validationResult.success) {
+      console.error('Validation error:', validationResult.error);
       return new Response(
-        JSON.stringify({ error: 'Missing raffle ID' }),
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: validationResult.error.errors 
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Update raffle with winner information
-    const updateData: any = {};
-    if (winnerAddress) updateData.winner_address = winnerAddress;
-    if (drawTxHash) updateData.draw_tx_hash = drawTxHash;
-    if (status) updateData.status = status;
-    if (status === 'completed') updateData.completed_at = new Date().toISOString();
+    const { raffleId, winnerAddress, drawTxHash, status } = validationResult.data;
 
-    const { data: raffle, error: updateError } = await supabaseClient
+    // Update raffle with winner information
+    const updateData: any = {
+      winner_address: winnerAddress,
+      draw_tx_hash: drawTxHash,
+      completed_at: new Date().toISOString(),
+    };
+
+    if (status) {
+      updateData.status = status;
+    }
+
+    const { data, error } = await supabaseClient
       .from('raffles')
       .update(updateData)
       .eq('id', raffleId)
       .select()
       .single();
 
-    if (updateError) {
-      console.error('Error updating raffle:', updateError);
+    if (error) {
+      console.error('Error updating raffle:', error);
       return new Response(
-        JSON.stringify({ error: 'Failed to update raffle', details: updateError.message }),
+        JSON.stringify({ error: 'Failed to update raffle', details: error.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Raffle updated successfully:', raffle.id);
+    console.log('Raffle updated successfully:', raffleId);
 
     return new Response(
-      JSON.stringify({ success: true, raffle }),
+      JSON.stringify({ success: true, raffle: data }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
