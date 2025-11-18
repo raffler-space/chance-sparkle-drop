@@ -242,6 +242,63 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
     }
   }, [contract]);
 
+  // Get total raffle count from contract
+  const getRaffleCounter = useCallback(async () => {
+    if (!contract) {
+      console.error('Contract not initialized');
+      return 0;
+    }
+
+    try {
+      const counter = await contract.raffleCounter();
+      return counter.toNumber();
+    } catch (error) {
+      console.error('Error fetching raffle counter:', error);
+      return 0;
+    }
+  }, [contract]);
+
+  // Fetch all raffles from the blockchain
+  const getAllRafflesFromChain = useCallback(async () => {
+    if (!contract) {
+      console.error('Contract not initialized');
+      return [];
+    }
+
+    try {
+      const counter = await getRaffleCounter();
+      console.log(`Fetching ${counter} raffles from blockchain...`);
+      
+      const raffles = [];
+      for (let i = 0; i < counter; i++) {
+        try {
+          const raffleInfo = await contract.raffles(i);
+          raffles.push({
+            contractRaffleId: i,
+            name: raffleInfo.name,
+            description: raffleInfo.description,
+            ticketPrice: ethers.utils.formatUnits(raffleInfo.ticketPrice, 6),
+            maxTickets: raffleInfo.maxTickets.toNumber(),
+            ticketsSold: raffleInfo.ticketsSold.toNumber(),
+            endTime: raffleInfo.endTime.toNumber(),
+            isActive: raffleInfo.isActive,
+            winner: raffleInfo.winner,
+            vrfRequested: raffleInfo.vrfRequested,
+            nftContract: raffleInfo.nftContract,
+          });
+        } catch (error) {
+          console.error(`Error fetching raffle ${i}:`, error);
+        }
+      }
+      
+      console.log(`Fetched ${raffles.length} raffles from blockchain`);
+      return raffles;
+    } catch (error) {
+      console.error('Error fetching all raffles from chain:', error);
+      return [];
+    }
+  }, [contract, getRaffleCounter]);
+
   // Get raffle details from contract
   const getRaffleDetails = useCallback(async (raffleId: number) => {
     if (!contract) {
@@ -453,5 +510,7 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
     getRaffleInfo,
     getUserEntries,
     checkOwner,
+    getRaffleCounter,
+    getAllRafflesFromChain,
   };
 };

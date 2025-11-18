@@ -65,39 +65,99 @@ export const RaffleManagement = () => {
 
   useEffect(() => {
     fetchRaffles();
-  }, [raffleContract.isContractReady]);
+  }, [raffleContract.isContractReady, chainId]);
 
   const fetchRaffles = async () => {
-    const { data, error } = await supabase
+    // First, fetch all raffles from the blockchain if contract is ready
+    let chainRaffles: any[] = [];
+    if (raffleContract.isContractReady && raffleContract.contract && chainId) {
+      try {
+        console.log(`Fetching all raffles from ${chainId === 1 ? 'Mainnet' : 'Sepolia'} contract...`);
+        chainRaffles = await raffleContract.getAllRafflesFromChain();
+        console.log(`Found ${chainRaffles.length} raffles on blockchain`);
+      } catch (error) {
+        console.error('Error fetching raffles from blockchain:', error);
+        toast.error('Failed to fetch raffles from blockchain');
+      }
+    }
+
+    // Then fetch from database
+    const { data: dbRaffles, error } = await supabase
       .from('raffles')
       .select('*')
       .order('display_order', { ascending: true });
 
-    if (!error && data) {
-      let updatedRaffles = data;
-
-      // Fetch blockchain data only if contract is ready
-      if (raffleContract.isContractReady && raffleContract.contract) {
-        const rafflesWithBlockchainData = await Promise.all(
-          data.map(async (raffle) => {
-            if (raffle.contract_raffle_id !== null) {
-              try {
-                const info = await raffleContract.getRaffleInfo(raffle.contract_raffle_id);
-                if (info) {
-                  return { ...raffle, tickets_sold: info.ticketsSold };
-                }
-              } catch (error) {
-                console.error(`Error fetching blockchain data for raffle ${raffle.id}:`, error);
-              }
-            }
-            return raffle;
-          })
-        );
-        updatedRaffles = rafflesWithBlockchainData;
-      }
-
-      setRaffles(updatedRaffles);
+    if (error) {
+      console.error('Error fetching raffles from database:', error);
+      setLoading(false);
+      return;
     }
+
+    // Merge blockchain and database data
+    const mergedRaffles = [];
+    
+    // First, add all database raffles and update with blockchain data
+    for (const dbRaffle of dbRaffles || []) {
+      const chainRaffle = chainRaffles.find(
+        (cr) => cr.contractRaffleId === dbRaffle.contract_raffle_id
+      );
+      
+      if (chainRaffle) {
+        // Update with fresh blockchain data
+        mergedRaffles.push({
+          ...dbRaffle,
+          tickets_sold: chainRaffle.ticketsSold,
+          winner_address: chainRaffle.winner !== ethers.constants.AddressZero ? chainRaffle.winner : null,
+          status: !chainRaffle.isActive ? 'completed' : dbRaffle.status,
+        });
+      } else {
+        // Keep database raffle as-is (might be a draft)
+        mergedRaffles.push(dbRaffle);
+      }
+    }
+
+    // Then, check for any blockchain raffles not in database
+    for (const chainRaffle of chainRaffles) {
+      const existsInDb = (dbRaffles || []).some(
+        (dbRaffle) => dbRaffle.contract_raffle_id === chainRaffle.contractRaffleId
+      );
+      
+      if (!existsInDb) {
+        console.warn(`⚠️ Raffle #${chainRaffle.contractRaffleId} exists on blockchain but not in database!`);
+        toast.error(
+          `Found raffle #${chainRaffle.contractRaffleId} "${chainRaffle.name}" on blockchain but missing in database. Please sync or add manually.`,
+          { duration: 8000 }
+        );
+        
+        // Add as a "blockchain-only" raffle with special flag
+        mergedRaffles.push({
+          id: -chainRaffle.contractRaffleId, // Negative ID to indicate it's not in DB
+          contract_raffle_id: chainRaffle.contractRaffleId,
+          name: chainRaffle.name + ' ⚠️ (On-chain only)',
+          description: chainRaffle.description,
+          prize_description: 'See blockchain data',
+          ticket_price: parseFloat(chainRaffle.ticketPrice),
+          max_tickets: chainRaffle.maxTickets,
+          tickets_sold: chainRaffle.ticketsSold,
+          nft_collection_address: chainRaffle.nftContract,
+          status: chainRaffle.isActive ? 'active' : 'completed',
+          winner_address: chainRaffle.winner !== ethers.constants.AddressZero ? chainRaffle.winner : null,
+          image_url: null,
+          created_at: new Date().toISOString(),
+          draw_tx_hash: null,
+          launch_time: null,
+          display_order: 999,
+          show_on_home: false,
+          show_on_raffles: false,
+          detailed_description: null,
+          rules: null,
+          // Flag to identify blockchain-only raffles
+          _blockchainOnly: true,
+        });
+      }
+    }
+
+    setRaffles(mergedRaffles);
     setLoading(false);
   };
 
@@ -280,6 +340,47 @@ export const RaffleManagement = () => {
     setDialogOpen(true);
   };
 
+  const syncBlockchainRaffleToDatabase = async (chainRaffle: any) => {
+    try {
+      setIsProcessing(true);
+      
+      // Calculate draw date (use endTime from blockchain)
+      const drawDate = new Date(chainRaffle.endTime * 1000);
+      
+      const { data, error } = await supabase.functions.invoke('admin-create-raffle', {
+        body: {
+          raffleData: {
+            name: chainRaffle.name.replace(' ⚠️ (On-chain only)', ''),
+            description: chainRaffle.description || '',
+            prize_description: 'Synced from blockchain',
+            ticket_price: parseFloat(chainRaffle.ticketPrice),
+            max_tickets: chainRaffle.maxTickets,
+            nft_collection_address: chainRaffle.nftContract,
+            image_url: null,
+            status: chainRaffle.isActive ? 'active' : 'completed',
+            draw_date: drawDate.toISOString(),
+            show_on_home: false,
+            show_on_raffles: false,
+          },
+          contractRaffleId: chainRaffle.contractRaffleId,
+        },
+      });
+
+      if (error || !data?.success) {
+        toast.error('Failed to sync raffle to database');
+        console.error('Edge function error:', error);
+      } else {
+        toast.success('Raffle synced to database successfully!');
+        fetchRaffles();
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to sync raffle');
+      console.error('Error:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this raffle?')) return;
 
@@ -414,6 +515,16 @@ export const RaffleManagement = () => {
                   >
                     {raffle.status?.toUpperCase()}
                   </Badge>
+                  {raffle.contract_raffle_id !== null && (
+                    <Badge variant="outline" className="font-rajdhani border-neon-cyan/30">
+                      On-chain #{raffle.contract_raffle_id}
+                    </Badge>
+                  )}
+                  {(raffle as any)._blockchainOnly && (
+                    <Badge variant="destructive" className="font-rajdhani animate-pulse">
+                      ⚠️ Not in Database
+                    </Badge>
+                  )}
                   {raffle.status === 'draft' && (
                     <Button
                       size="sm"
@@ -518,22 +629,50 @@ export const RaffleManagement = () => {
               </div>
 
               <div className="flex gap-2 ml-4">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => handleEdit(raffle)}
-                  className="border-neon-cyan/30 hover:border-neon-cyan"
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => handleDelete(raffle.id)}
-                  className="border-destructive/30 hover:border-destructive"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                {(raffle as any)._blockchainOnly ? (
+                  <>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => syncBlockchainRaffleToDatabase(raffle)}
+                      disabled={isProcessing}
+                      className="bg-neon-cyan text-background hover:bg-neon-cyan/90"
+                    >
+                      {isProcessing ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Syncing...
+                        </>
+                      ) : (
+                        'Sync to Database'
+                      )}
+                    </Button>
+                    <Badge variant="outline" className="font-rajdhani text-xs">
+                      Contract #{raffle.contract_raffle_id}
+                    </Badge>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleEdit(raffle)}
+                      className="border-neon-cyan/30 hover:border-neon-cyan"
+                      disabled={raffle.id < 0}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleDelete(raffle.id)}
+                      className="border-destructive/30 hover:border-destructive"
+                      disabled={raffle.id < 0}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </Card>
