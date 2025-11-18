@@ -182,7 +182,11 @@ export default function Raffles() {
     setIsPurchaseModalOpen(true);
   };
 
-  const getStatusBadge = (status: string, drawDate: string | null, ticketsSold: number) => {
+  const getStatusBadge = (status: string, drawDate: string | null, ticketsSold: number, launchTime: string | null) => {
+    // Check if raffle has a future launch time
+    if (launchTime && new Date(launchTime) > new Date()) {
+      return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">📅 UPCOMING</Badge>;
+    }
     if (status === 'draft') {
       return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">📅 UPCOMING</Badge>;
     }
@@ -281,7 +285,7 @@ export default function Raffles() {
                     <Ticket className="w-20 h-20 text-neon-cyan/40" />
                   )}
                   <div className="absolute top-3 right-3">
-                    {getStatusBadge(raffle.status, raffle.draw_date, raffle.tickets_sold)}
+                    {getStatusBadge(raffle.status, raffle.draw_date, raffle.tickets_sold, raffle.launch_time)}
                   </div>
                 </div>
 
