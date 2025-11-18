@@ -8,6 +8,8 @@ import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
 import Raffles from "./pages/Raffles";
+import RaffleDetail from "./pages/RaffleDetail";
+import ContentEditor from "./pages/ContentEditor";
 import Auth from "./pages/Auth";
 import HowItWorks from "./pages/HowItWorks";
 import Referrals from "./pages/Referrals";
@@ -30,6 +32,8 @@ const AppContent = () => {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/raffles" element={<Raffles />} />
+            <Route path="/raffle/:id" element={<RaffleDetail />} />
+            <Route path="/content-editor" element={<ContentEditor />} />
             <Route path="/auth" element={<Auth />} />
             <Route 
               path="/how-it-works" 
