@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Wallet, Menu, X, LayoutDashboard, Shield, LogIn, LogOut, UserCircle, Gift, Mail } from 'lucide-react';
+import { Wallet, Menu, X, LayoutDashboard, Shield, LogIn, LogOut, UserCircle, Gift, Mail, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -165,6 +165,14 @@ export const Navbar = ({ onConnectWallet, onDisconnectWallet, walletAddress, isC
                       Referrals
                     </Link>
                   </DropdownMenuItem>
+                  {user && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/settings" className="cursor-pointer font-rajdhani">
+                        <Settings className="mr-2 h-4 w-4" />
+                        Settings
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={onDisconnectWallet} className="cursor-pointer font-rajdhani">
                     <Wallet className="mr-2 h-4 w-4" />
