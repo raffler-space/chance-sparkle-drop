@@ -107,6 +107,8 @@ export const RaffleCard = ({
               ? 'bg-neon-gold/20 text-neon-gold border-neon-gold/30'
               : status === 'drawing'
               ? 'bg-neon-cyan/20 text-neon-cyan border-neon-cyan/30'
+              : status === 'refunding'
+              ? 'bg-orange-500/20 text-orange-400 border-orange-500/30'
               : isUpcoming
               ? 'bg-neon-cyan/20 text-neon-cyan border-neon-cyan/30'
               : isActive
@@ -114,7 +116,7 @@ export const RaffleCard = ({
               : 'bg-muted text-muted-foreground'
           }`}
         >
-          {status === 'completed' ? '✓ Completed' : status === 'drawing' ? 'Drawing' : isUpcoming ? '📅 Upcoming' : isActive ? '🔴 LIVE' : 'Ended'}
+          {status === 'completed' ? '✓ Completed' : status === 'drawing' ? 'Drawing' : status === 'refunding' ? '💸 Refunding' : isUpcoming ? '📅 Upcoming' : isActive ? '🔴 LIVE' : 'Ended'}
         </Badge>
       </Link>
 
