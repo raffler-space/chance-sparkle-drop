@@ -95,7 +95,7 @@ const RaffleDetail = () => {
     if (raffle.tickets_sold >= raffle.max_tickets) {
       return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">🔥 SOLD OUT</Badge>;
     }
-    return <Badge className="bg-primary/20 text-primary border-primary/30">🎯 ACTIVE</Badge>;
+    return <Badge className="bg-red-500/20 text-red-400 border-red-500/30">🔴 LIVE</Badge>;
   };
 
   const calculateProgress = () => {
