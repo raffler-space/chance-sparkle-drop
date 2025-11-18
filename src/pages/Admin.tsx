@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Navbar } from '@/components/Navbar';
 import { AnimatedBackground } from '@/components/AnimatedBackground';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, Plus, Trophy, Loader2, BarChart3, Wallet, Package, DollarSign, FileText } from 'lucide-react';
+import { Shield, Plus, Trophy, Loader2, BarChart3, Wallet, Package, DollarSign, FileText, RefreshCcw } from 'lucide-react';
 import { RaffleManagement } from '@/components/admin/RaffleManagement';
 import { WinnerSelection } from '@/components/admin/WinnerSelection';
 import { AdminAnalytics } from '@/components/admin/AdminAnalytics';
@@ -12,6 +12,7 @@ import { WithdrawFees } from '@/components/admin/WithdrawFees';
 import { PrizeClaimsManager } from '@/components/admin/PrizeClaimsManager';
 import ReferralPayouts from '@/components/admin/ReferralPayouts';
 import RaffleDetailsManager from '@/components/admin/RaffleDetailsManager';
+import { RefundManager } from '@/components/admin/RefundManager';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { toast } from 'sonner';
 
@@ -145,6 +146,13 @@ export default function Admin() {
               <FileText className="w-4 h-4 mr-2" />
               Raffle Details
             </TabsTrigger>
+            <TabsTrigger 
+              value="refunds"
+              className="font-rajdhani data-[state=active]:bg-destructive/20 data-[state=active]:text-destructive"
+            >
+              <RefreshCcw className="w-4 h-4 mr-2" />
+              Refunds
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="raffles" className="space-y-4">
@@ -173,6 +181,10 @@ export default function Admin() {
 
           <TabsContent value="details" className="space-y-4">
             <RaffleDetailsManager />
+          </TabsContent>
+
+          <TabsContent value="refunds" className="space-y-4">
+            <RefundManager />
           </TabsContent>
         </Tabs>
       </main>
