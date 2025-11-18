@@ -11,7 +11,6 @@ import Raffles from "./pages/Raffles";
 import RaffleDetail from "./pages/RaffleDetail";
 import ContentEditor from "./pages/ContentEditor";
 import Auth from "./pages/Auth";
-import Settings from "./pages/Settings";
 import HowItWorks from "./pages/HowItWorks";
 import Referrals from "./pages/Referrals";
 import ReferralRedirect from "./pages/ReferralRedirect";
@@ -36,8 +35,7 @@ const AppContent = () => {
             <Route path="/raffle/:id" element={<RaffleDetail />} />
             <Route path="/content-editor" element={<ContentEditor />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route 
+            <Route
               path="/how-it-works"
               element={
                 <HowItWorks 
