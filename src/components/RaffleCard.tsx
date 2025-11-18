@@ -108,7 +108,7 @@ export const RaffleCard = ({
               : status === 'drawing'
               ? 'bg-neon-cyan/20 text-neon-cyan border-neon-cyan/30'
               : isUpcoming
-              ? 'bg-secondary/20 text-secondary border-secondary/30'
+              ? 'bg-neon-cyan/20 text-neon-cyan border-neon-cyan/30'
               : isActive
               ? 'bg-primary text-primary-foreground'
               : 'bg-muted text-muted-foreground'
