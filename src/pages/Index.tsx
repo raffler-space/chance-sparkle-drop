@@ -95,9 +95,11 @@ const Index = () => {
   const [activeRaffles, setActiveRaffles] = useState<any[]>([]);
   const [upcomingRaffles, setUpcomingRaffles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [featuresContent, setFeaturesContent] = useState<any>({});
 
   useEffect(() => {
     fetchRaffles();
+    fetchFeaturesContent();
   }, []);
 
   const fetchRaffles = async () => {
@@ -115,6 +117,30 @@ const Index = () => {
       setUpcomingRaffles(upcoming);
     }
     setLoading(false);
+  };
+
+  const fetchFeaturesContent = async () => {
+    const { data, error } = await supabase
+      .from('site_content')
+      .select('*')
+      .eq('page', 'home')
+      .in('content_key', [
+        'features_section_title',
+        'feature_1_icon', 'feature_1_title', 'feature_1_description',
+        'feature_2_icon', 'feature_2_title', 'feature_2_description',
+        'feature_3_icon', 'feature_3_title', 'feature_3_description',
+        'feature_4_icon', 'feature_4_title', 'feature_4_description',
+        'feature_5_icon', 'feature_5_title', 'feature_5_description',
+        'feature_6_icon', 'feature_6_title', 'feature_6_description'
+      ]);
+
+    if (!error && data) {
+      const contentMap = data.reduce((acc, item) => {
+        acc[item.content_key] = item.content_value;
+        return acc;
+      }, {} as Record<string, string>);
+      setFeaturesContent(contentMap);
+    }
   };
 
   return (
@@ -223,27 +249,24 @@ const Index = () => {
         <div className="max-w-7xl mx-auto">
           <div className="glass-effect p-8 rounded-xl">
             <h2 className="text-4xl sm:text-5xl font-orbitron font-bold text-center text-accent mb-12">
-              ⚡ Why Choose Raffler?
+              {featuresContent.features_section_title || '⚡ Why Choose Raffler?'}
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {[
-                { icon: '🔒', title: 'Blockchain Secure', desc: 'Smart contracts ensure transparent and tamper-proof raffles' },
-                { icon: '💰', title: 'Auto Refunds', desc: "Didn't reach target? Get your money back automatically" },
-                { icon: '🌍', title: 'Global Delivery', desc: 'Winners worldwide - we handle shipping and logistics' },
-                { icon: '🎯', title: 'Fair & Random', desc: 'Chainlink VRF ensures provably fair winner selection' },
-                { icon: '✨', title: 'Life Changing', desc: 'Real life changing opportunities for an affordable entry price.' },
-                { icon: '🌐', title: 'Community Driven', desc: 'Join a growing community of enthusiasts and dreamers.' }
-              ].map((feature, index) => (
+              {[1, 2, 3, 4, 5, 6].map((num) => (
                 <div
-                  key={index}
+                  key={num}
                   className="p-6 bg-background/30 rounded-xl border border-border/50 hover:scale-105 transition-transform"
                 >
-                  <div className="text-5xl mb-4">{feature.icon}</div>
+                  <div className="text-5xl mb-4">
+                    {featuresContent[`feature_${num}_icon`] || ''}
+                  </div>
                   <h3 className="font-orbitron text-xl text-primary mb-3">
-                    {feature.title}
+                    {featuresContent[`feature_${num}_title`] || ''}
                   </h3>
-                  <p className="text-muted-foreground">{feature.desc}</p>
+                  <p className="text-muted-foreground">
+                    {featuresContent[`feature_${num}_description`] || ''}
+                  </p>
                 </div>
               ))}
             </div>
