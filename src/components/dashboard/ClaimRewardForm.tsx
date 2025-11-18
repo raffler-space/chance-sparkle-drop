@@ -34,12 +34,20 @@ export const ClaimRewardForm = ({
 
     setIsSubmitting(true);
     try {
-      // Store claim request in database (you'll need to create this table)
+      // Verify user is authenticated
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        toast.error('You must be logged in to claim your prize');
+        return;
+      }
+
+      // Store claim request in database using authenticated user's ID
       const { error } = await supabase
         .from('prize_claims')
         .insert({
           raffle_id: raffleId,
-          user_id: userId,
+          user_id: user.id,
           delivery_info: deliveryInfo.trim(),
           status: 'pending'
         });
