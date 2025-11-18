@@ -132,6 +132,23 @@ const ContentEditor = () => {
     return null;
   }
 
+  // Define field ordering for better UX
+  const fieldOrder: Record<string, string[]> = {
+    home: [
+      'hero_title',
+      'hero_subtitle', 
+      'active_section_title',
+      'active_section_subtitle',
+      'upcoming_section_title',
+      'upcoming_section_subtitle'
+    ],
+    legal: [
+      'terms_of_service',
+      'privacy_policy',
+      'disclaimer'
+    ]
+  };
+
   const groupedContent = content.reduce((acc, item) => {
     if (!acc[item.page]) {
       acc[item.page] = [];
@@ -139,6 +156,25 @@ const ContentEditor = () => {
     acc[item.page].push(item);
     return acc;
   }, {} as Record<string, SiteContent[]>);
+
+  // Sort each page's content by the defined field order
+  Object.keys(groupedContent).forEach(page => {
+    const order = fieldOrder[page] || [];
+    groupedContent[page].sort((a, b) => {
+      const indexA = order.indexOf(a.content_key);
+      const indexB = order.indexOf(b.content_key);
+      
+      // If both fields are in the order array, sort by their position
+      if (indexA !== -1 && indexB !== -1) {
+        return indexA - indexB;
+      }
+      // If only one is in the order array, prioritize it
+      if (indexA !== -1) return -1;
+      if (indexB !== -1) return 1;
+      // Otherwise, sort alphabetically
+      return a.content_key.localeCompare(b.content_key);
+    });
+  });
 
   return (
     <div className="container mx-auto px-4 py-8">

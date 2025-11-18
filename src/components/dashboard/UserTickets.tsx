@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -141,10 +142,13 @@ export const UserTickets = ({ userId }: { userId: string }) => {
       {tickets.map((ticket) => (
         <Card key={ticket.id} className="glass-card border-neon-cyan/30 p-6 hover:border-neon-cyan/60 transition-all">
           <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-2">
+            <Link 
+              to={`/raffle/${ticket.raffles.id}`}
+              className="flex items-center gap-2 hover:text-neon-cyan transition-colors"
+            >
               <TicketIcon className="w-5 h-5 text-neon-cyan" />
               <h3 className="font-orbitron font-bold text-lg">#{ticket.ticket_number}</h3>
-            </div>
+            </Link>
             <Badge 
               variant={ticket.raffles.status === 'active' ? 'default' : 'secondary'}
               className="font-rajdhani"
