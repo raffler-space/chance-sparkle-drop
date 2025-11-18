@@ -59,7 +59,7 @@ export const mainnetConfig: NetworkConfig = {
   },
   chainlink: {
     vrfCoordinator: "0xD7f86b4b8Cae7D942340FF628F82735b7a20893a", // VRF v2.5
-    gasLane: "0x9fe0eebf5e446e3c998ec9bb19951541aee00bb90ea201ae456421a2ded86805", // 500 gwei Key Hash
+    gasLane: "0x3fd2fec10d06ee8f65e7f2e95f5c56511359ece3f33960ad8a866ae24a8ff10b", // 500 gwei Key Hash
   },
 };
 
