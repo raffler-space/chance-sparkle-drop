@@ -54,13 +54,16 @@ export type Database = {
       }
       raffles: {
         Row: {
+          additional_info: Json | null
           completed_at: string | null
           contract_raffle_id: number | null
           created_at: string
           description: string | null
+          detailed_description: string | null
           display_order: number | null
           draw_date: string | null
           draw_tx_hash: string | null
+          gallery_images: string[] | null
           id: number
           image_url: string | null
           launch_time: string | null
@@ -68,6 +71,7 @@ export type Database = {
           name: string
           nft_collection_address: string
           prize_description: string
+          rules: string | null
           show_on_home: boolean
           show_on_raffles: boolean
           status: string | null
@@ -76,13 +80,16 @@ export type Database = {
           winner_address: string | null
         }
         Insert: {
+          additional_info?: Json | null
           completed_at?: string | null
           contract_raffle_id?: number | null
           created_at?: string
           description?: string | null
+          detailed_description?: string | null
           display_order?: number | null
           draw_date?: string | null
           draw_tx_hash?: string | null
+          gallery_images?: string[] | null
           id?: number
           image_url?: string | null
           launch_time?: string | null
@@ -90,6 +97,7 @@ export type Database = {
           name: string
           nft_collection_address: string
           prize_description: string
+          rules?: string | null
           show_on_home?: boolean
           show_on_raffles?: boolean
           status?: string | null
@@ -98,13 +106,16 @@ export type Database = {
           winner_address?: string | null
         }
         Update: {
+          additional_info?: Json | null
           completed_at?: string | null
           contract_raffle_id?: number | null
           created_at?: string
           description?: string | null
+          detailed_description?: string | null
           display_order?: number | null
           draw_date?: string | null
           draw_tx_hash?: string | null
+          gallery_images?: string[] | null
           id?: number
           image_url?: string | null
           launch_time?: string | null
@@ -112,6 +123,7 @@ export type Database = {
           name?: string
           nft_collection_address?: string
           prize_description?: string
+          rules?: string | null
           show_on_home?: boolean
           show_on_raffles?: boolean
           status?: string | null
@@ -196,6 +208,36 @@ export type Database = {
           referral_code?: string
           referred_id?: string
           referrer_id?: string
+        }
+        Relationships: []
+      }
+      site_content: {
+        Row: {
+          content_key: string
+          content_value: string
+          description: string | null
+          id: string
+          page: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          content_key: string
+          content_value: string
+          description?: string | null
+          id?: string
+          page: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          content_key?: string
+          content_value?: string
+          description?: string | null
+          id?: string
+          page?: string
+          updated_at?: string | null
+          updated_by?: string | null
         }
         Relationships: []
       }
