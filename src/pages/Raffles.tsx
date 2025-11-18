@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { AnimatedBackground } from '@/components/AnimatedBackground';
 import { Card } from '@/components/ui/card';
@@ -278,7 +278,7 @@ export default function Raffles() {
 
             return (
               <Card key={raffle.id} className="glass-card border-neon-cyan/30 overflow-hidden group hover:border-neon-cyan/60 transition-all">
-                <div className="relative h-48 bg-gradient-to-br from-neon-cyan/20 to-neon-purple/20 flex items-center justify-center overflow-hidden">
+                <Link to={`/raffle/${raffle.id}`} className="block relative h-48 bg-gradient-to-br from-neon-cyan/20 to-neon-purple/20 flex items-center justify-center overflow-hidden cursor-pointer hover:opacity-90 transition-opacity">
                   {raffle.image_url ? (
                     <img src={raffle.image_url} alt={raffle.name} className="w-full h-full object-cover" />
                   ) : (
@@ -287,7 +287,7 @@ export default function Raffles() {
                   <div className="absolute top-3 right-3">
                     {getStatusBadge(raffle.status, raffle.draw_date, raffle.tickets_sold, raffle.launch_time)}
                   </div>
-                </div>
+                </Link>
 
                 <div className="p-6 space-y-4">
                   <div>
