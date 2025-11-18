@@ -11,7 +11,7 @@ const config = getDefaultConfig({
   chains: [sepolia, mainnet],
   transports: {
     [sepolia.id]: http('https://sepolia.drpc.org'),
-    [mainnet.id]: http(),
+    [mainnet.id]: http('https://cloudflare-eth.com'),
   },
   ssr: false,
 });
