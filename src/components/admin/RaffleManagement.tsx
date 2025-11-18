@@ -151,6 +151,12 @@ export const RaffleManagement = () => {
           show_on_raffles: false,
           detailed_description: null,
           rules: null,
+          // Store original blockchain data for syncing
+          endTime: chainRaffle.endTime,
+          ticketPrice: chainRaffle.ticketPrice,
+          maxTickets: chainRaffle.maxTickets,
+          nftContract: chainRaffle.nftContract,
+          isActive: chainRaffle.isActive,
           // Flag to identify blockchain-only raffles
           _blockchainOnly: true,
         });
