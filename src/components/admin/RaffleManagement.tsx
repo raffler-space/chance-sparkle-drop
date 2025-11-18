@@ -33,6 +33,8 @@ interface Raffle {
   show_on_home: boolean;
   show_on_raffles: boolean;
   contract_raffle_id: number | null;
+  detailed_description: string | null;
+  rules: string | null;
 }
 
 export const RaffleManagement = () => {
@@ -57,6 +59,8 @@ export const RaffleManagement = () => {
     display_order: '1',
     show_on_home: true,
     show_on_raffles: true,
+    detailed_description: '',
+    rules: '',
   });
 
   useEffect(() => {
@@ -112,6 +116,8 @@ export const RaffleManagement = () => {
       launch_time: formData.status === 'draft' && formData.launch_time ? new Date(formData.launch_time).toISOString() : null,
       display_order: parseInt(formData.display_order),
       show_on_home: formData.show_on_home,
+      detailed_description: formData.detailed_description || null,
+      rules: formData.rules || null,
     };
 
     if (editingRaffle) {
@@ -268,6 +274,8 @@ export const RaffleManagement = () => {
       display_order: raffle.display_order?.toString() || '1',
       show_on_home: raffle.show_on_home,
       show_on_raffles: raffle.show_on_raffles,
+      detailed_description: raffle.detailed_description || '',
+      rules: raffle.rules || '',
     });
     setDialogOpen(true);
   };
@@ -303,6 +311,8 @@ export const RaffleManagement = () => {
       display_order: '1',
       show_on_home: true,
       show_on_raffles: true,
+      detailed_description: '',
+      rules: '',
     });
     setEditingRaffle(null);
     setDialogOpen(false);
@@ -573,12 +583,35 @@ export const RaffleManagement = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">Short Description</Label>
               <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
+                rows={2}
+                placeholder="Brief description shown on raffle cards"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="detailed_description">Detailed Description</Label>
+              <Textarea
+                id="detailed_description"
+                value={formData.detailed_description}
+                onChange={(e) => setFormData({ ...formData, detailed_description: e.target.value })}
+                rows={4}
+                placeholder="Full description shown on raffle detail page"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="rules">Rules</Label>
+              <Textarea
+                id="rules"
+                value={formData.rules}
+                onChange={(e) => setFormData({ ...formData, rules: e.target.value })}
+                rows={4}
+                placeholder="Raffle rules and terms"
               />
             </div>
 
