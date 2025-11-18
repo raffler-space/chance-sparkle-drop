@@ -10,8 +10,8 @@ const corsHeaders = {
 // Input validation schema
 const updateWinnerSchema = z.object({
   raffleId: z.number().int().positive(),
-  winnerAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
-  drawTxHash: z.string().regex(/^0x[a-fA-F0-9]{64}$/),
+  winnerAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional(),
+  drawTxHash: z.string().regex(/^0x[a-fA-F0-9]{64}$/).optional(),
   status: z.enum(['active', 'drawing', 'completed', 'cancelled', 'Refunding']).optional(),
 });
 
@@ -72,14 +72,23 @@ serve(async (req) => {
     const { raffleId, winnerAddress, drawTxHash, status } = validationResult.data;
 
     // Update raffle with winner information
-    const updateData: any = {
-      winner_address: winnerAddress,
-      draw_tx_hash: drawTxHash,
-      completed_at: new Date().toISOString(),
-    };
+    const updateData: any = {};
+
+    if (winnerAddress) {
+      updateData.winner_address = winnerAddress;
+    }
+
+    if (drawTxHash) {
+      updateData.draw_tx_hash = drawTxHash;
+    }
 
     if (status) {
       updateData.status = status;
+    }
+
+    // Only set completed_at when winner is selected
+    if (winnerAddress && status === 'completed') {
+      updateData.completed_at = new Date().toISOString();
     }
 
     const { data, error } = await supabaseClient
