@@ -87,7 +87,7 @@ const RaffleDetail = () => {
     if (!raffle) return null;
     
     if (raffle.launch_time && new Date(raffle.launch_time) > new Date()) {
-      return <Badge className="bg-secondary/20 text-secondary border-secondary/30">📅 UPCOMING</Badge>;
+      return <Badge className="bg-neon-cyan/20 text-neon-cyan border-neon-cyan/30">📅 UPCOMING</Badge>;
     }
     if (raffle.status === 'completed') {
       return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">✓ COMPLETED</Badge>;
