@@ -7,7 +7,7 @@ import { PurchaseModal } from './PurchaseModal';
 import { useRaffleContract } from '@/hooks/useRaffleContract';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { getBlockExplorerUrl } from '@/utils/blockExplorer';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 interface RaffleCardProps {
   id: number;
@@ -94,7 +94,7 @@ export const RaffleCard = ({
   return (
     <Card className="glass-effect border-border/50 hover:border-primary/50 transition-all duration-300 overflow-hidden group">
       {/* Image */}
-      <div className="relative h-64 overflow-hidden">
+      <Link to={`/raffle/${id}`} className="block relative h-64 overflow-hidden">
         <img
           src={image}
           alt={title}
@@ -116,7 +116,7 @@ export const RaffleCard = ({
         >
           {status === 'completed' ? 'Completed' : status === 'drawing' ? 'Drawing' : isUpcoming ? 'Upcoming' : isActive ? 'Active' : 'Ended'}
         </Badge>
-      </div>
+      </Link>
 
       <CardHeader>
         <h3 className="text-2xl font-orbitron font-bold text-glow">{title}</h3>

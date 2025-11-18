@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Minus, Plus, Ticket, AlertTriangle } from 'lucide-react';
+import { Minus, Plus, Ticket, AlertTriangle, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
@@ -339,6 +339,17 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
                 className="border-neon-cyan/30 hover:border-neon-cyan hover:bg-neon-cyan/10"
               >
                 <Plus className="w-4 h-4" />
+              </Button>
+
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setQuantity(0)}
+                disabled={quantity === 0}
+                className="border-red-500/30 hover:border-red-500 hover:bg-red-500/10 text-red-500"
+                title="Reset to 0"
+              >
+                <X className="w-4 h-4" />
               </Button>
             </div>
             
