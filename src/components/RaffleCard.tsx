@@ -7,6 +7,7 @@ import { PurchaseModal } from './PurchaseModal';
 import { useRaffleContract } from '@/hooks/useRaffleContract';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { getBlockExplorerUrl } from '@/utils/blockExplorer';
+import { useNavigate } from 'react-router-dom';
 
 interface RaffleCardProps {
   id: number;
@@ -51,6 +52,7 @@ export const RaffleCard = ({
   const [blockchainTicketsSold, setBlockchainTicketsSold] = useState<number | null>(null);
   const { chainId } = useWeb3();
   const { getRaffleInfo, isContractReady } = useRaffleContract(chainId, account);
+  const navigate = useNavigate();
 
   // Fetch actual ticket count from blockchain and refresh periodically
   useEffect(() => {
@@ -196,14 +198,21 @@ export const RaffleCard = ({
         )}
       </CardContent>
 
-      <CardFooter>
+      <CardFooter className="flex gap-2">
+        <Button
+          variant="outline"
+          onClick={() => navigate(`/raffle/${id}`)}
+          className="flex-1"
+        >
+          View Details
+        </Button>
         <Button
           onClick={() => setIsPurchaseModalOpen(true)}
           disabled={!isActive || status === 'drawing' || status === 'completed'}
-          className="w-full bg-gradient-to-r from-purple to-secondary hover:opacity-90 font-orbitron"
+          className="flex-1 bg-gradient-to-r from-purple to-secondary hover:opacity-90 font-orbitron"
         >
           <Ticket className="mr-2 h-4 w-4" />
-          {status === 'completed' ? 'Raffle Ended' : status === 'drawing' ? 'Drawing Winner...' : 'Enter Raffle'}
+          {status === 'completed' ? 'Ended' : status === 'drawing' ? 'Drawing...' : 'Enter'}
         </Button>
       </CardFooter>
 

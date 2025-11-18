@@ -131,6 +131,13 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
     }
   };
 
+  const handleQuickAdd = (amount: number) => {
+    const newQuantity = quantity + amount;
+    if (newQuantity <= availableTickets) {
+      setQuantity(newQuantity);
+    }
+  };
+
   const handlePurchase = async () => {
     if (!account) {
       toast.error('Please connect your wallet first');
@@ -334,6 +341,38 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
+            
+            {/* Quick Add Buttons */}
+            <div className="flex items-center justify-center gap-2 mt-3">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => handleQuickAdd(3)}
+                disabled={quantity + 3 > availableTickets}
+                className="font-rajdhani"
+              >
+                +3
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => handleQuickAdd(5)}
+                disabled={quantity + 5 > availableTickets}
+                className="font-rajdhani"
+              >
+                +5
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => handleQuickAdd(10)}
+                disabled={quantity + 10 > availableTickets}
+                className="font-rajdhani"
+              >
+                +10
+              </Button>
+            </div>
+            
             <p className="text-center text-sm text-muted-foreground">
               {availableTickets} tickets available
             </p>

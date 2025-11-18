@@ -81,6 +81,7 @@ export const Navbar = ({ onConnectWallet, onDisconnectWallet, walletAddress, isC
     { label: 'Raffles', href: '/raffles', type: 'link' },
     { label: 'How It Works', href: '/how-it-works', type: 'link' },
     { label: 'Admin', href: '/admin', type: 'link', icon: Shield, adminOnly: true },
+    { label: 'Content Editor', href: '/content-editor', type: 'link', icon: Shield, adminOnly: true },
   ];
 
   const navLinks = allNavLinks.filter(link => !link.adminOnly || isAdmin);
