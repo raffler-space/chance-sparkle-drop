@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { getNetworkConfig } from '@/config/contracts';
-import { useWalletClient, usePublicClient } from 'wagmi';
 
-// ERC20 ABI for USDT interactions
 const USDT_ABI = [
   'function balanceOf(address owner) view returns (uint256)',
   'function decimals() view returns (uint8)',
@@ -14,134 +12,73 @@ const USDT_ABI = [
 ];
 
 export const useUSDTContract = (chainId: number | undefined, account: string | null) => {
-  const [contract, setContract] = useState<ethers.Contract | null>(null);
+  const [readContract, setReadContract] = useState<ethers.Contract | null>(null);
+  const [writeContract, setWriteContract] = useState<ethers.Contract | null>(null);
   const [isContractReady, setIsContractReady] = useState(false);
-  
-  const { data: walletClient } = useWalletClient();
-  const publicClient = usePublicClient();
 
   useEffect(() => {
     const initContract = async () => {
-      console.log('=== USDT Contract Initialization ===');
-      console.log('ChainId:', chainId);
-      console.log('Account:', account);
-      console.log('WalletClient available:', !!walletClient);
-      console.log('PublicClient available:', !!publicClient);
-      
-      if (!chainId || !account) {
-        console.log('Missing chainId or account, setting ready to false');
+      if (!chainId) {
         setIsContractReady(false);
-        setContract(null);
         return;
       }
 
       try {
         const networkConfig = getNetworkConfig(chainId);
-        if (!networkConfig) {
-          console.error('Unsupported network:', chainId);
+        if (!networkConfig?.contracts.usdt) {
           setIsContractReady(false);
-          setContract(null);
           return;
         }
 
-        const usdtAddress = networkConfig.contracts.usdt;
-        if (!usdtAddress) {
-          console.error('USDT contract not configured for this network');
-          setIsContractReady(false);
-          setContract(null);
-          return;
+        const publicProvider = new ethers.providers.JsonRpcProvider(networkConfig.rpcUrl);
+        const readOnlyContract = new ethers.Contract(networkConfig.contracts.usdt, USDT_ABI, publicProvider);
+        setReadContract(readOnlyContract);
+
+        if (account && window.ethereum) {
+          const walletProvider = new ethers.providers.Web3Provider(window.ethereum, 'any');
+          const signer = walletProvider.getSigner();
+          const writeableContract = new ethers.Contract(networkConfig.contracts.usdt, USDT_ABI, signer);
+          setWriteContract(writeableContract);
         }
 
-        console.log('USDT Address:', usdtAddress);
-
-        // Use wagmi's wallet client if available, otherwise use public client
-        if (!walletClient && !publicClient) {
-          console.error('No provider available from wagmi');
-          setIsContractReady(false);
-          setContract(null);
-          return;
-        }
-
-        // Create provider from wagmi
-        const provider = walletClient 
-          ? new ethers.providers.Web3Provider(walletClient.transport as any)
-          : new ethers.providers.JsonRpcProvider(networkConfig.rpcUrl);
-        
-        console.log('Provider created from wagmi');
-        
-        const signer = walletClient ? provider.getSigner() : provider;
-        console.log('Signer obtained');
-        
-        const usdtContract = new ethers.Contract(usdtAddress, USDT_ABI, signer);
-        console.log('USDT Contract initialized successfully');
-
-        setContract(usdtContract);
         setIsContractReady(true);
       } catch (error) {
         console.error('Error initializing USDT contract:', error);
         setIsContractReady(false);
-        setContract(null);
       }
     };
 
     initContract();
-  }, [chainId, account, walletClient, publicClient]);
+  }, [chainId, account]);
 
   const getBalance = async (address: string): Promise<string> => {
-    if (!contract) throw new Error('Contract not initialized');
-
-    try {
-      const balance = await contract.balanceOf(address);
-      const decimals = await contract.decimals();
-      return ethers.utils.formatUnits(balance, decimals);
-    } catch (error) {
-      console.error('Error getting USDT balance:', error);
-      throw error;
-    }
+    if (!readContract) throw new Error('Contract not initialized');
+    const balance = await readContract.balanceOf(address);
+    const decimals = await readContract.decimals();
+    return ethers.utils.formatUnits(balance, decimals);
   };
 
   const approve = async (spender: string, amount: string): Promise<ethers.ContractTransaction> => {
-    if (!contract) throw new Error('Contract not initialized');
-
-    try {
-      const decimals = await contract.decimals();
-      const amountInSmallestUnit = ethers.utils.parseUnits(amount, decimals);
-      const tx = await contract.approve(spender, amountInSmallestUnit);
-      return tx;
-    } catch (error) {
-      console.error('Error approving USDT:', error);
-      throw error;
-    }
+    if (!writeContract) throw new Error('Write contract not initialized');
+    const decimals = await readContract?.decimals() || 6;
+    const amountInSmallestUnit = ethers.utils.parseUnits(amount, decimals);
+    return await writeContract.approve(spender, amountInSmallestUnit);
   };
 
   const getAllowance = async (owner: string, spender: string): Promise<string> => {
-    if (!contract) throw new Error('Contract not initialized');
-
-    try {
-      const allowance = await contract.allowance(owner, spender);
-      const decimals = await contract.decimals();
-      return ethers.utils.formatUnits(allowance, decimals);
-    } catch (error) {
-      console.error('Error getting allowance:', error);
-      throw error;
-    }
+    if (!readContract) throw new Error('Contract not initialized');
+    const allowance = await readContract.allowance(owner, spender);
+    const decimals = await readContract.decimals();
+    return ethers.utils.formatUnits(allowance, decimals);
   };
 
   const mintTestTokens = async (amount: string): Promise<ethers.ContractTransaction> => {
-    if (!contract || !account) throw new Error('Contract or account not available');
-
-    try {
-      // Use mintWithDecimals for easier testing (amount in whole USDT)
-      const tx = await contract.mintWithDecimals(account, amount);
-      return tx;
-    } catch (error) {
-      console.error('Error minting test USDT:', error);
-      throw error;
-    }
+    if (!writeContract || !account) throw new Error('Contract or account not available');
+    return await writeContract.mintWithDecimals(account, amount);
   };
 
   return {
-    contract,
+    contract: readContract,
     isContractReady,
     getBalance,
     approve,

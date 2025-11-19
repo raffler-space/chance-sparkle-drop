@@ -2,100 +2,50 @@ import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 import { toast } from 'sonner';
 import { getNetworkConfig, RAFFLE_ABI, isSupportedNetwork } from '@/config/contracts';
-import { useWalletClient, usePublicClient } from 'wagmi';
 
 export const useRaffleContract = (chainId: number | undefined, account: string | undefined) => {
   const [contract, setContract] = useState<ethers.Contract | null>(null);
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
   const [isContractReady, setIsContractReady] = useState(false);
-  
-  const { data: walletClient } = useWalletClient();
-  const publicClient = usePublicClient();
 
   useEffect(() => {
     const initContract = async () => {
-      console.log('=== Raffle Contract Initialization ===');
-      console.log('ChainId:', chainId);
-      console.log('Account:', account);
-      console.log('WalletClient available:', !!walletClient);
-      console.log('PublicClient available:', !!publicClient);
-      
-      // Use Sepolia as default if no chainId provided
-      const activeChainId = chainId || 11155111; // Default to Sepolia
+      const activeChainId = chainId || 11155111;
       
       if (!isSupportedNetwork(activeChainId)) {
-        console.log('Unsupported network:', activeChainId);
-        if (account) {
-          toast.error('Unsupported network. Please switch to Sepolia or Ethereum Mainnet.');
-        }
         setContract(null);
         setIsContractReady(false);
         return;
       }
 
       const networkConfig = getNetworkConfig(activeChainId);
-      if (!networkConfig) {
-        console.log('No network config found');
-        setIsContractReady(false);
-        return;
-      }
-
-      console.log('Network config:', networkConfig);
-      console.log('Contract address:', networkConfig.contracts.raffle);
-
-      // Check if contract address is set
-      if (networkConfig.contracts.raffle === "0x0000000000000000000000000000000000000000") {
-        console.log('Contract not deployed');
-        if (account) {
-          toast.error('Contract not deployed yet. Please deploy the contract first.');
-        }
+      if (!networkConfig || networkConfig.contracts.raffle === "0x0000000000000000000000000000000000000000") {
         setIsContractReady(false);
         return;
       }
 
       try {
-        let raffleContract: ethers.Contract;
-        
-        if (account && walletClient) {
-          // If wallet is connected, use wagmi's wallet client
-          console.log('Creating provider from wagmi wallet client...');
-          const provider = new ethers.providers.Web3Provider(walletClient.transport as any);
-          console.log('Provider created, getting signer...');
+        if (account && window.ethereum) {
+          const provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
           const signer = provider.getSigner();
-          console.log('Signer obtained, creating contract...');
-          raffleContract = new ethers.Contract(
-            networkConfig.contracts.raffle,
-            RAFFLE_ABI,
-            signer
-          );
+          const raffleContract = new ethers.Contract(networkConfig.contracts.raffle, RAFFLE_ABI, signer);
+          setContract(raffleContract);
           setSigner(signer);
-          console.log('Raffle contract initialized with signer');
         } else {
-          // If no wallet connected, use read-only provider
-          console.log('No wallet client, using read-only provider');
           const provider = new ethers.providers.JsonRpcProvider(networkConfig.rpcUrl);
-          raffleContract = new ethers.Contract(
-            networkConfig.contracts.raffle,
-            RAFFLE_ABI,
-            provider
-          );
+          const raffleContract = new ethers.Contract(networkConfig.contracts.raffle, RAFFLE_ABI, provider);
+          setContract(raffleContract);
           setSigner(null);
-          console.log('Contract initialized in read-only mode');
         }
-
-        setContract(raffleContract);
         setIsContractReady(true);
       } catch (error) {
         console.error('Error initializing contract:', error);
-        if (account) {
-          toast.error('Failed to initialize contract');
-        }
         setIsContractReady(false);
       }
     };
 
     initContract();
-  }, [chainId, account, walletClient, publicClient]);
+  }, [chainId, account]);
 
   // Create a new raffle (admin only)
   const createRaffle = useCallback(async (
