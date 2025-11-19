@@ -9,6 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { Loader2, Save, FileText, ArrowLeft, Mail } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmailTemplateEditor } from "@/components/admin/EmailTemplateEditor";
+import { z } from "zod";
 
 interface SiteContent {
   id: string;
@@ -93,6 +94,12 @@ const ContentEditor = () => {
     );
   };
 
+  const contentValueSchema = z.object({
+    content_value: z.string()
+      .max(50000, "Content must be less than 50,000 characters")
+      .trim(),
+  });
+
   const handleSave = async (page?: string) => {
     setSaving(true);
     try {
@@ -100,10 +107,29 @@ const ContentEditor = () => {
         ? content.filter(item => item.page === page)
         : content;
 
+      // Validate all items before saving
       for (const item of itemsToSave) {
+        try {
+          contentValueSchema.parse({ content_value: item.content_value });
+        } catch (validationError) {
+          if (validationError instanceof z.ZodError) {
+            toast({
+              title: "Validation Error",
+              description: `${item.content_key}: ${validationError.issues[0].message}`,
+              variant: "destructive",
+            });
+            return;
+          }
+        }
+      }
+
+      // Save all items
+      for (const item of itemsToSave) {
+        const sanitizedValue = item.content_value.trim();
+        
         const { error } = await supabase
           .from("site_content")
-          .update({ content_value: item.content_value })
+          .update({ content_value: sanitizedValue })
           .eq("id", item.id);
 
         if (error) throw error;
