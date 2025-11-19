@@ -3,6 +3,7 @@ import { ethers } from 'ethers';
 import { toast } from 'sonner';
 import { useWalletClient, usePublicClient } from 'wagmi';
 import { getNetworkConfig, RAFFLE_ABI, isSupportedNetwork } from '@/config/contracts';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useRaffleContract = (chainId: number | undefined, account: string | undefined) => {
   const [contract, setContract] = useState<ethers.Contract | null>(null);
@@ -384,6 +385,28 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
       console.log('Transaction confirmed:', receipt);
 
       toast.success(`Successfully purchased ${quantity} ticket(s)!`, { id: 'buy-tickets' });
+      
+      // Send email confirmation
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email) {
+          await supabase.functions.invoke('send-ticket-confirmation', {
+            body: {
+              email: user.email,
+              raffleName: raffleInfo.name,
+              quantity,
+              totalPrice: ethers.utils.formatUnits(totalPrice, 6),
+              txHash: receipt.transactionHash,
+              walletAddress: account || 'Unknown'
+            }
+          });
+          console.log('Confirmation email sent');
+        }
+      } catch (emailError) {
+        console.error('Failed to send confirmation email:', emailError);
+        // Don't fail the whole transaction if email fails
+      }
+      
       return { success: true, txHash: receipt.transactionHash };
     } catch (error: any) {
       console.error('Error buying tickets:', error);

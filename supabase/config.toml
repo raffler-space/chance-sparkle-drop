@@ -1,1 +1,13 @@
 project_id = "outjbyzvolzffmaoczxu"
+
+[functions.send-ticket-confirmation]
+verify_jwt = false
+
+[functions.send-winner-notification]
+verify_jwt = false
+
+[functions.send-winner-notification-admin]
+verify_jwt = true
+
+[functions.send-prize-claim-confirmation]
+verify_jwt = false
