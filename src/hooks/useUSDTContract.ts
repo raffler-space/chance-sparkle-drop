@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { getNetworkConfig } from '@/config/contracts';
+import { useWalletClient, usePublicClient } from 'wagmi';
 
 // ERC20 ABI for USDT interactions
 const USDT_ABI = [
@@ -15,13 +16,17 @@ const USDT_ABI = [
 export const useUSDTContract = (chainId: number | undefined, account: string | null) => {
   const [contract, setContract] = useState<ethers.Contract | null>(null);
   const [isContractReady, setIsContractReady] = useState(false);
+  
+  const { data: walletClient } = useWalletClient();
+  const publicClient = usePublicClient();
 
   useEffect(() => {
     const initContract = async () => {
       console.log('=== USDT Contract Initialization ===');
       console.log('ChainId:', chainId);
       console.log('Account:', account);
-      console.log('Window ethereum available:', !!window.ethereum);
+      console.log('WalletClient available:', !!walletClient);
+      console.log('PublicClient available:', !!publicClient);
       
       if (!chainId || !account) {
         console.log('Missing chainId or account, setting ready to false');
@@ -49,20 +54,22 @@ export const useUSDTContract = (chainId: number | undefined, account: string | n
 
         console.log('USDT Address:', usdtAddress);
 
-        // Check if window.ethereum is available
-        if (!window.ethereum) {
-          console.error('window.ethereum not available - WalletConnect may need time to inject');
-          // Try again after a short delay
-          setTimeout(() => {
-            initContract();
-          }, 1000);
+        // Use wagmi's wallet client if available, otherwise use public client
+        if (!walletClient && !publicClient) {
+          console.error('No provider available from wagmi');
+          setIsContractReady(false);
+          setContract(null);
           return;
         }
 
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        console.log('Provider created, getting signer...');
+        // Create provider from wagmi
+        const provider = walletClient 
+          ? new ethers.providers.Web3Provider(walletClient.transport as any)
+          : new ethers.providers.JsonRpcProvider(networkConfig.rpcUrl);
         
-        const signer = provider.getSigner();
+        console.log('Provider created from wagmi');
+        
+        const signer = walletClient ? provider.getSigner() : provider;
         console.log('Signer obtained');
         
         const usdtContract = new ethers.Contract(usdtAddress, USDT_ABI, signer);
@@ -78,7 +85,7 @@ export const useUSDTContract = (chainId: number | undefined, account: string | n
     };
 
     initContract();
-  }, [chainId, account]);
+  }, [chainId, account, walletClient, publicClient]);
 
   const getBalance = async (address: string): Promise<string> => {
     if (!contract) throw new Error('Contract not initialized');

@@ -2,17 +2,23 @@ import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 import { toast } from 'sonner';
 import { getNetworkConfig, RAFFLE_ABI, isSupportedNetwork } from '@/config/contracts';
+import { useWalletClient, usePublicClient } from 'wagmi';
 
 export const useRaffleContract = (chainId: number | undefined, account: string | undefined) => {
   const [contract, setContract] = useState<ethers.Contract | null>(null);
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
   const [isContractReady, setIsContractReady] = useState(false);
+  
+  const { data: walletClient } = useWalletClient();
+  const publicClient = usePublicClient();
 
   useEffect(() => {
     const initContract = async () => {
-      console.log('=== Contract Initialization ===');
+      console.log('=== Raffle Contract Initialization ===');
       console.log('ChainId:', chainId);
       console.log('Account:', account);
+      console.log('WalletClient available:', !!walletClient);
+      console.log('PublicClient available:', !!publicClient);
       
       // Use Sepolia as default if no chainId provided
       const activeChainId = chainId || 11155111; // Default to Sepolia
@@ -50,10 +56,10 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
       try {
         let raffleContract: ethers.Contract;
         
-        if (account && window.ethereum) {
-          // If wallet is connected, use signer for write operations
-          console.log('Window ethereum available, creating provider...');
-          const provider = new ethers.providers.Web3Provider(window.ethereum);
+        if (account && walletClient) {
+          // If wallet is connected, use wagmi's wallet client
+          console.log('Creating provider from wagmi wallet client...');
+          const provider = new ethers.providers.Web3Provider(walletClient.transport as any);
           console.log('Provider created, getting signer...');
           const signer = provider.getSigner();
           console.log('Signer obtained, creating contract...');
@@ -64,17 +70,9 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
           );
           setSigner(signer);
           console.log('Raffle contract initialized with signer');
-        } else if (account && !window.ethereum) {
-          // WalletConnect might not have injected yet
-          console.error('Account exists but window.ethereum not available - WalletConnect may need time');
-          // Try again after a short delay
-          setTimeout(() => {
-            initContract();
-          }, 1000);
-          return;
         } else {
           // If no wallet connected, use read-only provider
-          console.log('No account, using read-only provider');
+          console.log('No wallet client, using read-only provider');
           const provider = new ethers.providers.JsonRpcProvider(networkConfig.rpcUrl);
           raffleContract = new ethers.Contract(
             networkConfig.contracts.raffle,
@@ -97,7 +95,7 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
     };
 
     initContract();
-  }, [chainId, account]);
+  }, [chainId, account, walletClient, publicClient]);
 
   // Create a new raffle (admin only)
   const createRaffle = useCallback(async (
