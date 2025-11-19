@@ -63,10 +63,12 @@ export const WinnerSelection = () => {
         return;
       }
 
+      const dbRaffleId = raffleQuery.data.id;
+
       // Update database with winner info via secure Edge Function
       const { data, error } = await supabase.functions.invoke('admin-update-raffle-winner', {
         body: {
-          raffleId: raffleQuery.data.id,
+          raffleId: dbRaffleId,
           winnerAddress: winner,
           drawTxHash: txHash,
           status: 'completed',
@@ -78,6 +80,21 @@ export const WinnerSelection = () => {
         toast.error('Failed to update winner information');
       } else {
         toast.success(`Winner selected: ${winner.slice(0, 6)}...${winner.slice(-4)}`);
+        
+        // Send winner notification email
+        try {
+          await supabase.functions.invoke('send-winner-notification-admin', {
+            body: {
+              raffleId: dbRaffleId,
+              winnerAddress: winner,
+              drawTxHash: txHash
+            }
+          });
+          console.log('Winner notification email sent');
+        } catch (emailError) {
+          console.error('Failed to send winner notification email:', emailError);
+        }
+        
         fetchRaffles();
         setProcessing(null);
       }
