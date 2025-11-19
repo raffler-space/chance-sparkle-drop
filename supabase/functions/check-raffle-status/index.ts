@@ -21,7 +21,16 @@ Deno.serve(async (req) => {
 
   try {
     // Verify cron secret to prevent unauthorized access
-    const cronSecret = Deno.env.get('CRON_SECRET') || 'default-cron-secret-change-in-production';
+    const cronSecret = Deno.env.get('CRON_SECRET');
+    
+    if (!cronSecret) {
+      console.error('CRON_SECRET environment variable not configured');
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+    
     const providedSecret = req.headers.get('x-cron-secret');
     
     if (providedSecret !== cronSecret) {
