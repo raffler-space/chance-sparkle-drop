@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -7,27 +8,40 @@ import { TrendingUp, Trophy, Loader2, Calendar, Award } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ClaimRewardForm } from './ClaimRewardForm';
 import { useWeb3 } from '@/hooks/useWeb3';
-import { useRaffleData } from '@/hooks/useRaffleData';
 import { useRaffleContract } from '@/hooks/useRaffleContract';
-import { supabase } from '@/integrations/supabase/client';
+
+interface Raffle {
+  id: number;
+  name: string;
+  description: string;
+  prize_description: string;
+  ticket_price: number;
+  max_tickets: number;
+  tickets_sold: number;
+  status: string;
+  draw_date: string | null;
+  image_url: string | null;
+  winner_address: string | null;
+  contract_raffle_id?: number | null;
+}
 
 export const ActiveRaffles = ({ userId }: { userId: string }) => {
+  const [raffles, setRaffles] = useState<Raffle[]>([]);
   const [participatingRaffleIds, setParticipatingRaffleIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [claimFormOpen, setClaimFormOpen] = useState(false);
-  const [selectedRaffle, setSelectedRaffle] = useState<any | null>(null);
+  const [selectedRaffle, setSelectedRaffle] = useState<Raffle | null>(null);
   const { account, chainId } = useWeb3();
-  const { raffles: allRaffles, loading: rafflesLoading } = useRaffleData(chainId, account || undefined);
-  const { getUserEntries } = useRaffleContract(chainId, account || undefined);
+  const { getUserEntries, getRaffleInfo, isContractReady } = useRaffleContract(chainId, account || undefined);
 
   useEffect(() => {
-    fetchParticipatingRaffles();
-  }, [userId, account, allRaffles]);
+    fetchData();
+  }, [userId, account, isContractReady]);
 
-  const fetchParticipatingRaffles = async () => {
+  const fetchData = async () => {
     setLoading(true);
     
-    // Get participating raffle IDs from tickets table
+    // Try to fetch from Supabase first if user is authenticated
     if (userId) {
       const { data: ticketsData } = await supabase
         .from('tickets')
@@ -37,55 +51,96 @@ export const ActiveRaffles = ({ userId }: { userId: string }) => {
       if (ticketsData && ticketsData.length > 0) {
         const raffleIds = ticketsData.map(t => t.raffle_id);
         setParticipatingRaffleIds(new Set(raffleIds));
-      }
-    }
+        
+        const { data: rafflesData } = await supabase
+          .from('raffles')
+          .select('*')
+          .in('id', raffleIds)
+          .order('created_at', { ascending: false });
 
-    // Alternatively check blockchain for participation if wallet connected
-    if (account && allRaffles.length > 0) {
-      const blockchainParticipating = new Set<number>();
-      
-      for (const raffle of allRaffles) {
-        if (raffle.contract_raffle_id !== null && raffle.contract_raffle_id !== undefined) {
-          try {
-            const userTickets = await getUserEntries(raffle.contract_raffle_id, account);
-            if (userTickets.length > 0) {
-              blockchainParticipating.add(raffle.id);
-            }
-          } catch (error) {
-            console.error(`Error checking participation for raffle ${raffle.id}:`, error);
+        if (rafflesData) {
+          // ALWAYS fetch blockchain data for tickets_sold to ensure accuracy
+          if (isContractReady) {
+            const updatedRaffles = await Promise.all(
+              rafflesData.map(async (raffle) => {
+                if (raffle.contract_raffle_id !== null && raffle.contract_raffle_id !== undefined) {
+                  const blockchainData = await getRaffleInfo(raffle.contract_raffle_id);
+                  return {
+                    ...raffle,
+                    tickets_sold: blockchainData?.ticketsSold ?? raffle.tickets_sold,
+                  };
+                }
+                return raffle;
+              })
+            );
+            setRaffles(updatedRaffles);
+          } else {
+            setRaffles(rafflesData);
           }
+          setLoading(false);
+          return;
         }
       }
-      
-      setParticipatingRaffleIds(prev => new Set([...prev, ...blockchainParticipating]));
     }
 
+    // Fallback to blockchain if no Supabase data or not authenticated
+    if (account && isContractReady) {
+      try {
+        // Fetch all raffles from Supabase to check which ones user participated in
+        const { data: allRaffles } = await supabase
+          .from('raffles')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (allRaffles) {
+          const participating: Raffle[] = [];
+          const participatingIds = new Set<number>();
+
+          for (const raffle of allRaffles) {
+            if (raffle.contract_raffle_id !== null && raffle.contract_raffle_id !== undefined) {
+              const userTickets = await getUserEntries(raffle.contract_raffle_id, account);
+              if (userTickets.length > 0) {
+                // Fetch latest blockchain data
+                const blockchainData = await getRaffleInfo(raffle.contract_raffle_id);
+                participating.push({
+                  ...raffle,
+                  tickets_sold: blockchainData?.ticketsSold ?? raffle.tickets_sold,
+                });
+                participatingIds.add(raffle.id);
+              }
+            }
+          }
+
+          setRaffles(participating);
+          setParticipatingRaffleIds(participatingIds);
+        }
+      } catch (error) {
+        console.error('Error fetching blockchain data:', error);
+      }
+    }
+    
     setLoading(false);
   };
 
-  const handleClaim = (raffle: any) => {
+  const handleClaim = (raffle: Raffle) => {
     setSelectedRaffle(raffle);
     setClaimFormOpen(true);
   };
 
-  const isWinner = (raffle: any) => {
+  const isWinner = (raffle: Raffle) => {
     return raffle.status === 'completed' && 
-           raffle.winner_address && 
-           account && 
-           raffle.winner_address.toLowerCase() === account.toLowerCase();
+           raffle.winner_address?.toLowerCase() === account?.toLowerCase();
   };
 
-  const participatingRaffles = allRaffles.filter(raffle => 
-    participatingRaffleIds.has(raffle.id)
-  );
-
-  if (loading || rafflesLoading) {
+  if (loading) {
     return (
       <div className="flex justify-center py-12">
         <Loader2 className="w-8 h-8 animate-spin text-neon-cyan" />
       </div>
     );
   }
+
+  const participatingRaffles = raffles.filter(r => participatingRaffleIds.has(r.id));
 
   if (participatingRaffles.length === 0) {
     return (

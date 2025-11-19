@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,15 +10,40 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PurchaseModal } from "@/components/PurchaseModal";
 import LiveTicketFeed from "@/components/LiveTicketFeed";
 import { useWeb3 } from "@/hooks/useWeb3";
-import { useSingleRaffleData } from "@/hooks/useRaffleData";
+import { useRaffleContract } from "@/hooks/useRaffleContract";
+
+interface Raffle {
+  id: number;
+  name: string;
+  description: string;
+  detailed_description: string;
+  prize_description: string;
+  rules: string;
+  ticket_price: number;
+  max_tickets: number;
+  tickets_sold: number;
+  image_url: string;
+  gallery_images: string[];
+  status: string;
+  draw_date: string;
+  launch_time: string;
+  contract_raffle_id: number;
+  nft_collection_address: string;
+  winner_address: string;
+  draw_tx_hash: string;
+  additional_info: any;
+}
 
 const RaffleDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { account, connectWallet, chainId } = useWeb3();
-  const { raffle, loading, refetch } = useSingleRaffleData(id || "", chainId, account || undefined);
+  const { getRaffleInfo } = useRaffleContract(chainId, account || undefined);
+  const [raffle, setRaffle] = useState<Raffle | null>(null);
+  const [loading, setLoading] = useState(true);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string>("");
+  const [onChainTicketsSold, setOnChainTicketsSold] = useState<number | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<{
     days: number;
     hours: number;
@@ -26,16 +52,14 @@ const RaffleDetail = () => {
   } | null>(null);
 
   useEffect(() => {
-    if (!id) {
-      navigate("/raffles");
-    }
+    loadRaffle();
   }, [id]);
 
   useEffect(() => {
-    if (raffle) {
-      setSelectedImage(raffle.image_url || "");
+    if (raffle?.contract_raffle_id !== null && raffle?.contract_raffle_id !== undefined) {
+      loadOnChainData();
     }
-  }, [raffle]);
+  }, [raffle?.contract_raffle_id]);
 
   useEffect(() => {
     if (!raffle?.draw_date) return;
@@ -64,13 +88,65 @@ const RaffleDetail = () => {
     return () => clearInterval(interval);
   }, [raffle?.draw_date]);
 
+  const loadOnChainData = async () => {
+    if (!raffle?.contract_raffle_id) return;
+    
+    try {
+      const details = await getRaffleInfo(raffle.contract_raffle_id);
+      if (details) {
+        setOnChainTicketsSold(details.ticketsSold);
+      }
+    } catch (error) {
+      console.error("Error loading on-chain data:", error);
+    }
+  };
+
+  const loadRaffle = async () => {
+    if (!id) {
+      navigate("/raffles");
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("raffles")
+        .select("*")
+        .eq("id", parseInt(id))
+        .maybeSingle();
+
+      if (error) throw error;
+      
+      if (!data) {
+        toast({
+          title: "Not Found",
+          description: "This raffle does not exist",
+          variant: "destructive",
+        });
+        navigate("/raffles");
+        return;
+      }
+
+      setRaffle(data);
+      setSelectedImage(data.image_url || "");
+    } catch (error) {
+      console.error("Error loading raffle:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load raffle details",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getStatusBadge = () => {
     if (!raffle) return null;
     
     if (raffle.launch_time && new Date(raffle.launch_time) > new Date()) {
       return <Badge className="bg-neon-cyan/20 text-neon-cyan border-neon-cyan/30">📅 UPCOMING</Badge>;
     }
-    if (raffle.status === 'completed' || raffle.has_ended) {
+    if (raffle.status === 'completed') {
       return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">✓ COMPLETED</Badge>;
     }
     if (raffle.tickets_sold >= raffle.max_tickets) {
@@ -81,7 +157,8 @@ const RaffleDetail = () => {
 
   const calculateProgress = () => {
     if (!raffle) return 0;
-    return (raffle.tickets_sold / raffle.max_tickets) * 100;
+    const ticketsSold = onChainTicketsSold !== null ? onChainTicketsSold : raffle.tickets_sold;
+    return (ticketsSold / raffle.max_tickets) * 100;
   };
 
   if (loading) {
@@ -185,7 +262,7 @@ const RaffleDetail = () => {
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Tickets Sold</span>
                 <span className="text-lg font-semibold">
-                  {raffle.tickets_sold} / {raffle.max_tickets}
+                  {onChainTicketsSold !== null ? onChainTicketsSold : raffle.tickets_sold} / {raffle.max_tickets}
                 </span>
               </div>
               <div className="w-full bg-background/50 rounded-full h-2">
@@ -307,12 +384,13 @@ const RaffleDetail = () => {
           name: raffle.name,
           ticketPrice: raffle.ticket_price,
           maxTickets: raffle.max_tickets,
-          ticketsSold: raffle.tickets_sold,
+          ticketsSold: onChainTicketsSold !== null ? onChainTicketsSold : raffle.tickets_sold,
           contract_raffle_id: raffle.contract_raffle_id,
         }}
         account={account}
         onPurchaseSuccess={() => {
-          refetch();
+          loadRaffle();
+          loadOnChainData();
         }}
       />
     </div>
