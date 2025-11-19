@@ -108,7 +108,10 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
 
   useEffect(() => {
     if (isOpen && account && isUSDTReady) {
+      console.log('Modal opened - fetching USDT balance for account:', account);
       fetchUSDTBalance();
+    } else if (isOpen && !account) {
+      console.error('Modal opened but no account found!');
     }
   }, [isOpen, account, isUSDTReady]);
 
@@ -139,12 +142,18 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
   };
 
   const handlePurchase = async () => {
+    console.log('=== Purchase Attempt Debug ===');
+    console.log('Account:', account);
+    console.log('Is Contract Ready:', isContractReady);
+    
     if (!account) {
-      toast.error('Please connect your wallet first');
+      console.error('No account found - wallet may not be properly connected');
+      toast.error('Please connect your wallet to purchase tickets');
       return;
     }
 
     if (!isContractReady) {
+      console.error('Contract not ready');
       toast.error('Contract not ready. Please try again.');
       return;
     }
@@ -275,6 +284,27 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
         </DialogHeader>
 
         <div className="space-y-6 py-4">
+          {/* Wallet Connection Status - Debug Info */}
+          {account && (
+            <div className="glass-card p-3 border-green-500/30 bg-green-500/5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-green-400">Wallet Connected</span>
+                <span className="font-mono text-xs text-muted-foreground">
+                  {account.slice(0, 6)}...{account.slice(-4)}
+                </span>
+              </div>
+            </div>
+          )}
+          
+          {!account && (
+            <Alert className="border-destructive/50 bg-destructive/10">
+              <AlertTriangle className="h-4 h-4 text-destructive" />
+              <AlertDescription className="text-destructive">
+                Wallet not connected. Please connect your wallet first.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* USDT Balance Display */}
           <div className="glass-card p-3 border-neon-gold/20">
             <div className="flex justify-between items-center">
