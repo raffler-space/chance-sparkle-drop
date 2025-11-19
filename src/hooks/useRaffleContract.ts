@@ -10,36 +10,76 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
 
   useEffect(() => {
     const initContract = async () => {
-      const activeChainId = chainId || 11155111;
+      console.log('=== Contract Initialization ===');
+      console.log('ChainId:', chainId);
+      console.log('Account:', account);
+      
+      // Use Sepolia as default if no chainId provided
+      const activeChainId = chainId || 11155111; // Default to Sepolia
       
       if (!isSupportedNetwork(activeChainId)) {
+        console.log('Unsupported network:', activeChainId);
+        if (account) {
+          toast.error('Unsupported network. Please switch to Sepolia or Ethereum Mainnet.');
+        }
         setContract(null);
         setIsContractReady(false);
         return;
       }
 
       const networkConfig = getNetworkConfig(activeChainId);
-      if (!networkConfig || networkConfig.contracts.raffle === "0x0000000000000000000000000000000000000000") {
+      if (!networkConfig) {
+        console.log('No network config found');
+        setIsContractReady(false);
+        return;
+      }
+
+      console.log('Network config:', networkConfig);
+      console.log('Contract address:', networkConfig.contracts.raffle);
+
+      // Check if contract address is set
+      if (networkConfig.contracts.raffle === "0x0000000000000000000000000000000000000000") {
+        console.log('Contract not deployed');
+        if (account) {
+          toast.error('Contract not deployed yet. Please deploy the contract first.');
+        }
         setIsContractReady(false);
         return;
       }
 
       try {
+        let raffleContract: ethers.Contract;
+        
         if (account && window.ethereum) {
-          const provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
+          // If wallet is connected, use signer for write operations
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
           const signer = provider.getSigner();
-          const raffleContract = new ethers.Contract(networkConfig.contracts.raffle, RAFFLE_ABI, signer);
-          setContract(raffleContract);
+          raffleContract = new ethers.Contract(
+            networkConfig.contracts.raffle,
+            RAFFLE_ABI,
+            signer
+          );
           setSigner(signer);
+          console.log('Contract initialized with signer');
         } else {
+          // If no wallet connected, use read-only provider
           const provider = new ethers.providers.JsonRpcProvider(networkConfig.rpcUrl);
-          const raffleContract = new ethers.Contract(networkConfig.contracts.raffle, RAFFLE_ABI, provider);
-          setContract(raffleContract);
+          raffleContract = new ethers.Contract(
+            networkConfig.contracts.raffle,
+            RAFFLE_ABI,
+            provider
+          );
           setSigner(null);
+          console.log('Contract initialized in read-only mode');
         }
+
+        setContract(raffleContract);
         setIsContractReady(true);
       } catch (error) {
         console.error('Error initializing contract:', error);
+        if (account) {
+          toast.error('Failed to initialize contract');
+        }
         setIsContractReady(false);
       }
     };
