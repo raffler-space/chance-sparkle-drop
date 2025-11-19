@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
+import { useWalletClient } from 'wagmi';
 import { getNetworkConfig } from '@/config/contracts';
 
 // ERC20 ABI for USDT interactions
@@ -15,6 +16,7 @@ const USDT_ABI = [
 export const useUSDTContract = (chainId: number | undefined, account: string | null) => {
   const [contract, setContract] = useState<ethers.Contract | null>(null);
   const [isContractReady, setIsContractReady] = useState(false);
+  const { data: walletClient } = useWalletClient();
 
   useEffect(() => {
     const initContract = async () => {
@@ -38,7 +40,13 @@ export const useUSDTContract = (chainId: number | undefined, account: string | n
           return;
         }
 
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        if (!walletClient) {
+          console.error('Wallet client not available');
+          setIsContractReady(false);
+          return;
+        }
+        
+        const provider = new ethers.providers.Web3Provider(walletClient.transport as any);
         const signer = provider.getSigner();
         const usdtContract = new ethers.Contract(usdtAddress, USDT_ABI, signer);
 
@@ -51,7 +59,7 @@ export const useUSDTContract = (chainId: number | undefined, account: string | n
     };
 
     initContract();
-  }, [chainId, account]);
+  }, [chainId, account, walletClient]);
 
   const getBalance = async (address: string): Promise<string> => {
     if (!contract) throw new Error('Contract not initialized');

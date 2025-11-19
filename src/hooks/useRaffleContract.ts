@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 import { toast } from 'sonner';
+import { useWalletClient, usePublicClient } from 'wagmi';
 import { getNetworkConfig, RAFFLE_ABI, isSupportedNetwork } from '@/config/contracts';
 
 export const useRaffleContract = (chainId: number | undefined, account: string | undefined) => {
   const [contract, setContract] = useState<ethers.Contract | null>(null);
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
   const [isContractReady, setIsContractReady] = useState(false);
+  const { data: walletClient } = useWalletClient();
+  const publicClient = usePublicClient();
 
   useEffect(() => {
     const initContract = async () => {
@@ -50,9 +53,9 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
       try {
         let raffleContract: ethers.Contract;
         
-        if (account && window.ethereum) {
-          // If wallet is connected, use signer for write operations
-          const provider = new ethers.providers.Web3Provider(window.ethereum);
+        if (account && walletClient) {
+          // If wallet is connected, use wallet client (works with WalletConnect)
+          const provider = new ethers.providers.Web3Provider(walletClient.transport as any);
           const signer = provider.getSigner();
           raffleContract = new ethers.Contract(
             networkConfig.contracts.raffle,
@@ -85,7 +88,7 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
     };
 
     initContract();
-  }, [chainId, account]);
+  }, [chainId, account, walletClient]);
 
   // Create a new raffle (admin only)
   const createRaffle = useCallback(async (
