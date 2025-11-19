@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@4.0.0";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 import { loadEmailTemplate, renderTemplate } from "../_shared/emailTemplates.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
@@ -8,6 +10,26 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// HTML escape function to prevent XSS
+function escapeHtml(text: string): string {
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return text.replace(/[&<>"']/g, (m) => map[m]);
+}
+
+// Input validation schema
+const prizeClaimSchema = z.object({
+  email: z.string().email().max(255),
+  raffleName: z.string().trim().min(1).max(200),
+  prizeDescription: z.string().trim().min(1).max(500),
+  deliveryInfo: z.string().trim().min(1).max(1000),
+});
 
 interface PrizeClaimRequest {
   email: string;
@@ -22,7 +44,44 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, raffleName, prizeDescription, deliveryInfo }: PrizeClaimRequest = await req.json();
+    // Create Supabase client with user's auth token
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: req.headers.get('Authorization')! },
+        },
+      }
+    );
+
+    // Verify user is authenticated
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    
+    if (authError || !user) {
+      console.error('Authentication failed:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Parse and validate input
+    const body = await req.json();
+    const validationResult = prizeClaimSchema.safeParse(body);
+    
+    if (!validationResult.success) {
+      console.error('Validation error:', validationResult.error);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: validationResult.error.errors 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { email, raffleName, prizeDescription, deliveryInfo } = validationResult.data;
 
     console.log('Sending prize claim confirmation to:', email);
 
@@ -32,11 +91,11 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Email template not found');
     }
 
-    // Prepare variables
+    // Prepare variables with HTML escaping for user-provided content
     const variables = {
       raffleName,
       prizeDescription,
-      deliveryInfo: deliveryInfo.replace(/\n/g, '<br>'),
+      deliveryInfo: escapeHtml(deliveryInfo).replace(/\n/g, '<br>'),
       year: new Date().getFullYear().toString()
     };
 
