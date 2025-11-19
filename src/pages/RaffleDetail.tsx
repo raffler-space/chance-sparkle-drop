@@ -157,7 +157,8 @@ const RaffleDetail = () => {
 
   const calculateProgress = () => {
     if (!raffle) return 0;
-    return (raffle.tickets_sold / raffle.max_tickets) * 100;
+    const ticketsSold = onChainTicketsSold !== null ? onChainTicketsSold : raffle.tickets_sold;
+    return (ticketsSold / raffle.max_tickets) * 100;
   };
 
   if (loading) {
