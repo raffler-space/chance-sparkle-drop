@@ -78,45 +78,14 @@ export const ActiveRaffles = ({ userId }: { userId: string }) => {
   const participatingRaffles = allRaffles.filter(raffle => 
     participatingRaffleIds.has(raffle.id)
   );
-                participating.push({
-                  ...raffle,
-                  tickets_sold: blockchainData?.ticketsSold ?? raffle.tickets_sold,
-                });
-                participatingIds.add(raffle.id);
-              }
-            }
-          }
 
-          setRaffles(participating);
-          setParticipatingRaffleIds(participatingIds);
-        }
-      } catch (error) {
-        console.error('Error fetching blockchain data:', error);
-      }
-    }
-    
-    setLoading(false);
-  };
-
-  const handleClaim = (raffle: Raffle) => {
-    setSelectedRaffle(raffle);
-    setClaimFormOpen(true);
-  };
-
-  const isWinner = (raffle: Raffle) => {
-    return raffle.status === 'completed' && 
-           raffle.winner_address?.toLowerCase() === account?.toLowerCase();
-  };
-
-  if (loading) {
+  if (loading || rafflesLoading) {
     return (
       <div className="flex justify-center py-12">
         <Loader2 className="w-8 h-8 animate-spin text-neon-cyan" />
       </div>
     );
   }
-
-  const participatingRaffles = raffles.filter(r => participatingRaffleIds.has(r.id));
 
   if (participatingRaffles.length === 0) {
     return (
