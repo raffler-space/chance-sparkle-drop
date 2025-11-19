@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Save, FileText, ArrowLeft } from "lucide-react";
+import { Loader2, Save, FileText, ArrowLeft, Mail } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EmailTemplateEditor } from "@/components/admin/EmailTemplateEditor";
 
 interface SiteContent {
   id: string;
@@ -226,13 +227,17 @@ const ContentEditor = () => {
         </div>
 
         <Tabs defaultValue={Object.keys(groupedContent)[0]} className="w-full">
-          <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${Object.keys(groupedContent).length}, 1fr)` }}>
+          <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${Object.keys(groupedContent).length + 1}, 1fr)` }}>
             {Object.keys(groupedContent).map(page => (
               <TabsTrigger key={page} value={page} className="capitalize">
                 <FileText className="w-4 h-4 mr-2" />
                 {page}
               </TabsTrigger>
             ))}
+            <TabsTrigger value="emails">
+              <Mail className="w-4 h-4 mr-2" />
+              Email Templates
+            </TabsTrigger>
           </TabsList>
 
           {Object.entries(groupedContent).map(([page, items]) => (
@@ -278,6 +283,10 @@ const ContentEditor = () => {
               ))}
             </TabsContent>
           ))}
+          
+          <TabsContent value="emails" className="mt-4">
+            <EmailTemplateEditor />
+          </TabsContent>
         </Tabs>
       </div>
     </div>

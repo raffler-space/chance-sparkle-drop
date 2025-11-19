@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      email_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          html_content: string
+          id: string
+          subject: string
+          template_key: string
+          template_name: string
+          updated_at: string
+          variables: string[] | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          html_content: string
+          id?: string
+          subject: string
+          template_key: string
+          template_name: string
+          updated_at?: string
+          variables?: string[] | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          html_content?: string
+          id?: string
+          subject?: string
+          template_key?: string
+          template_name?: string
+          updated_at?: string
+          variables?: string[] | null
+        }
+        Relationships: []
+      }
       prize_claims: {
         Row: {
           created_at: string
