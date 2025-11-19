@@ -52,17 +52,29 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
         
         if (account && window.ethereum) {
           // If wallet is connected, use signer for write operations
+          console.log('Window ethereum available, creating provider...');
           const provider = new ethers.providers.Web3Provider(window.ethereum);
+          console.log('Provider created, getting signer...');
           const signer = provider.getSigner();
+          console.log('Signer obtained, creating contract...');
           raffleContract = new ethers.Contract(
             networkConfig.contracts.raffle,
             RAFFLE_ABI,
             signer
           );
           setSigner(signer);
-          console.log('Contract initialized with signer');
+          console.log('Raffle contract initialized with signer');
+        } else if (account && !window.ethereum) {
+          // WalletConnect might not have injected yet
+          console.error('Account exists but window.ethereum not available - WalletConnect may need time');
+          // Try again after a short delay
+          setTimeout(() => {
+            initContract();
+          }, 1000);
+          return;
         } else {
           // If no wallet connected, use read-only provider
+          console.log('No account, using read-only provider');
           const provider = new ethers.providers.JsonRpcProvider(networkConfig.rpcUrl);
           raffleContract = new ethers.Contract(
             networkConfig.contracts.raffle,

@@ -18,16 +18,24 @@ export const useUSDTContract = (chainId: number | undefined, account: string | n
 
   useEffect(() => {
     const initContract = async () => {
+      console.log('=== USDT Contract Initialization ===');
+      console.log('ChainId:', chainId);
+      console.log('Account:', account);
+      console.log('Window ethereum available:', !!window.ethereum);
+      
       if (!chainId || !account) {
+        console.log('Missing chainId or account, setting ready to false');
         setIsContractReady(false);
+        setContract(null);
         return;
       }
 
       try {
         const networkConfig = getNetworkConfig(chainId);
         if (!networkConfig) {
-          console.error('Unsupported network');
+          console.error('Unsupported network:', chainId);
           setIsContractReady(false);
+          setContract(null);
           return;
         }
 
@@ -35,18 +43,37 @@ export const useUSDTContract = (chainId: number | undefined, account: string | n
         if (!usdtAddress) {
           console.error('USDT contract not configured for this network');
           setIsContractReady(false);
+          setContract(null);
+          return;
+        }
+
+        console.log('USDT Address:', usdtAddress);
+
+        // Check if window.ethereum is available
+        if (!window.ethereum) {
+          console.error('window.ethereum not available - WalletConnect may need time to inject');
+          // Try again after a short delay
+          setTimeout(() => {
+            initContract();
+          }, 1000);
           return;
         }
 
         const provider = new ethers.providers.Web3Provider(window.ethereum);
+        console.log('Provider created, getting signer...');
+        
         const signer = provider.getSigner();
+        console.log('Signer obtained');
+        
         const usdtContract = new ethers.Contract(usdtAddress, USDT_ABI, signer);
+        console.log('USDT Contract initialized successfully');
 
         setContract(usdtContract);
         setIsContractReady(true);
       } catch (error) {
         console.error('Error initializing USDT contract:', error);
         setIsContractReady(false);
+        setContract(null);
       }
     };
 
