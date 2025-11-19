@@ -112,6 +112,13 @@ export default function Admin() {
               Select Winners
             </TabsTrigger>
             <TabsTrigger 
+              value="details"
+              className="font-rajdhani data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Raffle Details
+            </TabsTrigger>
+            <TabsTrigger 
               value="analytics"
               className="font-rajdhani data-[state=active]:bg-neon-purple/20 data-[state=active]:text-neon-purple"
             >
@@ -140,13 +147,6 @@ export default function Admin() {
               Referral Payouts
             </TabsTrigger>
             <TabsTrigger 
-              value="details"
-              className="font-rajdhani data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Raffle Details
-            </TabsTrigger>
-            <TabsTrigger 
               value="refunds"
               className="font-rajdhani data-[state=active]:bg-destructive/20 data-[state=active]:text-destructive"
             >
@@ -163,6 +163,10 @@ export default function Admin() {
             <WinnerSelection />
           </TabsContent>
 
+          <TabsContent value="details" className="space-y-4">
+            <RaffleDetailsManager />
+          </TabsContent>
+
           <TabsContent value="analytics" className="space-y-4">
             <AdminAnalytics />
           </TabsContent>
@@ -177,10 +181,6 @@ export default function Admin() {
 
           <TabsContent value="referrals" className="space-y-4">
             <ReferralPayouts />
-          </TabsContent>
-
-          <TabsContent value="details" className="space-y-4">
-            <RaffleDetailsManager />
           </TabsContent>
 
           <TabsContent value="refunds" className="space-y-4">
