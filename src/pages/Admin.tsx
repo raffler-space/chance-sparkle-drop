@@ -32,7 +32,11 @@ export default function Admin() {
         return;
       }
 
-      // Check if user has admin role
+      // SECURITY NOTE: This client-side check is for UX only (showing/hiding the admin panel).
+      // It is NOT a security control and can be bypassed by modifying JavaScript.
+      // All actual admin operations are protected server-side by edge functions that verify
+      // admin role using has_role() RPC with proper authentication. Never trust this check
+      // for authorization decisions - always verify roles on the backend.
       const { data: roleData, error } = await supabase
         .from('user_roles')
         .select('role')
