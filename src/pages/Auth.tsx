@@ -20,15 +20,31 @@ const resetPasswordSchema = z.object({
   email: z.string().trim().email({ message: "Invalid email address" }).max(255, { message: "Email must be less than 255 characters" })
 });
 
+const updatePasswordSchema = z.object({
+  password: z.string().min(6, { message: "Password must be at least 6 characters" }).max(100, { message: "Password must be less than 100 characters" })
+});
+
 export default function Auth() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [resetEmail, setResetEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
 
   useEffect(() => {
+    // Check for password recovery token in URL hash
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const type = hashParams.get('type');
+    
+    if (type === 'recovery') {
+      setIsRecoveryMode(true);
+      return;
+    }
+
     // Check if user is already logged in
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -42,13 +58,13 @@ export default function Auth() {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
+      if (session && !isRecoveryMode) {
         navigate('/');
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, isRecoveryMode]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,6 +187,43 @@ export default function Auth() {
     }
   };
 
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      // Validate passwords match
+      if (newPassword !== confirmPassword) {
+        toast.error('Passwords do not match');
+        return;
+      }
+
+      const validated = updatePasswordSchema.parse({ password: newPassword });
+      
+      const { error } = await supabase.auth.updateUser({
+        password: validated.password
+      });
+
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success('Password updated successfully! You can now sign in.');
+        setIsRecoveryMode(false);
+        setNewPassword('');
+        setConfirmPassword('');
+        navigate('/');
+      }
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.issues[0].message);
+      } else {
+        toast.error('An unexpected error occurred');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (checkingAuth) {
     return (
       <div className="min-h-screen bg-dark-900 text-foreground">
@@ -178,6 +231,70 @@ export default function Auth() {
         <div className="relative z-10 flex items-center justify-center min-h-screen">
           <Loader2 className="w-8 h-8 animate-spin text-neon-cyan" />
         </div>
+      </div>
+    );
+  }
+
+  // If in recovery mode, show password update form
+  if (isRecoveryMode) {
+    return (
+      <div className="min-h-screen bg-dark-900 text-foreground flex items-center justify-center p-4">
+        <AnimatedBackground />
+        
+        <Card className="relative z-10 w-full max-w-md glass-card border-neon-cyan/30">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-3xl font-orbitron text-center text-neon-cyan glow-text-cyan">
+              Set New Password
+            </CardTitle>
+            <CardDescription className="text-center font-rajdhani text-lg">
+              Enter your new password below
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleUpdatePassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-password" className="font-rajdhani">New Password</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  className="glass-card border-neon-cyan/30 focus:border-neon-cyan font-rajdhani"
+                  minLength={6}
+                  maxLength={100}
+                />
+                <p className="text-xs text-muted-foreground font-rajdhani">
+                  Password must be at least 6 characters
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password" className="font-rajdhani">Confirm Password</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  className="glass-card border-neon-cyan/30 focus:border-neon-cyan font-rajdhani"
+                  minLength={6}
+                  maxLength={100}
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-neon-cyan hover:bg-neon-cyan/80 text-dark-900 font-rajdhani font-bold"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Update Password'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     );
   }
