@@ -369,19 +369,10 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
       console.log('Total price:', ethers.utils.formatUnits(totalPrice, 6), 'USDT');
 
     // For USDT raffle, don't send ETH value - USDT is transferred via approve/transferFrom
-    // Estimate gas and add buffer for WalletConnect compatibility
-    let gasLimit;
-    try {
-      const estimatedGas = await contract.estimateGas.buyTickets(raffleId, quantity);
-      gasLimit = estimatedGas.mul(130).div(100); // Add 30% buffer
-      console.log('Estimated gas:', estimatedGas.toString());
-      console.log('Gas limit with buffer:', gasLimit.toString());
-    } catch (gasError) {
-      console.warn('Gas estimation failed, using fallback:', gasError);
-      // Fallback: Use a generous fixed gas limit based on quantity
-      gasLimit = ethers.BigNumber.from(Math.min(500000 + (quantity * 50000), 5000000));
-      console.log('Using fallback gas limit:', gasLimit.toString());
-    }
+    // Use aggressive gas limit for WalletConnect compatibility
+    // Base: 500k + 100k per ticket, capped at 8M
+    const gasLimit = ethers.BigNumber.from(Math.min(500000 + (quantity * 100000), 8000000));
+    console.log('Using gas limit:', gasLimit.toString(), 'for', quantity, 'tickets');
 
     const tx = await contract.buyTickets(raffleId, quantity, {
       gasLimit
