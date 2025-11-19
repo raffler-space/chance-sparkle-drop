@@ -1,50 +1,22 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { AnimatedBackground } from '@/components/AnimatedBackground';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { supabase } from '@/integrations/supabase/client';
 import { useWeb3 } from '@/hooks/useWeb3';
-import { useRaffleContract } from '@/hooks/useRaffleContract';
-import { Loader2, Ticket, Trophy, ExternalLink, Loader2 as LoaderIcon } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { PurchaseModal } from '@/components/PurchaseModal';
-import { ethers } from 'ethers';
-import { getBlockExplorerUrl } from '@/utils/blockExplorer';
-
-interface Raffle {
-  id: number;
-  name: string;
-  description: string;
-  prize_description: string;
-  ticket_price: number;
-  max_tickets: number;
-  tickets_sold: number;
-  status: string;
-  draw_date: string | null;
-  winner_address: string | null;
-  image_url: string | null;
-  contract_raffle_id: number | null;
-  launch_time: string | null;
-  display_order: number;
-}
+import { RaffleCard } from '@/components/RaffleCard';
+import { useRaffleData } from '@/hooks/useRaffleData';
+import { Button } from '@/components/ui/button';
 
 export default function Raffles() {
   const navigate = useNavigate();
   const { account, isConnecting, connectWallet, disconnectWallet, chainId } = useWeb3();
-  const { contract, isContractReady } = useRaffleContract(chainId, account);
-  const [raffles, setRaffles] = useState<Raffle[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedRaffle, setSelectedRaffle] = useState<Raffle | null>(null);
+  const { raffles, loading, refetch } = useRaffleData(chainId, account || undefined);
+  const [selectedRaffle, setSelectedRaffle] = useState<any | null>(null);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [filterView, setFilterView] = useState<'all' | 'live' | 'upcoming'>('all');
-
-  useEffect(() => {
-    fetchRaffles();
-  }, [isContractReady]);
 
   // Update time every second for countdown timers
   useEffect(() => {
