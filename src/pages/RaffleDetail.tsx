@@ -44,6 +44,12 @@ const RaffleDetail = () => {
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string>("");
   const [onChainTicketsSold, setOnChainTicketsSold] = useState<number | null>(null);
+  const [timeRemaining, setTimeRemaining] = useState<{
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+  } | null>(null);
 
   useEffect(() => {
     loadRaffle();
@@ -54,6 +60,33 @@ const RaffleDetail = () => {
       loadOnChainData();
     }
   }, [raffle?.contract_raffle_id]);
+
+  useEffect(() => {
+    if (!raffle?.draw_date) return;
+
+    const calculateTimeRemaining = () => {
+      const now = new Date().getTime();
+      const drawDate = new Date(raffle.draw_date).getTime();
+      const difference = drawDate - now;
+
+      if (difference <= 0) {
+        setTimeRemaining({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
+
+      const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+      setTimeRemaining({ days, hours, minutes, seconds });
+    };
+
+    calculateTimeRemaining();
+    const interval = setInterval(calculateTimeRemaining, 1000);
+
+    return () => clearInterval(interval);
+  }, [raffle?.draw_date]);
 
   const loadOnChainData = async () => {
     if (!raffle?.contract_raffle_id) return;
@@ -238,9 +271,22 @@ const RaffleDetail = () => {
                 />
               </div>
               {raffle.draw_date && (
-                <div className="flex items-center text-muted-foreground">
-                  <Clock className="w-4 h-4 mr-2" />
-                  <span>Draw Date: {new Date(raffle.draw_date).toLocaleDateString()}</span>
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <div className="flex items-center">
+                    <Clock className="w-4 h-4 mr-2" />
+                    <span>Draw Date: {new Date(raffle.draw_date).toLocaleDateString()}</span>
+                  </div>
+                  {timeRemaining && (
+                    <div className="flex items-center gap-1 font-mono text-primary font-semibold">
+                      <span>{timeRemaining.days}d</span>
+                      <span>:</span>
+                      <span>{String(timeRemaining.hours).padStart(2, '0')}h</span>
+                      <span>:</span>
+                      <span>{String(timeRemaining.minutes).padStart(2, '0')}m</span>
+                      <span>:</span>
+                      <span>{String(timeRemaining.seconds).padStart(2, '0')}s</span>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
