@@ -10,8 +10,8 @@ const config = getDefaultConfig({
   projectId: '2df0f6c681b062523668597d1c63f31d',
   chains: [sepolia, mainnet],
   transports: {
-    [sepolia.id]: http('https://sepolia.drpc.org'),
-    [mainnet.id]: http('https://cloudflare-eth.com'),
+    [sepolia.id]: http('https://rpc.ankr.com/eth_sepolia'),
+    [mainnet.id]: http('https://eth.llamarpc.com'),
   },
   ssr: false,
 });

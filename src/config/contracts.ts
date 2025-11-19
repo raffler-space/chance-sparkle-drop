@@ -25,7 +25,7 @@ export type NetworkConfig = {
 export const sepoliaConfig: NetworkConfig = {
   chainId: 11155111,
   name: "Sepolia",
-  rpcUrl: "https://sepolia.drpc.org",
+  rpcUrl: "https://rpc.ankr.com/eth_sepolia",
   blockExplorer: "https://sepolia.etherscan.io",
   nativeCurrency: {
     name: "Sepolia ETH",
@@ -46,7 +46,7 @@ export const sepoliaConfig: NetworkConfig = {
 export const mainnetConfig: NetworkConfig = {
   chainId: 1,
   name: "Ethereum Mainnet",
-  rpcUrl: "https://cloudflare-eth.com",
+  rpcUrl: "https://eth.llamarpc.com",
   blockExplorer: "https://etherscan.io",
   nativeCurrency: {
     name: "Ether",
