@@ -9,6 +9,8 @@ import { Loader2, ArrowLeft, Ticket, Image as ImageIcon, Info, Clock } from "luc
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PurchaseModal } from "@/components/PurchaseModal";
 import LiveTicketFeed from "@/components/LiveTicketFeed";
+import { useWeb3 } from "@/hooks/useWeb3";
+import { useRaffleContract } from "@/hooks/useRaffleContract";
 
 interface Raffle {
   id: number;
@@ -35,14 +37,36 @@ interface Raffle {
 const RaffleDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { account, connectWallet, chainId } = useWeb3();
+  const { getRaffleInfo } = useRaffleContract(chainId, account || undefined);
   const [raffle, setRaffle] = useState<Raffle | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string>("");
+  const [onChainTicketsSold, setOnChainTicketsSold] = useState<number | null>(null);
 
   useEffect(() => {
     loadRaffle();
   }, [id]);
+
+  useEffect(() => {
+    if (raffle?.contract_raffle_id !== null && raffle?.contract_raffle_id !== undefined) {
+      loadOnChainData();
+    }
+  }, [raffle?.contract_raffle_id]);
+
+  const loadOnChainData = async () => {
+    if (!raffle?.contract_raffle_id) return;
+    
+    try {
+      const details = await getRaffleInfo(raffle.contract_raffle_id);
+      if (details) {
+        setOnChainTicketsSold(details.ticketsSold);
+      }
+    } catch (error) {
+      console.error("Error loading on-chain data:", error);
+    }
+  };
 
   const loadRaffle = async () => {
     if (!id) {
@@ -203,7 +227,9 @@ const RaffleDetail = () => {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Tickets Sold</span>
-                <span className="text-lg font-semibold">{raffle.tickets_sold} / {raffle.max_tickets}</span>
+                <span className="text-lg font-semibold">
+                  {onChainTicketsSold !== null ? onChainTicketsSold : raffle.tickets_sold} / {raffle.max_tickets}
+                </span>
               </div>
               <div className="w-full bg-background/50 rounded-full h-2">
                 <div
@@ -221,13 +247,13 @@ const RaffleDetail = () => {
           </Card>
 
           <Button
-            onClick={() => setIsPurchaseModalOpen(true)}
+            onClick={() => account ? setIsPurchaseModalOpen(true) : connectWallet()}
             disabled={isUpcoming || raffle.tickets_sold >= raffle.max_tickets}
             size="lg"
             className="w-full"
           >
             <Ticket className="w-5 h-5 mr-2" />
-            {isUpcoming ? "Coming Soon" : raffle.tickets_sold >= raffle.max_tickets ? "Sold Out" : "Enter Raffle"}
+            {!account ? "Connect Wallet" : isUpcoming ? "Coming Soon" : raffle.tickets_sold >= raffle.max_tickets ? "Sold Out" : "Enter Raffle"}
           </Button>
 
           {/* Onchain Info */}
@@ -311,11 +337,14 @@ const RaffleDetail = () => {
           name: raffle.name,
           ticketPrice: raffle.ticket_price,
           maxTickets: raffle.max_tickets,
-          ticketsSold: raffle.tickets_sold,
+          ticketsSold: onChainTicketsSold !== null ? onChainTicketsSold : raffle.tickets_sold,
           contract_raffle_id: raffle.contract_raffle_id,
         }}
-        account={null}
-        onPurchaseSuccess={loadRaffle}
+        account={account}
+        onPurchaseSuccess={() => {
+          loadRaffle();
+          loadOnChainData();
+        }}
       />
     </div>
   );
