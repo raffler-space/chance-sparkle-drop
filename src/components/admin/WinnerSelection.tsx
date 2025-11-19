@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Loader2, Sparkles, ExternalLink, Copy } from 'lucide-react';
+import { Trophy, Loader2, Sparkles, ExternalLink, Copy, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
 import { useRaffleContract } from '@/hooks/useRaffleContract';
@@ -24,10 +24,29 @@ interface Raffle {
   draw_date: string | null;
 }
 
+const calculateTimeRemaining = (drawDate: string | null): string => {
+  if (!drawDate) return 'No end date set';
+  
+  const now = new Date().getTime();
+  const end = new Date(drawDate).getTime();
+  const diff = end - now;
+  
+  if (diff <= 0) return 'Ended';
+  
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+};
+
 export const WinnerSelection = () => {
   const [raffles, setRaffles] = useState<Raffle[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<number | null>(null);
+  const [timeRemaining, setTimeRemaining] = useState<{ [key: number]: string }>({});
   const { account, chainId } = useWeb3();
   const { contract, selectWinner, isContractReady } = useRaffleContract(chainId, account);
 
@@ -148,6 +167,21 @@ export const WinnerSelection = () => {
 
     return () => clearInterval(interval);
   }, [contract, isContractReady, raffles]);
+
+  useEffect(() => {
+    const updateTimers = () => {
+      const newTimeRemaining: { [key: number]: string } = {};
+      raffles.forEach(raffle => {
+        newTimeRemaining[raffle.id] = calculateTimeRemaining(raffle.draw_date);
+      });
+      setTimeRemaining(newTimeRemaining);
+    };
+
+    updateTimers();
+    const interval = setInterval(updateTimers, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [raffles]);
 
   const fetchRaffles = async () => {
     const { data, error } = await supabase
@@ -318,6 +352,14 @@ export const WinnerSelection = () => {
                       </div>
                       <Progress value={progress} className="h-2" />
                     </div>
+
+                    {raffle.draw_date && raffle.status === 'active' && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Clock className="w-4 h-4 text-neon-cyan" />
+                        <span className="text-muted-foreground">Time Remaining:</span>
+                        <span className="font-rajdhani font-bold text-neon-cyan">{timeRemaining[raffle.id]}</span>
+                      </div>
+                    )}
 
                     {raffle.winner_address && (
                       <div className="bg-gradient-to-r from-neon-gold/20 to-neon-cyan/20 border border-neon-gold/30 rounded-lg p-4 mt-4">

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Save, Trash2, Plus, Image } from "lucide-react";
+import { Loader2, Save, Trash2, Plus, Image, Clock } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Raffle {
@@ -14,7 +14,27 @@ interface Raffle {
   detailed_description: string;
   rules: string;
   gallery_images: string[];
+  draw_date: string | null;
+  status: string;
 }
+
+const calculateTimeRemaining = (drawDate: string | null): string => {
+  if (!drawDate) return 'No end date set';
+  
+  const now = new Date().getTime();
+  const end = new Date(drawDate).getTime();
+  const diff = end - now;
+  
+  if (diff <= 0) return 'Ended';
+  
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+};
 
 const RaffleDetailsManager = () => {
   const [raffles, setRaffles] = useState<Raffle[]>([]);
@@ -25,6 +45,7 @@ const RaffleDetailsManager = () => {
   const [rules, setRules] = useState("");
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [newImageUrl, setNewImageUrl] = useState("");
+  const [timeRemaining, setTimeRemaining] = useState<string>("");
 
   useEffect(() => {
     loadRaffles();
@@ -40,7 +61,7 @@ const RaffleDetailsManager = () => {
     try {
       const { data, error } = await supabase
         .from("raffles")
-        .select("id, name, detailed_description, rules, gallery_images")
+        .select("id, name, detailed_description, rules, gallery_images, draw_date, status")
         .order("id", { ascending: false });
 
       if (error) throw error;
@@ -66,8 +87,23 @@ const RaffleDetailsManager = () => {
       setDetailedDescription(raffle.detailed_description || "");
       setRules(raffle.rules || "");
       setGalleryImages(raffle.gallery_images || []);
+      setTimeRemaining(calculateTimeRemaining(raffle.draw_date));
     }
   };
+
+  useEffect(() => {
+    const updateTimer = () => {
+      const raffle = raffles.find(r => r.id === selectedRaffleId);
+      if (raffle) {
+        setTimeRemaining(calculateTimeRemaining(raffle.draw_date));
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [raffles, selectedRaffleId]);
 
   const handleSave = async () => {
     if (!selectedRaffleId) return;
@@ -152,6 +188,14 @@ const RaffleDetailsManager = () => {
             </SelectContent>
           </Select>
         </div>
+
+        {selectedRaffleId && raffles.find(r => r.id === selectedRaffleId)?.status === 'active' && (
+          <div className="flex items-center gap-2 p-3 bg-neon-cyan/10 border border-neon-cyan/30 rounded-lg">
+            <Clock className="w-4 h-4 text-neon-cyan" />
+            <span className="text-sm text-muted-foreground">Time Remaining:</span>
+            <span className="font-rajdhani font-bold text-neon-cyan">{timeRemaining}</span>
+          </div>
+        )}
 
         {selectedRaffleId && (
           <>

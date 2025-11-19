@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, Loader2, ExternalLink, Eye, EyeOff } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, ExternalLink, Eye, EyeOff, Clock } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { useWeb3 } from '@/hooks/useWeb3';
@@ -28,6 +28,7 @@ interface Raffle {
   status: string;
   created_at: string;
   draw_tx_hash: string | null;
+  draw_date: string | null;
   launch_time: string | null;
   display_order: number;
   show_on_home: boolean;
@@ -37,6 +38,24 @@ interface Raffle {
   rules: string | null;
 }
 
+const calculateTimeRemaining = (drawDate: string | null): string => {
+  if (!drawDate) return 'No end date set';
+  
+  const now = new Date().getTime();
+  const end = new Date(drawDate).getTime();
+  const diff = end - now;
+  
+  if (diff <= 0) return 'Ended';
+  
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+};
+
 export const RaffleManagement = () => {
   const { account, chainId } = useWeb3();
   const raffleContract = useRaffleContract(chainId, account);
@@ -45,6 +64,7 @@ export const RaffleManagement = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRaffle, setEditingRaffle] = useState<Raffle | null>(null);
+  const [timeRemaining, setTimeRemaining] = useState<{ [key: number]: string }>({});
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -66,6 +86,21 @@ export const RaffleManagement = () => {
   useEffect(() => {
     fetchRaffles();
   }, [raffleContract.isContractReady, chainId]);
+
+  useEffect(() => {
+    const updateTimers = () => {
+      const newTimeRemaining: { [key: number]: string } = {};
+      raffles.forEach(raffle => {
+        newTimeRemaining[raffle.id] = calculateTimeRemaining(raffle.draw_date);
+      });
+      setTimeRemaining(newTimeRemaining);
+    };
+
+    updateTimers();
+    const interval = setInterval(updateTimers, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [raffles]);
 
   const fetchRaffles = async () => {
     // First, fetch all raffles from the blockchain if contract is ready
@@ -591,6 +626,15 @@ export const RaffleManagement = () => {
                     <span className="text-muted-foreground">Position:</span>
                     <p className="font-rajdhani font-bold">#{raffle.display_order}</p>
                   </div>
+                  {raffle.draw_date && raffle.status === 'active' && (
+                    <div>
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        Time Remaining:
+                      </span>
+                      <p className="font-rajdhani font-bold text-neon-cyan">{timeRemaining[raffle.id]}</p>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex items-center gap-4 mt-4 pt-4 border-t border-border/30">
