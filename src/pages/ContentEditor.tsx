@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Save, FileText } from "lucide-react";
+import { Loader2, Save, FileText, ArrowLeft } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface SiteContent {
@@ -92,10 +92,14 @@ const ContentEditor = () => {
     );
   };
 
-  const handleSave = async () => {
+  const handleSave = async (page?: string) => {
     setSaving(true);
     try {
-      for (const item of content) {
+      const itemsToSave = page 
+        ? content.filter(item => item.page === page)
+        : content;
+
+      for (const item of itemsToSave) {
         const { error } = await supabase
           .from("site_content")
           .update({ content_value: item.content_value })
@@ -106,7 +110,7 @@ const ContentEditor = () => {
 
       toast({
         title: "Success",
-        description: "Site content updated successfully",
+        description: `${page ? page.charAt(0).toUpperCase() + page.slice(1) : "All"} content updated successfully`,
       });
     } catch (error) {
       console.error("Error saving content:", error);
@@ -205,23 +209,20 @@ const ContentEditor = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl font-bold text-foreground mb-2">Content Editor</h1>
-            <p className="text-muted-foreground">Manage all text content across your website</p>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(-1)}
+              className="shrink-0"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div>
+              <h1 className="text-4xl font-bold text-foreground mb-2">Content Editor</h1>
+              <p className="text-muted-foreground">Manage all text content across your website</p>
+            </div>
           </div>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4 mr-2" />
-                Save All Changes
-              </>
-            )}
-          </Button>
         </div>
 
         <Tabs defaultValue={Object.keys(groupedContent)[0]} className="w-full">
@@ -236,6 +237,21 @@ const ContentEditor = () => {
 
           {Object.entries(groupedContent).map(([page, items]) => (
             <TabsContent key={page} value={page} className="space-y-4 mt-4">
+              <div className="flex justify-end mb-4">
+                <Button onClick={() => handleSave(page)} disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Save {page.charAt(0).toUpperCase() + page.slice(1)} Changes
+                    </>
+                  )}
+                </Button>
+              </div>
               {items.map(item => (
                 <Card key={item.id}>
                   <CardHeader>
