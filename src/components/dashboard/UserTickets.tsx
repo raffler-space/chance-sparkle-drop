@@ -46,12 +46,42 @@ export const UserTickets = ({ userId }: { userId: string }) => {
   const [loading, setLoading] = useState(true);
   const [expandedRaffles, setExpandedRaffles] = useState<Set<number>>(new Set());
   const [timeRemaining, setTimeRemaining] = useState<{ [key: number]: string }>({});
+  const [blockchainTicketCounts, setBlockchainTicketCounts] = useState<{ [key: number]: number }>({});
   const { account, chainId } = useWeb3();
-  const { getUserEntries, isContractReady } = useRaffleContract(chainId, account);
+  const { getUserEntries, getRaffleInfo, isContractReady } = useRaffleContract(chainId, account);
 
   useEffect(() => {
     fetchTickets();
   }, [userId, account, isContractReady]);
+
+  useEffect(() => {
+    const fetchBlockchainTicketCounts = async () => {
+      if (!isContractReady || tickets.length === 0) return;
+
+      const counts: { [key: number]: number } = {};
+      const uniqueRaffles = Array.from(new Set(tickets.map(t => t.raffles.id)));
+
+      for (const raffleId of uniqueRaffles) {
+        const ticket = tickets.find(t => t.raffles.id === raffleId);
+        if (ticket?.raffles.contract_raffle_id !== null && ticket?.raffles.contract_raffle_id !== undefined) {
+          try {
+            const info = await getRaffleInfo(ticket.raffles.contract_raffle_id);
+            if (info) {
+              counts[raffleId] = info.ticketsSold;
+            }
+          } catch (error) {
+            console.error(`Error fetching blockchain data for raffle ${raffleId}:`, error);
+          }
+        }
+      }
+
+      setBlockchainTicketCounts(counts);
+    };
+
+    fetchBlockchainTicketCounts();
+    const interval = setInterval(fetchBlockchainTicketCounts, 10000);
+    return () => clearInterval(interval);
+  }, [tickets, isContractReady, getRaffleInfo]);
 
   useEffect(() => {
     const updateTimers = () => {
@@ -313,11 +343,11 @@ export const UserTickets = ({ userId }: { userId: string }) => {
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Tickets Sold</span>
                       <span className="font-rajdhani font-bold">
-                        {group.raffle.tickets_sold || 0} / {group.raffle.max_tickets}
+                        {blockchainTicketCounts[group.raffle.id] ?? group.raffle.tickets_sold ?? 0} / {group.raffle.max_tickets}
                       </span>
                     </div>
                     <Progress 
-                      value={((group.raffle.tickets_sold || 0) / group.raffle.max_tickets) * 100} 
+                      value={((blockchainTicketCounts[group.raffle.id] ?? group.raffle.tickets_sold ?? 0) / group.raffle.max_tickets) * 100} 
                       className="h-2"
                     />
                   </div>
