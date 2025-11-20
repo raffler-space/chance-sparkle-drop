@@ -855,7 +855,7 @@ export const RaffleManagement = () => {
         )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="bg-background/95 backdrop-blur-xl border-neon-cyan/30 max-w-2xl">
+        <DialogContent className="bg-background/95 backdrop-blur-xl border-neon-cyan/30 max-w-2xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="text-2xl font-orbitron">
               {editingRaffle ? 'Edit Raffle' : 'Create New Raffle'}
@@ -865,8 +865,8 @@ export const RaffleManagement = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <ScrollArea className="max-h-[60vh] pr-4">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 flex-1 overflow-hidden">
+            <ScrollArea className="flex-1 pr-4 h-full">
               <div className="space-y-4">
                 {editingRaffle && editingRaffle.contract_raffle_id !== null && (
                   <div className="p-3 bg-warning/10 border border-warning rounded-md">
@@ -1055,7 +1055,7 @@ export const RaffleManagement = () => {
               </div>
             </ScrollArea>
 
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 pt-4 border-t border-border/30">
               <Button
                 type="button"
                 variant="outline"
