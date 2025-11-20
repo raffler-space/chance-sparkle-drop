@@ -9,6 +9,7 @@ import { Loader2, ArrowLeft, Ticket, Image as ImageIcon, Info, Clock } from "luc
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PurchaseModal } from "@/components/PurchaseModal";
 import LiveTicketFeed from "@/components/LiveTicketFeed";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { useWeb3 } from "@/hooks/useWeb3";
 import { useRaffleContract } from "@/hooks/useRaffleContract";
 
@@ -176,15 +177,17 @@ const RaffleDetail = () => {
   const isUpcoming = raffle.launch_time && new Date(raffle.launch_time) > new Date();
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <Button
-        variant="ghost"
-        onClick={() => navigate("/raffles")}
-        className="mb-6"
-      >
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Back to Raffles
-      </Button>
+    <>
+      <AnimatedBackground />
+      <div className="container mx-auto px-4 py-8">
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/raffles")}
+          className="mb-6"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Raffles
+        </Button>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left Column - Images */}
@@ -394,6 +397,7 @@ const RaffleDetail = () => {
         }}
       />
     </div>
+    </>
   );
 };
 
