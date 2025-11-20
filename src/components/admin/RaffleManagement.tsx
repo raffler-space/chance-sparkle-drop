@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, Loader2, ExternalLink, Eye, EyeOff, Clock } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, ExternalLink, Eye, EyeOff, Clock, Filter } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { useRaffleContract } from '@/hooks/useRaffleContract';
@@ -65,6 +66,8 @@ export const RaffleManagement = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRaffle, setEditingRaffle] = useState<Raffle | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<{ [key: number]: string }>({});
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<string>('created_at_desc');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -478,6 +481,43 @@ export const RaffleManagement = () => {
     setDialogOpen(false);
   };
 
+  // Filter and sort raffles
+  const filteredAndSortedRaffles = raffles
+    .filter(raffle => {
+      if (statusFilter === 'all') return true;
+      return raffle.status === statusFilter;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'name_asc':
+          return a.name.localeCompare(b.name);
+        case 'name_desc':
+          return b.name.localeCompare(a.name);
+        case 'created_at_asc':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case 'created_at_desc':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case 'draw_date_asc':
+          if (!a.draw_date) return 1;
+          if (!b.draw_date) return -1;
+          return new Date(a.draw_date).getTime() - new Date(b.draw_date).getTime();
+        case 'draw_date_desc':
+          if (!a.draw_date) return 1;
+          if (!b.draw_date) return -1;
+          return new Date(b.draw_date).getTime() - new Date(a.draw_date).getTime();
+        case 'price_asc':
+          return a.ticket_price - b.ticket_price;
+        case 'price_desc':
+          return b.ticket_price - a.ticket_price;
+        case 'tickets_asc':
+          return (a.tickets_sold || 0) - (b.tickets_sold || 0);
+        case 'tickets_desc':
+          return (b.tickets_sold || 0) - (a.tickets_sold || 0);
+        default:
+          return 0;
+      }
+    });
+
   const handleActivateRaffle = async (raffle: Raffle) => {
     if (!account || !raffleContract.isContractReady || !raffleContract.contract) {
       toast.error('Please connect your wallet to activate raffle');
@@ -542,20 +582,73 @@ export const RaffleManagement = () => {
 
   return (
     <div className="space-y-4">
-      <Button
-        onClick={() => {
-          resetForm();
-          setEditingRaffle(null);
-          setDialogOpen(true);
-        }}
-        className="bg-gradient-to-r from-neon-cyan to-neon-purple hover:opacity-90 text-white font-orbitron"
-      >
-        <Plus className="w-4 h-4 mr-2" />
-        Create New Raffle
-      </Button>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+        <div className="flex flex-wrap gap-4 items-center">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground font-rajdhani">Filter:</span>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[140px] glass-card border-border/50">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-      <div className="grid gap-4">
-        {raffles.map((raffle) => (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground font-rajdhani">Sort:</span>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-[160px] glass-card border-border/50">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="created_at_desc">Newest</SelectItem>
+                <SelectItem value="created_at_asc">Oldest</SelectItem>
+                <SelectItem value="name_asc">Name (A-Z)</SelectItem>
+                <SelectItem value="name_desc">Name (Z-A)</SelectItem>
+                <SelectItem value="draw_date_asc">End Soon</SelectItem>
+                <SelectItem value="draw_date_desc">End Later</SelectItem>
+                <SelectItem value="price_asc">Price ↑</SelectItem>
+                <SelectItem value="price_desc">Price ↓</SelectItem>
+                <SelectItem value="tickets_asc">Tickets ↑</SelectItem>
+                <SelectItem value="tickets_desc">Tickets ↓</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <Button
+          onClick={() => {
+            resetForm();
+            setEditingRaffle(null);
+            setDialogOpen(true);
+          }}
+          className="bg-gradient-to-r from-neon-cyan to-neon-purple hover:opacity-90 text-white font-orbitron"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Create New
+        </Button>
+      </div>
+
+      {filteredAndSortedRaffles.length === 0 ? (
+        <Card className="glass-card border-neon-cyan/30 p-12">
+          <div className="text-center">
+            <p className="text-muted-foreground font-rajdhani text-lg">
+              {statusFilter === 'all' 
+                ? 'No raffles found. Create your first raffle to get started.'
+                : `No ${statusFilter} raffles found.`}
+            </p>
+          </div>
+        </Card>
+      ) : (
+        <div className="grid gap-4">
+          {filteredAndSortedRaffles.map((raffle) => (
           <Card key={raffle.id} className="glass-card border-neon-cyan/30 p-6">
             <div className="flex justify-between items-start">
               <div className="flex-1">
@@ -749,9 +842,10 @@ export const RaffleManagement = () => {
                 )}
               </div>
             </div>
-          </Card>
-        ))}
-      </div>
+              </Card>
+            ))}
+          </div>
+        )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="bg-background/95 backdrop-blur-xl border-neon-cyan/30 max-w-2xl">
