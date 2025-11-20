@@ -8,7 +8,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Loader2, RefreshCw, DollarSign, Users, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { ethers } from 'ethers';
 
 interface Raffle {
   id: number;
@@ -29,7 +28,7 @@ interface Refund {
 
 export const RefundManager = () => {
   const { account, chainId } = useWeb3();
-  const { contract: usdtContract, isContractReady } = useUSDTContract(chainId, account);
+  const { isContractReady, transfer } = useUSDTContract(chainId, account);
   
   const [raffles, setRaffles] = useState<Raffle[]>([]);
   const [selectedRaffleId, setSelectedRaffleId] = useState<number | null>(null);
@@ -173,7 +172,7 @@ export const RefundManager = () => {
   };
 
   const processBatchRefund = async () => {
-    if (!usdtContract || !isContractReady) {
+    if (!transfer || !isContractReady) {
       toast.error('USDT contract not ready');
       return;
     }
@@ -196,11 +195,8 @@ export const RefundManager = () => {
           .update({ status: 'processing' })
           .eq('id', refund.id);
 
-        // Convert amount to USDT units (6 decimals)
-        const amountInUnits = ethers.utils.parseUnits(refund.amount.toString(), 6);
-
-        // Execute transfer
-        const tx = await usdtContract.transfer(refund.wallet_address, amountInUnits);
+        // Execute transfer using the hook's transfer function
+        const tx = await transfer(refund.wallet_address, refund.amount.toString());
         await tx.wait();
 
         // Update refund record with success
@@ -238,7 +234,7 @@ export const RefundManager = () => {
   };
 
   const retryFailedRefund = async (refund: Refund) => {
-    if (!usdtContract || !isContractReady) {
+    if (!transfer || !isContractReady) {
       toast.error('USDT contract not ready');
       return;
     }
@@ -250,8 +246,7 @@ export const RefundManager = () => {
         .update({ status: 'processing' })
         .eq('id', refund.id);
 
-      const amountInUnits = ethers.utils.parseUnits(refund.amount.toString(), 6);
-      const tx = await usdtContract.transfer(refund.wallet_address, amountInUnits);
+      const tx = await transfer(refund.wallet_address, refund.amount.toString());
       await tx.wait();
 
       await supabase
