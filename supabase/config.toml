@@ -11,3 +11,6 @@ verify_jwt = true
 
 [functions.send-prize-claim-confirmation]
 verify_jwt = true
+
+[functions.check-raffle-status]
+verify_jwt = false
