@@ -79,8 +79,6 @@ const RaffleDetail = () => {
     return () => clearInterval(interval);
   }, [raffle?.draw_date]);
 
-  // Removed blockchain ticket fetching - database is single source of truth
-
   const loadRaffle = async () => {
     if (!id) {
       navigate("/raffles");
@@ -104,6 +102,57 @@ const RaffleDetail = () => {
         });
         navigate("/raffles");
         return;
+      }
+
+      // Fetch live blockchain data if contract_raffle_id exists
+      if (data.contract_raffle_id) {
+        try {
+          const { ethers } = await import('ethers');
+          const { getNetworkConfig, RAFFLE_ABI } = await import('@/config/contracts');
+          
+          // Try Sepolia first
+          const sepoliaConfig = getNetworkConfig(11155111);
+          if (sepoliaConfig) {
+            try {
+              const provider = new ethers.providers.JsonRpcProvider(sepoliaConfig.rpcUrl);
+              const contract = new ethers.Contract(
+                sepoliaConfig.contracts.raffle,
+                RAFFLE_ABI,
+                provider
+              );
+              const contractInfo = await contract.raffles(data.contract_raffle_id);
+              const ticketsSold = contractInfo.ticketsSold.toNumber();
+              const winner = contractInfo.winner;
+              
+              data.tickets_sold = ticketsSold;
+              if (winner !== ethers.constants.AddressZero) {
+                data.winner_address = winner;
+              }
+            } catch (sepoliaError) {
+              // Try Mainnet if Sepolia fails
+              const mainnetConfig = getNetworkConfig(1);
+              if (mainnetConfig) {
+                const provider = new ethers.providers.JsonRpcProvider(mainnetConfig.rpcUrl);
+                const contract = new ethers.Contract(
+                  mainnetConfig.contracts.raffle,
+                  RAFFLE_ABI,
+                  provider
+                );
+                const contractInfo = await contract.raffles(data.contract_raffle_id);
+                const ticketsSold = contractInfo.ticketsSold.toNumber();
+                const winner = contractInfo.winner;
+                
+                data.tickets_sold = ticketsSold;
+                if (winner !== ethers.constants.AddressZero) {
+                  data.winner_address = winner;
+                }
+              }
+            }
+          }
+        } catch (blockchainError) {
+          console.error("Error fetching blockchain data:", blockchainError);
+          // Continue with database data if blockchain fetch fails
+        }
       }
 
       setRaffle(data);

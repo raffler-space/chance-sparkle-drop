@@ -13,6 +13,7 @@ import { Loader2, Ticket, Trophy, ExternalLink, Loader2 as LoaderIcon } from 'lu
 import { PurchaseModal } from '@/components/PurchaseModal';
 import { ethers } from 'ethers';
 import { getBlockExplorerUrl } from '@/utils/blockExplorer';
+import { getNetworkConfig, RAFFLE_ABI } from '@/config/contracts';
 
 interface Raffle {
   id: number;
@@ -106,10 +107,71 @@ export default function Raffles() {
 
     if (error) {
       console.error('Error fetching raffles:', error);
-    } else if (data) {
-      // Use database as single source of truth for ticket counts
-      setRaffles(data);
+      setLoading(false);
+      return;
     }
+    
+    if (!data) {
+      setLoading(false);
+      return;
+    }
+
+    // Fetch blockchain data for raffles with contract IDs
+    const enrichedRaffles = await Promise.all(
+      data.map(async (raffle) => {
+        if (!raffle.contract_raffle_id) return raffle;
+
+        try {
+          // Try Sepolia first
+          const sepoliaConfig = getNetworkConfig(11155111);
+          if (sepoliaConfig) {
+            try {
+              const provider = new ethers.providers.JsonRpcProvider(sepoliaConfig.rpcUrl);
+              const contract = new ethers.Contract(
+                sepoliaConfig.contracts.raffle,
+                RAFFLE_ABI,
+                provider
+              );
+              const contractInfo = await contract.raffles(raffle.contract_raffle_id);
+              const ticketsSold = contractInfo.ticketsSold.toNumber();
+              const winner = contractInfo.winner;
+              
+              return {
+                ...raffle,
+                tickets_sold: ticketsSold,
+                winner_address: winner !== ethers.constants.AddressZero ? winner : raffle.winner_address,
+              };
+            } catch (sepoliaError) {
+              // Try Mainnet if Sepolia fails
+              const mainnetConfig = getNetworkConfig(1);
+              if (mainnetConfig) {
+                const provider = new ethers.providers.JsonRpcProvider(mainnetConfig.rpcUrl);
+                const contract = new ethers.Contract(
+                  mainnetConfig.contracts.raffle,
+                  RAFFLE_ABI,
+                  provider
+                );
+                const contractInfo = await contract.raffles(raffle.contract_raffle_id);
+                const ticketsSold = contractInfo.ticketsSold.toNumber();
+                const winner = contractInfo.winner;
+                
+                return {
+                  ...raffle,
+                  tickets_sold: ticketsSold,
+                  winner_address: winner !== ethers.constants.AddressZero ? winner : raffle.winner_address,
+                };
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`Error fetching blockchain data for raffle ${raffle.id}:`, error);
+        }
+        
+        return raffle;
+      })
+    );
+
+    setRaffles(enrichedRaffles as Raffle[]);
     setLoading(false);
   };
 
