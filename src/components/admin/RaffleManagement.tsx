@@ -865,8 +865,8 @@ export const RaffleManagement = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4 flex-1 overflow-hidden">
-            <ScrollArea className="flex-1 pr-4 h-full">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 flex-1 min-h-0">
+            <ScrollArea className="flex-1 h-0 pr-4">
               <div className="space-y-4">
                 {editingRaffle && editingRaffle.contract_raffle_id !== null && (
                   <div className="p-3 bg-warning/10 border border-warning rounded-md">
