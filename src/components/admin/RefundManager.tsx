@@ -55,7 +55,7 @@ export const RefundManager = () => {
         .from('raffles')
         .select('id, name, status, draw_date, tickets_sold, max_tickets')
         .not('draw_date', 'is', null)
-        .in('status', ['active', 'live']);
+        .in('status', ['active', 'live', 'completed']);
 
       if (rafflesError) throw rafflesError;
 
