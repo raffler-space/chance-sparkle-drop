@@ -10,7 +10,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PurchaseModal } from "@/components/PurchaseModal";
 import LiveTicketFeed from "@/components/LiveTicketFeed";
 import { useWeb3 } from "@/hooks/useWeb3";
-import { useRaffleContract } from "@/hooks/useRaffleContract";
 
 interface Raffle {
   id: number;
@@ -37,13 +36,11 @@ interface Raffle {
 const RaffleDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { account, connectWallet, chainId } = useWeb3();
-  const { getRaffleInfo } = useRaffleContract(chainId, account || undefined);
+  const { account, connectWallet } = useWeb3();
   const [raffle, setRaffle] = useState<Raffle | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string>("");
-  const [onChainTicketsSold, setOnChainTicketsSold] = useState<number | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<{
     days: number;
     hours: number;
@@ -54,12 +51,6 @@ const RaffleDetail = () => {
   useEffect(() => {
     loadRaffle();
   }, [id]);
-
-  useEffect(() => {
-    if (raffle?.contract_raffle_id !== null && raffle?.contract_raffle_id !== undefined) {
-      loadOnChainData();
-    }
-  }, [raffle?.contract_raffle_id]);
 
   useEffect(() => {
     if (!raffle?.draw_date) return;
@@ -88,18 +79,7 @@ const RaffleDetail = () => {
     return () => clearInterval(interval);
   }, [raffle?.draw_date]);
 
-  const loadOnChainData = async () => {
-    if (!raffle?.contract_raffle_id) return;
-    
-    try {
-      const details = await getRaffleInfo(raffle.contract_raffle_id);
-      if (details) {
-        setOnChainTicketsSold(details.ticketsSold);
-      }
-    } catch (error) {
-      console.error("Error loading on-chain data:", error);
-    }
-  };
+  // Removed blockchain ticket fetching - database is single source of truth
 
   const loadRaffle = async () => {
     if (!id) {
@@ -157,8 +137,7 @@ const RaffleDetail = () => {
 
   const calculateProgress = () => {
     if (!raffle) return 0;
-    const ticketsSold = onChainTicketsSold !== null ? onChainTicketsSold : raffle.tickets_sold;
-    return (ticketsSold / raffle.max_tickets) * 100;
+    return (raffle.tickets_sold / raffle.max_tickets) * 100;
   };
 
   if (loading) {
@@ -262,7 +241,7 @@ const RaffleDetail = () => {
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Tickets Sold</span>
                 <span className="text-lg font-semibold">
-                  {onChainTicketsSold !== null ? onChainTicketsSold : raffle.tickets_sold} / {raffle.max_tickets}
+                  {raffle.tickets_sold} / {raffle.max_tickets}
                 </span>
               </div>
               <div className="w-full bg-background/50 rounded-full h-2">
@@ -384,13 +363,12 @@ const RaffleDetail = () => {
           name: raffle.name,
           ticketPrice: raffle.ticket_price,
           maxTickets: raffle.max_tickets,
-          ticketsSold: onChainTicketsSold !== null ? onChainTicketsSold : raffle.tickets_sold,
+          ticketsSold: raffle.tickets_sold,
           contract_raffle_id: raffle.contract_raffle_id,
         }}
         account={account}
         onPurchaseSuccess={() => {
           loadRaffle();
-          loadOnChainData();
         }}
       />
     </div>

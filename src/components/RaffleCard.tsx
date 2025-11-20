@@ -1,11 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Users, Ticket, Trophy, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { PurchaseModal } from './PurchaseModal';
-import { useRaffleContract } from '@/hooks/useRaffleContract';
-import { useWeb3 } from '@/hooks/useWeb3';
 import { getBlockExplorerUrl } from '@/utils/blockExplorer';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -49,30 +47,7 @@ export const RaffleCard = ({
   launchTime,
 }: RaffleCardProps) => {
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
-  const [blockchainTicketsSold, setBlockchainTicketsSold] = useState<number | null>(null);
-  const { chainId } = useWeb3();
-  const { getRaffleInfo, isContractReady } = useRaffleContract(chainId, account);
   const navigate = useNavigate();
-
-  // Fetch actual ticket count from blockchain and refresh periodically
-  useEffect(() => {
-    const fetchBlockchainData = async () => {
-      if (!isContractReady || contract_raffle_id === null || contract_raffle_id === undefined) {
-        return;
-      }
-
-      const info = await getRaffleInfo(contract_raffle_id);
-      if (info) {
-        setBlockchainTicketsSold(info.ticketsSold);
-      }
-    };
-
-    fetchBlockchainData();
-    
-    // Refresh every 10 seconds to catch updates
-    const interval = setInterval(fetchBlockchainData, 10000);
-    return () => clearInterval(interval);
-  }, [isContractReady, contract_raffle_id, getRaffleInfo]);
 
   const timeRemaining = () => {
     const now = new Date();
@@ -87,9 +62,8 @@ export const RaffleCard = ({
   // Determine if we should show "Starting In" or "Ends In"
   const isUpcoming = launchTime && launchTime.getTime() > new Date().getTime();
 
-  // Use blockchain data if available, fallback to database
-  const actualSoldTickets = blockchainTicketsSold !== null ? blockchainTicketsSold : soldTickets;
-  const progressPercentage = (actualSoldTickets / totalTickets) * 100;
+  // Use database as single source of truth
+  const progressPercentage = (soldTickets / totalTickets) * 100;
 
   return (
     <Card className="glass-effect border-border/50 hover:border-primary/50 transition-all duration-300 overflow-hidden group">
@@ -139,7 +113,7 @@ export const RaffleCard = ({
             <div className="text-xs text-muted-foreground mb-1">Sold</div>
             <div className="font-bold flex items-center justify-center gap-1">
               <Users className="h-4 w-4" />
-              {actualSoldTickets}/{totalTickets}
+              {soldTickets}/{totalTickets}
             </div>
           </div>
           <div className="text-center">
@@ -176,20 +150,22 @@ export const RaffleCard = ({
               <code className="text-xs font-mono bg-background/50 px-2 py-1 rounded flex-1 truncate">
                 {winnerAddress}
               </code>
-              <Button
-                size="sm"
-                variant="ghost"
-                asChild
-                className="h-7 w-7 p-0"
-              >
-                <a
-                  href={getBlockExplorerUrl(chainId, 'address', winnerAddress)}
-                  target="_blank"
-                  rel="noopener noreferrer"
+              {contract_raffle_id && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  asChild
+                  className="h-7 w-7 p-0"
                 >
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              </Button>
+                  <a
+                    href={getBlockExplorerUrl(1, 'address', winnerAddress)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </Button>
+              )}
             </div>
             {account?.toLowerCase() === winnerAddress.toLowerCase() && (
               <div className="mt-3 p-2 bg-neon-gold/10 border border-neon-gold/30 rounded text-center">
