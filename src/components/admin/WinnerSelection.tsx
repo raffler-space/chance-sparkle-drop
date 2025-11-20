@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Loader2, Sparkles, ExternalLink, Copy, Clock } from 'lucide-react';
+import { Trophy, Loader2, Sparkles, ExternalLink, Copy, Clock, Filter } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
 import { useRaffleContract } from '@/hooks/useRaffleContract';
@@ -47,6 +48,8 @@ export const WinnerSelection = () => {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<number | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<{ [key: number]: string }>({});
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<string>('draw_date_asc');
   const { account, chainId } = useWeb3();
   const { contract, selectWinner, isContractReady } = useRaffleContract(chainId, account);
 
@@ -271,6 +274,43 @@ export const WinnerSelection = () => {
     }
   };
 
+  // Filter and sort raffles
+  const filteredAndSortedRaffles = raffles
+    .filter(raffle => {
+      if (statusFilter === 'all') return true;
+      if (statusFilter === 'active') return raffle.status === 'active';
+      if (statusFilter === 'completed') return raffle.status === 'completed';
+      if (statusFilter === 'has_winner') return raffle.winner_address !== null;
+      if (statusFilter === 'no_winner') return raffle.winner_address === null && raffle.status === 'active';
+      return true;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'name_asc':
+          return a.name.localeCompare(b.name);
+        case 'name_desc':
+          return b.name.localeCompare(a.name);
+        case 'draw_date_asc':
+          if (!a.draw_date) return 1;
+          if (!b.draw_date) return -1;
+          return new Date(a.draw_date).getTime() - new Date(b.draw_date).getTime();
+        case 'draw_date_desc':
+          if (!a.draw_date) return 1;
+          if (!b.draw_date) return -1;
+          return new Date(b.draw_date).getTime() - new Date(a.draw_date).getTime();
+        case 'tickets_asc':
+          return (a.tickets_sold || 0) - (b.tickets_sold || 0);
+        case 'tickets_desc':
+          return (b.tickets_sold || 0) - (a.tickets_sold || 0);
+        case 'progress_asc':
+          return ((a.tickets_sold || 0) / a.max_tickets) - ((b.tickets_sold || 0) / b.max_tickets);
+        case 'progress_desc':
+          return ((b.tickets_sold || 0) / b.max_tickets) - ((a.tickets_sold || 0) / a.max_tickets);
+        default:
+          return 0;
+      }
+    });
+
   const copyAddress = (address: string) => {
     navigator.clipboard.writeText(address);
     toast.success('Address copied to clipboard!');
@@ -287,34 +327,85 @@ export const WinnerSelection = () => {
   return (
     <div className="space-y-4">
       <Card className="glass-card border-neon-gold/30 p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Sparkles className="w-6 h-6 text-neon-gold" />
-          <div>
-            <h3 className="font-orbitron font-bold text-lg">Chainlink VRF Integration</h3>
-            <p className="text-sm text-muted-foreground">
-              Trigger verifiable random winner selection using Chainlink VRF
-            </p>
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Sparkles className="w-6 h-6 text-neon-gold" />
+            <div>
+              <h3 className="font-orbitron font-bold text-lg">Chainlink VRF Integration</h3>
+              <p className="text-sm text-muted-foreground">
+                Trigger verifiable random winner selection using Chainlink VRF
+              </p>
+            </div>
           </div>
-        </div>
-        
-        <div className="bg-background/50 rounded-lg p-4 space-y-2 text-sm">
-          <p className="text-muted-foreground">
-            <strong>Note:</strong> Winner selection uses Chainlink VRF for provably fair randomness.
-          </p>
-          <p className="text-muted-foreground">
-            The process involves:
-          </p>
-          <ol className="list-decimal list-inside space-y-1 text-muted-foreground ml-2">
-            <li>Request random number from Chainlink VRF</li>
-            <li>Wait for VRF callback with random number</li>
-            <li>Select winner from NFT holders who purchased tickets</li>
-            <li>Record winner on-chain and update database</li>
-          </ol>
+
+          <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground font-rajdhani">Filter:</span>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[160px] glass-card border-border/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="no_winner">No Winner</SelectItem>
+                  <SelectItem value="has_winner">Has Winner</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground font-rajdhani">Sort:</span>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-[170px] glass-card border-border/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draw_date_asc">End Soon</SelectItem>
+                  <SelectItem value="draw_date_desc">End Later</SelectItem>
+                  <SelectItem value="name_asc">Name (A-Z)</SelectItem>
+                  <SelectItem value="name_desc">Name (Z-A)</SelectItem>
+                  <SelectItem value="tickets_asc">Tickets ↑</SelectItem>
+                  <SelectItem value="tickets_desc">Tickets ↓</SelectItem>
+                  <SelectItem value="progress_asc">Progress ↑</SelectItem>
+                  <SelectItem value="progress_desc">Progress ↓</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <div className="bg-background/50 rounded-lg p-4 space-y-2 text-sm">
+            <p className="text-muted-foreground">
+              <strong>Note:</strong> Winner selection uses Chainlink VRF for provably fair randomness.
+            </p>
+            <p className="text-muted-foreground">
+              The process involves:
+            </p>
+            <ol className="list-decimal list-inside space-y-1 text-muted-foreground ml-2">
+              <li>Request random number from Chainlink VRF</li>
+              <li>Wait for VRF callback with random number</li>
+              <li>Select winner from NFT holders who purchased tickets</li>
+              <li>Record winner on-chain and update database</li>
+            </ol>
+          </div>
         </div>
       </Card>
 
-      <div className="grid gap-4">
-        {raffles.map((raffle) => {
+      {filteredAndSortedRaffles.length === 0 ? (
+        <Card className="glass-card border-neon-gold/30 p-12">
+          <div className="text-center">
+            <p className="text-muted-foreground font-rajdhani text-lg">
+              {statusFilter === 'all' 
+                ? 'No raffles available for winner selection.'
+                : `No ${statusFilter === 'no_winner' ? 'active raffles without winners' : statusFilter} raffles found.`}
+            </p>
+          </div>
+        </Card>
+      ) : (
+        <div className="grid gap-4">
+          {filteredAndSortedRaffles.map((raffle) => {
           const progress = (raffle.tickets_sold / raffle.max_tickets) * 100;
           const now = new Date();
           const drawDate = raffle.draw_date ? new Date(raffle.draw_date) : null;
@@ -462,6 +553,7 @@ export const WinnerSelection = () => {
           );
         })}
       </div>
+    )}
     </div>
   );
 };
