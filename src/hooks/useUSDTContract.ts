@@ -9,6 +9,7 @@ const USDT_ABI = [
   'function decimals() view returns (uint8)',
   'function approve(address spender, uint256 amount) returns (bool)',
   'function allowance(address owner, address spender) view returns (uint256)',
+  'function transfer(address to, uint256 amount) returns (bool)',
   'function mint(address to, uint256 amount)',
   'function mintWithDecimals(address to, uint256 amount)',
 ];
@@ -114,6 +115,20 @@ export const useUSDTContract = (chainId: number | undefined, account: string | n
     }
   };
 
+  const transfer = async (to: string, amount: string): Promise<ethers.ContractTransaction> => {
+    if (!contract) throw new Error('Contract not initialized');
+
+    try {
+      const decimals = await contract.decimals();
+      const amountInSmallestUnit = ethers.utils.parseUnits(amount, decimals);
+      const tx = await contract.transfer(to, amountInSmallestUnit);
+      return tx;
+    } catch (error) {
+      console.error('Error transferring USDT:', error);
+      throw error;
+    }
+  };
+
   return {
     contract,
     isContractReady,
@@ -121,5 +136,6 @@ export const useUSDTContract = (chainId: number | undefined, account: string | n
     approve,
     getAllowance,
     mintTestTokens,
+    transfer,
   };
 };
