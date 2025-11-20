@@ -100,9 +100,25 @@ export const RefundManager = () => {
       toast.error('Failed to fetch raffles');
       console.error(error);
     } else {
-      setRaffles(data || []);
-      if (data && data.length > 0 && !selectedRaffleId) {
-        setSelectedRaffleId(data[0].id);
+      // Fetch actual ticket counts from tickets table
+      const rafflesWithTickets = await Promise.all(
+        (data || []).map(async (raffle) => {
+          const { data: tickets, error: ticketsError } = await supabase
+            .from('tickets')
+            .select('quantity')
+            .eq('raffle_id', raffle.id);
+          
+          if (!ticketsError && tickets) {
+            const actualTicketsSold = tickets.reduce((sum, t) => sum + (t.quantity || 1), 0);
+            return { ...raffle, tickets_sold: actualTicketsSold };
+          }
+          return raffle;
+        })
+      );
+      
+      setRaffles(rafflesWithTickets);
+      if (rafflesWithTickets && rafflesWithTickets.length > 0 && !selectedRaffleId) {
+        setSelectedRaffleId(rafflesWithTickets[0].id);
       }
     }
     setLoading(false);
