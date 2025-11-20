@@ -513,6 +513,10 @@ export const RaffleManagement = () => {
           return (a.tickets_sold || 0) - (b.tickets_sold || 0);
         case 'tickets_desc':
           return (b.tickets_sold || 0) - (a.tickets_sold || 0);
+        case 'position_asc':
+          return (a.display_order || 0) - (b.display_order || 0);
+        case 'position_desc':
+          return (b.display_order || 0) - (a.display_order || 0);
         default:
           return 0;
       }
@@ -618,6 +622,8 @@ export const RaffleManagement = () => {
                 <SelectItem value="price_desc">Price ↓</SelectItem>
                 <SelectItem value="tickets_asc">Tickets ↑</SelectItem>
                 <SelectItem value="tickets_desc">Tickets ↓</SelectItem>
+                <SelectItem value="position_asc">Position ↑</SelectItem>
+                <SelectItem value="position_desc">Position ↓</SelectItem>
               </SelectContent>
             </Select>
           </div>
