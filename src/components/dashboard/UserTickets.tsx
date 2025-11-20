@@ -93,7 +93,7 @@ export const UserTickets = ({ userId }: { userId: string }) => {
   const fetchTickets = async () => {
     setLoading(true);
     
-    // Fetch from database only - single source of truth
+    // Try to fetch from database first (for authenticated users)
     const { data, error } = await supabase
       .from('tickets')
       .select(`
@@ -115,6 +115,11 @@ export const UserTickets = ({ userId }: { userId: string }) => {
 
     if (error) {
       console.error('Error fetching tickets from database:', error);
+    }
+    
+    // If user has wallet but no database tickets, fetch from blockchain
+    if ((!data || data.length === 0) && account && isContractReady) {
+      await fetchBlockchainTickets();
     } else {
       setTickets((data as any) || []);
     }

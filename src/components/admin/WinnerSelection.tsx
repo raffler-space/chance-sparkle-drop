@@ -191,10 +191,32 @@ export const WinnerSelection = () => {
       .order('created_at', { ascending: false });
 
     if (!error && data) {
-      // Use database as single source of truth for ticket counts
-      setRaffles(data);
-    }
+      let updatedRaffles = data;
 
+      // Fetch real-time ticket counts from blockchain if contract is ready
+      if (isContractReady && contract) {
+        const rafflesWithBlockchainData = await Promise.all(
+          data.map(async (raffle) => {
+            if (raffle.contract_raffle_id !== null) {
+              try {
+                const contractInfo = await contract.raffles(raffle.contract_raffle_id);
+                return {
+                  ...raffle,
+                  tickets_sold: contractInfo.ticketsSold.toNumber(),
+                };
+              } catch (error) {
+                console.error(`Error fetching blockchain data for raffle ${raffle.id}:`, error);
+                return raffle;
+              }
+            }
+            return raffle;
+          })
+        );
+        updatedRaffles = rafflesWithBlockchainData;
+      }
+
+      setRaffles(updatedRaffles);
+    }
     setLoading(false);
   };
 
