@@ -266,8 +266,8 @@ export const UserTickets = ({ userId }: { userId: string }) => {
     });
   };
 
-  const getStatusBadge = (status: string) => {
-    if (status === 'completed') return <Badge className="bg-muted text-muted-foreground">✓ Completed</Badge>;
+const getStatusBadge = (status: string, isSoldOut: boolean) => {
+    if (status === 'completed' || (status === 'Refunding' && isSoldOut)) return <Badge className="bg-muted text-muted-foreground">✓ Completed</Badge>;
     if (status === 'active') return <Badge className="bg-red-500/20 text-red-400 border-red-500/30">🔴 LIVE</Badge>;
     return <Badge variant="secondary">{status}</Badge>;
   };
@@ -289,7 +289,9 @@ export const UserTickets = ({ userId }: { userId: string }) => {
     <div className="space-y-4">
       {groupedRaffles.map((group) => {
         const isExpanded = expandedRaffles.has(group.raffle.id);
-        const isCompleted = group.raffle.status === 'completed';
+        const ticketsSold = blockchainTicketCounts[group.raffle.id] ?? group.raffle.tickets_sold ?? 0;
+        const isSoldOut = ticketsSold >= group.raffle.max_tickets;
+        const isCompleted = group.raffle.status === 'completed' || (group.raffle.status === 'Refunding' && isSoldOut);
         
         return (
           <Collapsible
@@ -322,7 +324,7 @@ export const UserTickets = ({ userId }: { userId: string }) => {
                           </Badge>
                         )
                       )}
-                      {getStatusBadge(group.raffle.status)}
+                      {getStatusBadge(group.raffle.status, isSoldOut)}
                       <ChevronDown className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                     </div>
                   </div>
