@@ -214,6 +214,29 @@ export const Navbar = ({ onConnectWallet, onDisconnectWallet, walletAddress, isC
                 {link.label}
               </Link>
             ))}
+            
+            {/* Dashboard and Referrals - show when user is logged in */}
+            {user && (
+              <div className="space-y-1">
+                <Link
+                  to="/dashboard"
+                  className="flex items-center gap-2 px-3 py-2 text-base font-rajdhani font-medium text-muted-foreground hover:text-primary transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Dashboard
+                </Link>
+                <Link
+                  to="/referrals"
+                  className="flex items-center gap-2 px-3 py-2 text-base font-rajdhani font-medium text-muted-foreground hover:text-primary transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Gift className="w-4 h-4" />
+                  Referrals
+                </Link>
+              </div>
+            )}
+
             <div className="px-3 py-2 space-y-2">
               {!walletAddress ? (
                 <>
@@ -228,84 +251,45 @@ export const Navbar = ({ onConnectWallet, onDisconnectWallet, walletAddress, isC
                     <Wallet className="mr-2 h-4 w-4" />
                     {isConnecting ? 'Connecting...' : 'Connect Wallet'}
                   </Button>
-                  <Button
-                    onClick={() => {
-                      handleEmailLogin();
-                      setMobileMenuOpen(false);
-                    }}
-                    variant="outline"
-                    className="w-full font-orbitron"
-                  >
-                    <Mail className="mr-2 h-4 w-4" />
-                    Email Login
-                  </Button>
-                </>
-              ) : user ? (
-                <>
-                  <Link
-                    to="/dashboard"
-                    className="flex items-center px-3 py-2 text-base font-rajdhani font-medium text-muted-foreground hover:text-primary"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <LayoutDashboard className="mr-2 h-4 w-4" />
-                    Dashboard
-                  </Link>
-                  <Link
-                    to="/referrals"
-                    className="flex items-center px-3 py-2 text-base font-rajdhani font-medium text-muted-foreground hover:text-primary"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <Gift className="mr-2 h-4 w-4" />
-                    Referrals
-                  </Link>
-                  <Button
-                    onClick={() => {
-                      onDisconnectWallet();
-                      setMobileMenuOpen(false);
-                    }}
-                    variant="outline"
-                    className="w-full font-orbitron"
-                  >
-                    <Wallet className="mr-2 h-4 w-4" />
-                    Disconnect Wallet
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      handleSignOut();
-                      setMobileMenuOpen(false);
-                    }}
-                    variant="outline"
-                    className="w-full font-orbitron text-destructive hover:text-destructive"
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Log Out
-                  </Button>
                 </>
               ) : (
-                <>
-                  <Button
-                    onClick={() => {
-                      onDisconnectWallet();
-                      setMobileMenuOpen(false);
-                    }}
-                    variant="outline"
-                    className="w-full font-orbitron"
-                  >
-                    <Wallet className="mr-2 h-4 w-4" />
-                    Disconnect Wallet
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      handleEmailLogin();
-                      setMobileMenuOpen(false);
-                    }}
-                    variant="outline"
-                    className="w-full font-orbitron"
-                  >
-                    <LogIn className="mr-2 h-4 w-4" />
-                    Email Login
-                  </Button>
-                </>
+                <Button
+                  onClick={() => {
+                    onDisconnectWallet();
+                    setMobileMenuOpen(false);
+                  }}
+                  variant="outline"
+                  className="w-full font-orbitron"
+                >
+                  <Wallet className="mr-2 h-4 w-4" />
+                  Disconnect Wallet
+                </Button>
+              )}
+              
+              {!user ? (
+                <Button
+                  onClick={() => {
+                    handleEmailLogin();
+                    setMobileMenuOpen(false);
+                  }}
+                  variant="outline"
+                  className="w-full font-orbitron"
+                >
+                  <Mail className="mr-2 h-4 w-4" />
+                  Email Login
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => {
+                    handleSignOut();
+                    setMobileMenuOpen(false);
+                  }}
+                  variant="outline"
+                  className="w-full font-orbitron text-destructive hover:text-destructive"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Log Out
+                </Button>
               )}
             </div>
           </div>
