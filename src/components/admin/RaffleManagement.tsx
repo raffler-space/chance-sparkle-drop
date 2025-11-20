@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Edit, Trash2, Loader2, ExternalLink, Eye, EyeOff, Clock, Filter } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { useRaffleContract } from '@/hooks/useRaffleContract';
@@ -865,190 +866,194 @@ export const RaffleManagement = () => {
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {editingRaffle && editingRaffle.contract_raffle_id !== null && (
-              <div className="p-3 bg-warning/10 border border-warning rounded-md">
-                <p className="text-sm text-warning-foreground">
-                  ⚠️ This raffle is deployed on-chain. Only display fields (name, description, images, visibility) can be edited.
-                </p>
+            <ScrollArea className="max-h-[60vh] pr-4">
+              <div className="space-y-4">
+                {editingRaffle && editingRaffle.contract_raffle_id !== null && (
+                  <div className="p-3 bg-warning/10 border border-warning rounded-md">
+                    <p className="text-sm text-warning-foreground">
+                      ⚠️ This raffle is deployed on-chain. Only display fields (name, description, images, visibility) can be edited.
+                    </p>
+                  </div>
+                )}
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Raffle Name</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="prize">Prize Description</Label>
+                    <Input
+                      id="prize"
+                      value={formData.prize_description}
+                      onChange={(e) => setFormData({ ...formData, prize_description: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Short Description</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={2}
+                    placeholder="Brief description shown on raffle cards"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="detailed_description">Detailed Description</Label>
+                  <Textarea
+                    id="detailed_description"
+                    value={formData.detailed_description}
+                    onChange={(e) => setFormData({ ...formData, detailed_description: e.target.value })}
+                    rows={4}
+                    placeholder="Full description shown on raffle detail page"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="rules">Rules</Label>
+                  <Textarea
+                    id="rules"
+                    value={formData.rules}
+                    onChange={(e) => setFormData({ ...formData, rules: e.target.value })}
+                    rows={4}
+                    placeholder="Raffle rules and terms"
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="ticket_price">Ticket Price (USDT)</Label>
+                    <Input
+                      id="ticket_price"
+                      type="number"
+                      step="0.01"
+                      value={formData.ticket_price}
+                      onChange={(e) => setFormData({ ...formData, ticket_price: e.target.value })}
+                      disabled={editingRaffle !== null && editingRaffle.contract_raffle_id !== null}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="max_tickets">Max Tickets</Label>
+                    <Input
+                      id="max_tickets"
+                      type="number"
+                      value={formData.max_tickets}
+                      onChange={(e) => setFormData({ ...formData, max_tickets: e.target.value })}
+                      disabled={editingRaffle !== null && editingRaffle.contract_raffle_id !== null}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="duration_days">Duration (Days)</Label>
+                    <Input
+                      id="duration_days"
+                      type="number"
+                      step="0.001"
+                      min="0.001"
+                      value={formData.duration_days}
+                      onChange={(e) => setFormData({ ...formData, duration_days: e.target.value })}
+                      required
+                      disabled={editingRaffle?.status === 'active' || editingRaffle?.status === 'completed'}
+                      placeholder="0.001 = ~90 seconds"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="nft_address">NFT Collection Address</Label>
+                  <Input
+                    id="nft_address"
+                    value={formData.nft_collection_address}
+                    onChange={(e) => setFormData({ ...formData, nft_collection_address: e.target.value })}
+                    placeholder="0x..."
+                    disabled={editingRaffle !== null && editingRaffle.contract_raffle_id !== null}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="image_url">Image URL (Optional)</Label>
+                  <Input
+                    id="image_url"
+                    value={formData.image_url}
+                    onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                    placeholder="https://..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="status">Raffle Status</Label>
+                  <select
+                    id="status"
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md font-rajdhani"
+                  >
+                    <option value="draft">Draft (Create without activating)</option>
+                    <option value="active">Active (Deploy to blockchain immediately)</option>
+                  </select>
+                  <p className="text-sm text-muted-foreground font-rajdhani">
+                    Draft raffles can be activated later from the raffle list
+                  </p>
+                </div>
+
+                {formData.status === 'draft' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="launch_time">Launch Time (Optional)</Label>
+                    <Input
+                      id="launch_time"
+                      type="datetime-local"
+                      value={formData.launch_time}
+                      onChange={(e) => setFormData({ ...formData, launch_time: e.target.value })}
+                      className="font-rajdhani"
+                    />
+                    <p className="text-sm text-muted-foreground font-rajdhani">
+                      Set a countdown timer for when this raffle will be available
+                    </p>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="display_order">Display Position</Label>
+                  <Input
+                    id="display_order"
+                    type="number"
+                    min="1"
+                    value={formData.display_order}
+                    onChange={(e) => setFormData({ ...formData, display_order: e.target.value })}
+                    className="font-rajdhani"
+                  />
+                  <p className="text-sm text-muted-foreground font-rajdhani">
+                    Lower numbers appear first on the raffles page
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 p-4 bg-muted/20 rounded-lg border border-border/30">
+                  <Switch
+                    id="show_on_home"
+                    checked={formData.show_on_home}
+                    onCheckedChange={(checked) => setFormData({ ...formData, show_on_home: checked })}
+                  />
+                  <Label htmlFor="show_on_home" className="cursor-pointer font-rajdhani">
+                    Show on Home Page
+                  </Label>
+                </div>
               </div>
-            )}
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Raffle Name</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="prize">Prize Description</Label>
-                <Input
-                  id="prize"
-                  value={formData.prize_description}
-                  onChange={(e) => setFormData({ ...formData, prize_description: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Short Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={2}
-                placeholder="Brief description shown on raffle cards"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="detailed_description">Detailed Description</Label>
-              <Textarea
-                id="detailed_description"
-                value={formData.detailed_description}
-                onChange={(e) => setFormData({ ...formData, detailed_description: e.target.value })}
-                rows={4}
-                placeholder="Full description shown on raffle detail page"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="rules">Rules</Label>
-              <Textarea
-                id="rules"
-                value={formData.rules}
-                onChange={(e) => setFormData({ ...formData, rules: e.target.value })}
-                rows={4}
-                placeholder="Raffle rules and terms"
-              />
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="ticket_price">Ticket Price (USDT)</Label>
-                <Input
-                  id="ticket_price"
-                  type="number"
-                  step="0.01"
-                  value={formData.ticket_price}
-                  onChange={(e) => setFormData({ ...formData, ticket_price: e.target.value })}
-                  disabled={editingRaffle !== null && editingRaffle.contract_raffle_id !== null}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="max_tickets">Max Tickets</Label>
-                <Input
-                  id="max_tickets"
-                  type="number"
-                  value={formData.max_tickets}
-                  onChange={(e) => setFormData({ ...formData, max_tickets: e.target.value })}
-                  disabled={editingRaffle !== null && editingRaffle.contract_raffle_id !== null}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="duration_days">Duration (Days)</Label>
-                <Input
-                  id="duration_days"
-                  type="number"
-                  step="0.001"
-                  min="0.001"
-                  value={formData.duration_days}
-                  onChange={(e) => setFormData({ ...formData, duration_days: e.target.value })}
-                  required
-                  disabled={editingRaffle?.status === 'active' || editingRaffle?.status === 'completed'}
-                  placeholder="0.001 = ~90 seconds"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="nft_address">NFT Collection Address</Label>
-              <Input
-                id="nft_address"
-                value={formData.nft_collection_address}
-                onChange={(e) => setFormData({ ...formData, nft_collection_address: e.target.value })}
-                placeholder="0x..."
-                disabled={editingRaffle !== null && editingRaffle.contract_raffle_id !== null}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="image_url">Image URL (Optional)</Label>
-              <Input
-                id="image_url"
-                value={formData.image_url}
-                onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                placeholder="https://..."
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="status">Raffle Status</Label>
-              <select
-                id="status"
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full px-3 py-2 bg-background border border-border rounded-md font-rajdhani"
-              >
-                <option value="draft">Draft (Create without activating)</option>
-                <option value="active">Active (Deploy to blockchain immediately)</option>
-              </select>
-              <p className="text-sm text-muted-foreground font-rajdhani">
-                Draft raffles can be activated later from the raffle list
-              </p>
-            </div>
-
-            {formData.status === 'draft' && (
-              <div className="space-y-2">
-                <Label htmlFor="launch_time">Launch Time (Optional)</Label>
-                <Input
-                  id="launch_time"
-                  type="datetime-local"
-                  value={formData.launch_time}
-                  onChange={(e) => setFormData({ ...formData, launch_time: e.target.value })}
-                  className="font-rajdhani"
-                />
-                <p className="text-sm text-muted-foreground font-rajdhani">
-                  Set a countdown timer for when this raffle will be available
-                </p>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="display_order">Display Position</Label>
-              <Input
-                id="display_order"
-                type="number"
-                min="1"
-                value={formData.display_order}
-                onChange={(e) => setFormData({ ...formData, display_order: e.target.value })}
-                className="font-rajdhani"
-              />
-              <p className="text-sm text-muted-foreground font-rajdhani">
-                Lower numbers appear first on the raffles page
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 p-4 bg-muted/20 rounded-lg border border-border/30">
-              <Switch
-                id="show_on_home"
-                checked={formData.show_on_home}
-                onCheckedChange={(checked) => setFormData({ ...formData, show_on_home: checked })}
-              />
-              <Label htmlFor="show_on_home" className="cursor-pointer font-rajdhani">
-                Show on Home Page
-              </Label>
-            </div>
+            </ScrollArea>
 
             <div className="flex justify-end gap-2">
               <Button
