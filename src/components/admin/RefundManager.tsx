@@ -36,6 +36,7 @@ export const RefundManager = () => {
   const [refunds, setRefunds] = useState<Refund[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
 
   useEffect(() => {
     fetchRefundingRaffles();
@@ -46,6 +47,47 @@ export const RefundManager = () => {
       fetchRefunds(selectedRaffleId);
     }
   }, [selectedRaffleId]);
+
+  const checkRaffleStatuses = async () => {
+    setCheckingStatus(true);
+    try {
+      const { data: rafflesData, error: rafflesError } = await supabase
+        .from('raffles')
+        .select('id, name, status, draw_date, tickets_sold, max_tickets')
+        .not('draw_date', 'is', null)
+        .in('status', ['active', 'live']);
+
+      if (rafflesError) throw rafflesError;
+
+      let updatedCount = 0;
+      const now = new Date();
+
+      for (const raffle of rafflesData || []) {
+        const drawDate = new Date(raffle.draw_date);
+        const soldPercentage = (raffle.tickets_sold / raffle.max_tickets) * 100;
+
+        // If draw date has passed and less than 99% tickets sold, mark for refund
+        if (drawDate < now && soldPercentage < 99) {
+          const { error: updateError } = await supabase
+            .from('raffles')
+            .update({ status: 'Refunding' })
+            .eq('id', raffle.id);
+
+          if (!updateError) {
+            updatedCount++;
+          }
+        }
+      }
+
+      toast.success(`Updated ${updatedCount} raffle(s) to refunding status`);
+      fetchRefundingRaffles();
+    } catch (error) {
+      console.error('Error checking raffle statuses:', error);
+      toast.error('Failed to check raffle statuses');
+    } finally {
+      setCheckingStatus(false);
+    }
+  };
 
   const fetchRefundingRaffles = async () => {
     setLoading(true);
@@ -253,14 +295,34 @@ export const RefundManager = () => {
   if (raffles.length === 0) {
     return (
       <Card className="glass-card border-neon-cyan/30">
-        <CardHeader>
-          <CardTitle className="font-orbitron text-neon-cyan">Refund Management</CardTitle>
-          <CardDescription>No raffles requiring refunds</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="font-orbitron text-neon-cyan">Refund Management</CardTitle>
+            <CardDescription>No raffles requiring refunds</CardDescription>
+          </div>
+          <Button
+            onClick={checkRaffleStatuses}
+            disabled={checkingStatus}
+            className="bg-neon-purple/20 hover:bg-neon-purple/30 text-neon-purple border border-neon-purple/50"
+          >
+            {checkingStatus ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Checking...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Check Raffle Statuses
+              </>
+            )}
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center p-8 text-muted-foreground">
             <AlertCircle className="w-12 h-12 mb-4" />
             <p>No raffles with 'Refunding' status found.</p>
+            <p className="text-sm mt-2">Click "Check Raffle Statuses" to scan for raffles that need refunds</p>
           </div>
         </CardContent>
       </Card>
@@ -271,9 +333,29 @@ export const RefundManager = () => {
     <div className="space-y-6">
       {/* Raffle Selection */}
       <Card className="glass-card border-neon-cyan/30">
-        <CardHeader>
-          <CardTitle className="font-orbitron text-neon-cyan">Select Raffle to Refund</CardTitle>
-          <CardDescription>Choose a failed raffle to process refunds</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="font-orbitron text-neon-cyan">Select Raffle to Refund</CardTitle>
+            <CardDescription>Choose a failed raffle to process refunds</CardDescription>
+          </div>
+          <Button
+            onClick={checkRaffleStatuses}
+            disabled={checkingStatus}
+            variant="outline"
+            className="bg-neon-purple/20 hover:bg-neon-purple/30 text-neon-purple border border-neon-purple/50"
+          >
+            {checkingStatus ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Checking...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Check Status
+              </>
+            )}
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
