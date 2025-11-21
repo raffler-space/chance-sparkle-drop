@@ -22,7 +22,7 @@ function generateUserIdFromWallet(walletAddress: string): string {
 
 const NETWORK_CONFIGS = {
   mainnet: {
-    rpcUrl: "https://eth.llamarpc.com",
+    rpcUrl: "https://rpc.ankr.com/eth",
     contractAddress: "0x61ae76814a9245abE8524f33f0F1B330124B4677",
   },
   sepolia: {
