@@ -12,7 +12,7 @@ const updateWinnerSchema = z.object({
   raffleId: z.number().int().positive(),
   winnerAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional(),
   drawTxHash: z.string().regex(/^0x[a-fA-F0-9]{64}$/).optional(),
-  status: z.enum(['active', 'drawing', 'completed', 'cancelled', 'Refunding']).optional(),
+  status: z.enum(['draft', 'active', 'live', 'completed', 'cancelled', 'Refunding']).optional(),
 });
 
 serve(async (req) => {
