@@ -182,13 +182,17 @@ export default function Raffles() {
     setIsPurchaseModalOpen(true);
   };
 
-  const getStatusBadge = (status: string, drawDate: string | null, ticketsSold: number, launchTime: string | null) => {
+  const getStatusBadge = (status: string, drawDate: string | null, ticketsSold: number, launchTime: string | null, winnerAddress: string | null) => {
     // Check if raffle has a future launch time
     if (launchTime && new Date(launchTime) > new Date()) {
       return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">📅 UPCOMING</Badge>;
     }
     if (status === 'draft') {
       return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">📅 UPCOMING</Badge>;
+    }
+    // Check if there's a winner - this means it's completed regardless of status
+    if (winnerAddress) {
+      return <Badge className="bg-neon-gold/20 text-neon-gold border-neon-gold/30">✓ COMPLETED</Badge>;
     }
     if (status === 'completed') {
       return <Badge className="bg-neon-gold/20 text-neon-gold border-neon-gold/30">✓ COMPLETED</Badge>;
@@ -281,7 +285,8 @@ export default function Raffles() {
           {filteredRaffles.map((raffle) => {
             const progress = (raffle.tickets_sold / raffle.max_tickets) * 100;
             const isActive = raffle.status === 'active';
-            const isCompleted = raffle.status === 'completed';
+            // Consider a raffle completed if it has status 'completed' OR has a winner
+            const isCompleted = raffle.status === 'completed' || !!raffle.winner_address;
 
             return (
               <Card key={raffle.id} className="glass-card border-neon-cyan/30 overflow-hidden group hover:border-neon-cyan/60 transition-all">
@@ -292,7 +297,7 @@ export default function Raffles() {
                     <Ticket className="w-20 h-20 text-neon-cyan/40" />
                   )}
                   <div className="absolute top-3 right-3">
-                    {getStatusBadge(raffle.status, raffle.draw_date, raffle.tickets_sold, raffle.launch_time)}
+                    {getStatusBadge(raffle.status, raffle.draw_date, raffle.tickets_sold, raffle.launch_time, raffle.winner_address)}
                   </div>
                 </Link>
 
