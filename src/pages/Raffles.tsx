@@ -29,6 +29,7 @@ interface Raffle {
   contract_raffle_id: number | null;
   launch_time: string | null;
   display_order: number;
+  network: string;
 }
 
 export default function Raffles() {
@@ -399,6 +400,7 @@ export default function Raffles() {
             maxTickets: selectedRaffle.max_tickets,
             ticketsSold: selectedRaffle.tickets_sold,
             contract_raffle_id: selectedRaffle.contract_raffle_id,
+            network: selectedRaffle.network,
           }}
           account={account}
           onPurchaseSuccess={fetchRaffles}

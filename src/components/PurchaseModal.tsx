@@ -21,6 +21,7 @@ interface PurchaseModalProps {
     maxTickets: number;
     ticketsSold: number;
     contract_raffle_id?: number | null;
+    network: string;
   };
   account: string | null;
   onPurchaseSuccess?: () => void;
@@ -44,6 +45,11 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
   const totalPrice = ticketPriceInUSDT * quantity;
   const availableTickets = raffle.maxTickets - raffle.ticketsSold;
   const hasInsufficientBalance = usdtBalance !== null && parseFloat(usdtBalance) < totalPrice;
+  
+  // Network validation
+  const expectedChainId = raffle.network === 'sepolia' ? 11155111 : 1;
+  const isWrongNetwork = chainId && chainId !== expectedChainId;
+  const networkName = raffle.network === 'sepolia' ? 'Sepolia Testnet' : 'Ethereum Mainnet';
 
   const fetchUSDTBalance = async () => {
     if (!account || !isUSDTReady) return;
@@ -343,9 +349,20 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
           
           {!account && (
             <Alert className="border-destructive/50 bg-destructive/10">
-              <AlertTriangle className="h-4 h-4 text-destructive" />
+              <AlertTriangle className="h-4 w-4 text-destructive" />
               <AlertDescription className="text-destructive">
                 Wallet not connected. Please connect your wallet first.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Network Mismatch Warning */}
+          {isWrongNetwork && (
+            <Alert className="border-destructive/50 bg-destructive/10">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              <AlertDescription className="text-destructive">
+                <div className="font-semibold mb-1">Wrong Network</div>
+                This raffle is on {networkName}. Please switch your wallet to the correct network to continue.
               </AlertDescription>
             </Alert>
           )}
@@ -519,18 +536,28 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
           {/* Purchase Button */}
           <Button
             onClick={handlePurchase}
-            disabled={isProcessing || isApproving || !account || hasInsufficientBalance || !contractTicketPrice || isLoadingPrice}
-            className="w-full bg-gradient-to-r from-neon-cyan to-neon-purple hover:opacity-90 text-white font-orbitron text-lg h-12 disabled:opacity-50"
+            disabled={
+              !account ||
+              isProcessing ||
+              !isContractReady ||
+              hasInsufficientBalance ||
+              quantity < 1 ||
+              quantity > availableTickets ||
+              isLoadingPrice ||
+              !contractTicketPrice ||
+              isWrongNetwork
+            }
+            className="w-full bg-gradient-to-r from-neon-purple via-neon-pink to-neon-purple bg-size-200 bg-pos-0 hover:bg-pos-100 transition-all duration-500 font-orbitron"
           >
-            {isProcessing || isApproving ? (
-              <>
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
+            {isWrongNetwork ? (
+              'Switch to Correct Network'
+            ) : isProcessing ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="animate-spin">⚡</span>
                 {isApproving ? 'Approving USDT...' : 'Processing...'}
-              </>
-            ) : hasApproval ? (
-              'Confirm Purchase'
+              </span>
             ) : (
-              'Approve & Purchase'
+              `Confirm Purchase - ${contractTicketPrice ? totalPrice.toFixed(2) : '...'} USDT`
             )}
           </Button>
 

@@ -197,6 +197,7 @@ const Index = () => {
                   winnerAddress={raffle.winner_address}
                   contract_raffle_id={raffle.contract_raffle_id}
                   launchTime={raffle.launch_time ? new Date(raffle.launch_time) : null}
+                  network={raffle.network}
                 />
               ))}
             </div>
@@ -237,6 +238,7 @@ const Index = () => {
                   winnerAddress={raffle.winner_address}
                   contract_raffle_id={raffle.contract_raffle_id}
                   launchTime={raffle.launch_time ? new Date(raffle.launch_time) : null}
+                  network={raffle.network}
                 />
               ))}
             </div>
