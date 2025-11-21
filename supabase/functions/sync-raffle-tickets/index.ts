@@ -162,8 +162,8 @@ Deno.serve(async (req) => {
       
       console.log(`Querying events from block ${fromBlock} to ${currentBlock} (scanning ~${Math.floor(blocksToScan)} blocks)`);
       
-      // Query in chunks to work with Alchemy Free tier (10 block limit) and other RPC limits
-      const CHUNK_SIZE = 2000; // Use 2000 blocks per chunk for efficiency
+      // Query in chunks to work with Alchemy Free tier (10 block limit)
+      const CHUNK_SIZE = 10; // Alchemy Free tier only allows 10 block range
       const allEvents = [];
       
       for (let start = fromBlock; start <= currentBlock; start += CHUNK_SIZE) {
