@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
     // Fetch raffle from database
     const { data: raffle, error: raffleError } = await supabaseClient
       .from('raffles')
-      .select('id, contract_raffle_id, network')
+      .select('id, contract_raffle_id, network, created_at')
       .eq('id', raffleId)
       .single();
 
@@ -119,9 +119,19 @@ Deno.serve(async (req) => {
     console.log(`Scanning blockchain for TicketPurchased events...`);
     const filter = contract.filters.TicketPurchased(raffle.contract_raffle_id);
     
-    // Query events from contract deployment or last 10000 blocks (whichever is more recent)
+    // Calculate starting block based on raffle creation time
+    // Ethereum mainnet: ~12 seconds per block
+    // For safety, start scanning from 1000 blocks before estimated creation
     const currentBlock = await provider.getBlockNumber();
-    const fromBlock = Math.max(0, currentBlock - 10000);
+    const raffleCreatedAt = new Date(raffle.created_at).getTime() / 1000;
+    const currentTime = Math.floor(Date.now() / 1000);
+    const secondsSinceCreation = currentTime - raffleCreatedAt;
+    const estimatedBlocksSinceCreation = Math.floor(secondsSinceCreation / 12);
+    
+    // Start from estimated creation block minus 1000 blocks for safety, but max 5000 blocks back
+    const fromBlock = Math.max(0, currentBlock - Math.min(estimatedBlocksSinceCreation + 1000, 5000));
+    
+    console.log(`Querying events from block ${fromBlock} to ${currentBlock}`);
     
     const events = await contract.queryFilter(filter, fromBlock, 'latest');
     console.log(`Found ${events.length} ticket purchase events`);
