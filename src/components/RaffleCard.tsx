@@ -166,7 +166,7 @@ export const RaffleCard = ({
         </div>
 
         {/* Winner Display */}
-        {status === 'completed' && winnerAddress && (
+        {winnerAddress && (
           <div className="bg-gradient-to-r from-neon-gold/20 to-neon-cyan/20 border border-neon-gold/30 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-2">
               <Trophy className="w-5 h-5 text-neon-gold" />
