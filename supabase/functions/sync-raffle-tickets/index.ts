@@ -162,7 +162,25 @@ Deno.serve(async (req) => {
       
       console.log(`Querying events from block ${fromBlock} to ${currentBlock} (scanning ~${Math.floor(blocksToScan)} blocks)`);
       
-      const events = await contract.queryFilter(filter, fromBlock, 'latest');
+      // Query in chunks to work with Alchemy Free tier (10 block limit) and other RPC limits
+      const CHUNK_SIZE = 2000; // Use 2000 blocks per chunk for efficiency
+      const allEvents = [];
+      
+      for (let start = fromBlock; start <= currentBlock; start += CHUNK_SIZE) {
+        const end = Math.min(start + CHUNK_SIZE - 1, currentBlock);
+        console.log(`  Scanning chunk: blocks ${start} to ${end}`);
+        
+        try {
+          const chunkEvents = await contract.queryFilter(filter, start, end);
+          allEvents.push(...chunkEvents);
+          console.log(`  Found ${chunkEvents.length} events in this chunk`);
+        } catch (chunkError) {
+          console.error(`  Error scanning chunk ${start}-${end}:`, chunkError);
+          // Continue with next chunk even if one fails
+        }
+      }
+      
+      const events = allEvents;
       console.log(`Found ${events.length} ticket purchase events`);
 
       // Process each event and create/update ticket records
