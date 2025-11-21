@@ -75,6 +75,7 @@ Deno.serve(async (req) => {
 
     const now = new Date()
     const rafflesToRefund: number[] = []
+    const rafflesToComplete: number[] = []
 
     // Check each raffle
     for (const raffle of raffles) {
@@ -90,43 +91,72 @@ Deno.serve(async (req) => {
         maxTickets,
         soldPercentage: soldPercentage.toFixed(2) + '%',
         drawDatePassed: drawDate < now,
-        needsRefund: soldPercentage < 99
+        shouldComplete: soldPercentage >= 99,
+        shouldRefund: soldPercentage < 99
       })
 
-      // If draw date has passed and less than 99% sold, mark for refunding
-      if (drawDate < now && soldPercentage < 99) {
-        rafflesToRefund.push(raffle.id)
-        console.log(`Raffle ${raffle.id} (${raffle.name}) should be marked for refunding`)
+      // If draw date has passed
+      if (drawDate < now) {
+        if (soldPercentage >= 99) {
+          // Mark for completion
+          rafflesToComplete.push(raffle.id)
+          console.log(`Raffle ${raffle.id} (${raffle.name}) should be marked as completed`)
+        } else {
+          // Mark for refunding
+          rafflesToRefund.push(raffle.id)
+          console.log(`Raffle ${raffle.id} (${raffle.name}) should be marked for refunding`)
+        }
       }
     }
 
-    if (rafflesToRefund.length === 0) {
-      console.log('No raffles need to be marked for refunding')
+    const updates: any[] = []
+
+    // Update raffles to 'completed' status
+    if (rafflesToComplete.length > 0) {
+      const { data: completedRaffles, error: completeError } = await supabaseClient
+        .from('raffles')
+        .update({ status: 'completed', completed_at: new Date().toISOString() })
+        .in('id', rafflesToComplete)
+        .select()
+
+      if (completeError) {
+        console.error('Error updating raffle statuses to completed:', completeError)
+        throw completeError
+      }
+
+      console.log(`Successfully marked ${rafflesToComplete.length} raffles as completed:`, rafflesToComplete)
+      updates.push({ action: 'completed', count: rafflesToComplete.length, raffleIds: rafflesToComplete })
+    }
+
+    // Update raffles to 'Refunding' status
+    if (rafflesToRefund.length > 0) {
+      const { data: refundingRaffles, error: refundError } = await supabaseClient
+        .from('raffles')
+        .update({ status: 'Refunding' })
+        .in('id', rafflesToRefund)
+        .select()
+
+      if (refundError) {
+        console.error('Error updating raffle statuses to refunding:', refundError)
+        throw refundError
+      }
+
+      console.log(`Successfully marked ${rafflesToRefund.length} raffles for refunding:`, rafflesToRefund)
+      updates.push({ action: 'refunding', count: rafflesToRefund.length, raffleIds: rafflesToRefund })
+    }
+
+    if (updates.length === 0) {
+      console.log('No raffles need status updates')
       return new Response(
-        JSON.stringify({ message: 'No raffles require refunding at this time' }),
+        JSON.stringify({ message: 'No raffles require status updates at this time' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
     }
 
-    // Update raffles to 'Refunding' status
-    const { data: updatedRaffles, error: updateError } = await supabaseClient
-      .from('raffles')
-      .update({ status: 'Refunding' })
-      .in('id', rafflesToRefund)
-      .select()
-
-    if (updateError) {
-      console.error('Error updating raffle statuses:', updateError)
-      throw updateError
-    }
-
-    console.log(`Successfully marked ${rafflesToRefund.length} raffles for refunding:`, rafflesToRefund)
-
     return new Response(
       JSON.stringify({
-        message: `Marked ${rafflesToRefund.length} raffle(s) for refunding`,
-        raffleIds: rafflesToRefund,
-        updatedRaffles
+        message: `Updated ${updates.reduce((sum, u) => sum + u.count, 0)} raffle(s)`,
+        updates
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     )
