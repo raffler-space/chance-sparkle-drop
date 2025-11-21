@@ -72,12 +72,12 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Find winner's user_id from tickets
+    // Find winner's user_id from tickets (case-insensitive wallet address match)
     const { data: ticketData, error: ticketError } = await supabaseAdmin
       .from('tickets')
       .select('user_id')
       .eq('raffle_id', raffleId)
-      .eq('wallet_address', winnerAddress.toLowerCase())
+      .ilike('wallet_address', winnerAddress)
       .limit(1)
       .maybeSingle();
 
