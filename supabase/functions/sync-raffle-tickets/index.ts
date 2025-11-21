@@ -26,7 +26,7 @@ const NETWORK_CONFIGS = {
     contractAddress: "0x61ae76814a9245abE8524f33f0F1B330124B4677",
   },
   sepolia: {
-    rpcUrl: "https://rpc.ankr.com/eth_sepolia",
+    rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com",
     contractAddress: "0x2Fc185b0dBD4C3695F607c2Ecb73726B5eed92F8",
   },
 };
