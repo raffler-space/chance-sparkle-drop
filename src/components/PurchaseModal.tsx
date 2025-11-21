@@ -214,47 +214,92 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
         return;
       }
 
-      // Update database after successful blockchain transaction (optional for wallet-only users)
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (user) {
-          // Insert ticket records only if user is authenticated
-          const ticketRecords = Array.from({ length: quantity }, (_, i) => ({
-            user_id: user.id,
-            raffle_id: raffle.id,
-            tx_hash: result.txHash,
-            wallet_address: account,
-            ticket_number: raffle.ticketsSold + i + 1,
-            quantity: 1,
-            purchase_price: raffle.ticketPrice,
-          }));
+      // Wait for transaction confirmation
+      toast.info('Waiting for transaction confirmation...', {
+        description: 'This may take a few seconds',
+      });
 
-          const { error: ticketsError } = await supabase
-            .from('tickets')
-            .insert(ticketRecords);
+      console.log('Transaction hash:', result.txHash);
+      
+      // Get current tickets_sold from database for proper ticket numbering
+      const { data: currentRaffle, error: fetchError } = await supabase
+        .from('raffles')
+        .select('tickets_sold')
+        .eq('id', raffle.id)
+        .single();
 
-          if (ticketsError) throw ticketsError;
-
-          // Update raffle tickets_sold count
-          const { error: updateError } = await supabase
-            .from('raffles')
-            .update({ tickets_sold: raffle.ticketsSold + quantity })
-            .eq('id', raffle.id);
-
-          if (updateError) throw updateError;
-          
-          console.log('Database updated successfully');
-        } else {
-          console.log('No authenticated user - purchase recorded only on blockchain');
-        }
-      } catch (dbError) {
-        console.error('Database update error:', dbError);
-        // Don't block success - purchase was successful on blockchain
+      if (fetchError) {
+        console.error('Error fetching current raffle data:', fetchError);
       }
 
-      // Show success message regardless of database update
-      toast.success(`Successfully purchased ${quantity} ticket${quantity > 1 ? 's' : ''}!`);
+      const currentTicketsSold = currentRaffle?.tickets_sold || 0;
+
+      // Save to database - requires authentication
+      try {
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        
+        if (authError || !user) {
+          console.warn('No authenticated user - tickets purchased on blockchain but not saved to database');
+          toast.warning('Purchase successful on blockchain', {
+            description: 'Sign in to track your tickets in the dashboard',
+            duration: 8000,
+          });
+          setQuantity(1);
+          onClose();
+          onPurchaseSuccess?.();
+          return;
+        }
+
+        console.log('Saving tickets to database...', { userId: user.id, quantity, txHash: result.txHash });
+
+        // Insert ticket records with proper error handling
+        const ticketRecords = Array.from({ length: quantity }, (_, i) => ({
+          user_id: user.id,
+          raffle_id: raffle.id,
+          tx_hash: result.txHash,
+          wallet_address: account,
+          ticket_number: currentTicketsSold + i + 1,
+          quantity: 1,
+          purchase_price: ticketPriceInUSDT,
+        }));
+
+        const { error: ticketsError } = await supabase
+          .from('tickets')
+          .insert(ticketRecords);
+
+        if (ticketsError) {
+          console.error('Failed to insert tickets:', ticketsError);
+          throw new Error(`Database insert failed: ${ticketsError.message}`);
+        }
+
+        console.log('Tickets inserted successfully');
+
+        // Update raffle tickets_sold count
+        const { error: updateError } = await supabase
+          .from('raffles')
+          .update({ tickets_sold: currentTicketsSold + quantity })
+          .eq('id', raffle.id);
+
+        if (updateError) {
+          console.error('Failed to update tickets_sold:', updateError);
+          throw new Error(`Failed to update raffle count: ${updateError.message}`);
+        }
+
+        console.log('Database updated successfully - all tickets recorded');
+        
+        toast.success(`Successfully purchased ${quantity} ticket${quantity > 1 ? 's' : ''}!`, {
+          description: 'Your tickets have been recorded in your dashboard',
+        });
+      } catch (dbError: any) {
+        console.error('Critical database error:', dbError);
+        
+        // Show error but don't fail the purchase since it succeeded on-chain
+        toast.error('Purchase completed on blockchain but failed to save to database', {
+          description: `TX: ${result.txHash.slice(0, 10)}... - Contact support to record your tickets`,
+          duration: 10000,
+        });
+      }
+
       setQuantity(1);
       onClose();
       onPurchaseSuccess?.();
@@ -303,6 +348,30 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
                 Wallet not connected. Please connect your wallet first.
               </AlertDescription>
             </Alert>
+          )}
+
+          {/* Authentication Warning */}
+          {account && (
+            <div className="flex items-center justify-center">
+              <Button
+                variant="link"
+                size="sm"
+                onClick={async () => {
+                  const { data: { user } } = await supabase.auth.getUser();
+                  if (!user) {
+                    toast.info('Sign in to track your tickets in the dashboard', {
+                      description: 'You can still purchase without signing in, but tickets will only be recorded on the blockchain',
+                      duration: 8000,
+                    });
+                  } else {
+                    toast.success('You are signed in - tickets will be tracked in your dashboard');
+                  }
+                }}
+                className="text-xs text-muted-foreground hover:text-neon-cyan"
+              >
+                Check sign-in status
+              </Button>
+            </div>
           )}
 
           {/* USDT Balance Display */}
