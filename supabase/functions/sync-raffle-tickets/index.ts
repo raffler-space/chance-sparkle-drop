@@ -8,7 +8,17 @@ const corsHeaders = {
 
 const RAFFLE_ABI = [
   "function raffles(uint256) view returns (string name, string description, uint256 ticketPrice, uint256 maxTickets, uint256 ticketsSold, uint256 endTime, address winner, bool isActive, bool vrfRequested, address nftContract)",
+  "event TicketPurchased(uint256 indexed raffleId, address indexed buyer, uint256 ticketNumber, uint256 price)"
 ];
+
+// Generate a deterministic UUID from wallet address
+function generateUserIdFromWallet(walletAddress: string): string {
+  // Use ethers.utils.keccak256 to create a deterministic hash
+  const hash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(walletAddress.toLowerCase()));
+  // Convert first 16 bytes to UUID format
+  const uuid = `${hash.slice(2, 10)}-${hash.slice(10, 14)}-${hash.slice(14, 18)}-${hash.slice(18, 22)}-${hash.slice(22, 34)}`;
+  return uuid;
+}
 
 const NETWORK_CONFIGS = {
   mainnet: {
@@ -105,7 +115,64 @@ Deno.serve(async (req) => {
     const ticketsSold = contractRaffle.ticketsSold.toNumber();
     console.log(`Contract shows ${ticketsSold} tickets sold`);
 
-    // Update database
+    // Fetch TicketPurchased events for this raffle
+    console.log(`Scanning blockchain for TicketPurchased events...`);
+    const filter = contract.filters.TicketPurchased(raffle.contract_raffle_id);
+    
+    // Query events from contract deployment or last 10000 blocks (whichever is more recent)
+    const currentBlock = await provider.getBlockNumber();
+    const fromBlock = Math.max(0, currentBlock - 10000);
+    
+    const events = await contract.queryFilter(filter, fromBlock, 'latest');
+    console.log(`Found ${events.length} ticket purchase events`);
+
+    // Process each event and create/update ticket records
+    let syncedTickets = 0;
+    for (const event of events) {
+      const { buyer, ticketNumber, price } = event.args!;
+      const txHash = event.transactionHash;
+      
+      // Generate deterministic user_id from wallet address
+      const userId = generateUserIdFromWallet(buyer);
+      
+      // Check if ticket already exists
+      const { data: existingTicket } = await supabaseClient
+        .from('tickets')
+        .select('id')
+        .eq('raffle_id', raffleId)
+        .eq('ticket_number', ticketNumber.toNumber())
+        .eq('tx_hash', txHash)
+        .maybeSingle();
+
+      if (!existingTicket) {
+        // Convert price from wei to USDT (assuming 6 decimals for USDT)
+        const priceInUsdt = parseFloat(ethers.utils.formatUnits(price, 6));
+        
+        // Get block timestamp for purchased_at
+        const block = await provider.getBlock(event.blockNumber);
+        
+        const { error: insertError } = await supabaseClient
+          .from('tickets')
+          .insert({
+            user_id: userId,
+            wallet_address: buyer,
+            raffle_id: raffleId,
+            ticket_number: ticketNumber.toNumber(),
+            tx_hash: txHash,
+            purchase_price: priceInUsdt,
+            quantity: 1,
+            purchased_at: new Date(block.timestamp * 1000).toISOString()
+          });
+
+        if (insertError) {
+          console.error(`Failed to insert ticket ${ticketNumber}: ${insertError.message}`);
+        } else {
+          syncedTickets++;
+        }
+      }
+    }
+
+    // Update raffle tickets_sold count
     const { error: updateError } = await supabaseClient
       .from('raffles')
       .update({ tickets_sold: ticketsSold })
@@ -115,14 +182,15 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to update raffle: ${updateError.message}`);
     }
 
-    console.log(`Successfully synced raffle ${raffleId}: ${ticketsSold} tickets sold`);
+    console.log(`Successfully synced raffle ${raffleId}: ${ticketsSold} tickets sold, ${syncedTickets} new ticket records created`);
 
     return new Response(
       JSON.stringify({
         success: true,
         raffleId,
         ticketsSold,
-        message: `Synced ${ticketsSold} tickets from blockchain`,
+        ticketRecordsCreated: syncedTickets,
+        message: `Synced ${ticketsSold} tickets from blockchain (${syncedTickets} new records created)`,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
