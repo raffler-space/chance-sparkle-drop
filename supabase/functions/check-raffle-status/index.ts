@@ -12,6 +12,7 @@ interface Raffle {
   draw_date: string | null
   tickets_sold: number | null
   max_tickets: number
+  winner_address: string | null
 }
 
 Deno.serve(async (req) => {
