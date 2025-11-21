@@ -97,12 +97,15 @@ Deno.serve(async (req) => {
 
       // If draw date has passed
       if (drawDate < now) {
-        if (soldPercentage >= 99) {
-          // Mark for completion
+        // If winner is already selected, keep it as completed (don't change status)
+        if (raffle.winner_address) {
+          console.log(`Raffle ${raffle.id} (${raffle.name}) already has a winner, skipping status update`)
+        } else if (soldPercentage >= 99) {
+          // Mark for completion if 99%+ sold
           rafflesToComplete.push(raffle.id)
           console.log(`Raffle ${raffle.id} (${raffle.name}) should be marked as completed`)
         } else {
-          // Mark for refunding
+          // Mark for refunding if less than 99% sold and no winner
           rafflesToRefund.push(raffle.id)
           console.log(`Raffle ${raffle.id} (${raffle.name}) should be marked for refunding`)
         }
