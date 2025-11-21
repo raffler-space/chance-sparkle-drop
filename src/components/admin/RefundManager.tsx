@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, RefreshCw, DollarSign, Users, AlertCircle } from 'lucide-react';
+import { Loader2, RefreshCw, DollarSign, Users, AlertCircle, Link } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Raffle {
@@ -36,6 +36,7 @@ export const RefundManager = () => {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(false);
+  const [syncingRaffleId, setSyncingRaffleId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchRefundingRaffles();
@@ -290,6 +291,25 @@ export const RefundManager = () => {
     }
   };
 
+  const syncOnChainTickets = async (raffleId: number) => {
+    setSyncingRaffleId(raffleId);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-raffle-tickets', {
+        body: { raffleId }
+      });
+
+      if (error) throw error;
+
+      toast.success(data.message || 'Tickets synced successfully');
+      fetchRefundingRaffles();
+    } catch (error) {
+      console.error('Error syncing tickets:', error);
+      toast.error('Failed to sync on-chain ticket data');
+    } finally {
+      setSyncingRaffleId(null);
+    }
+  };
+
   const selectedRaffle = raffles.find(r => r.id === selectedRaffleId);
   const totalRefundAmount = refunds.reduce((sum, r) => sum + r.amount, 0);
   const pendingCount = refunds.filter(r => r.status === 'pending').length;
@@ -373,19 +393,42 @@ export const RefundManager = () => {
             {raffles.map((raffle) => (
               <Card
                 key={raffle.id}
-                className={`cursor-pointer transition-all ${
+                className={`transition-all ${
                   selectedRaffleId === raffle.id
                     ? 'border-primary bg-primary/10'
                     : 'border-border hover:border-primary/50'
                 }`}
-                onClick={() => setSelectedRaffleId(raffle.id)}
               >
-                <CardHeader className="p-4">
-                  <CardTitle className="text-sm font-orbitron">{raffle.name}</CardTitle>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Tickets Sold: {raffle.tickets_sold || 0}</span>
-                    <span>{raffle.ticket_price} USDT</span>
+                <CardHeader className="p-4 space-y-3">
+                  <div className="cursor-pointer" onClick={() => setSelectedRaffleId(raffle.id)}>
+                    <CardTitle className="text-sm font-orbitron">{raffle.name}</CardTitle>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
+                      <span>Tickets Sold: {raffle.tickets_sold || 0}</span>
+                      <span>{raffle.ticket_price} USDT</span>
+                    </div>
                   </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      syncOnChainTickets(raffle.id);
+                    }}
+                    disabled={syncingRaffleId === raffle.id}
+                    className="w-full text-xs"
+                  >
+                    {syncingRaffleId === raffle.id ? (
+                      <>
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        Syncing...
+                      </>
+                    ) : (
+                      <>
+                        <Link className="w-3 h-3 mr-1" />
+                        Sync On-Chain Data
+                      </>
+                    )}
+                  </Button>
                 </CardHeader>
               </Card>
             ))}
