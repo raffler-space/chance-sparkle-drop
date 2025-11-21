@@ -22,7 +22,7 @@ function generateUserIdFromWallet(walletAddress: string): string {
 
 const NETWORK_CONFIGS = {
   mainnet: {
-    rpcUrl: "https://cloudflare-eth.com",
+    rpcUrl: "https://ethereum-rpc.publicnode.com",
     contractAddress: "0x61ae76814a9245abE8524f33f0F1B330124B4677",
   },
   sepolia: {
