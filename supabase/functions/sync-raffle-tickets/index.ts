@@ -22,11 +22,21 @@ function generateUserIdFromWallet(walletAddress: string): string {
 
 const NETWORK_CONFIGS = {
   mainnet: {
-    rpcUrl: "https://ethereum-rpc.publicnode.com",
+    getRpcUrl: () => {
+      const alchemyKey = Deno.env.get('ALCHEMY_API_KEY');
+      return alchemyKey 
+        ? `https://eth-mainnet.g.alchemy.com/v2/${alchemyKey}`
+        : "https://ethereum-rpc.publicnode.com";
+    },
     contractAddress: "0x61ae76814a9245abE8524f33f0F1B330124B4677",
   },
   sepolia: {
-    rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com",
+    getRpcUrl: () => {
+      const alchemyKey = Deno.env.get('ALCHEMY_API_KEY');
+      return alchemyKey 
+        ? `https://eth-sepolia.g.alchemy.com/v2/${alchemyKey}`
+        : "https://ethereum-sepolia-rpc.publicnode.com";
+    },
     contractAddress: "0x2Fc185b0dBD4C3695F607c2Ecb73726B5eed92F8",
   },
 };
@@ -102,14 +112,15 @@ Deno.serve(async (req) => {
       throw new Error(`Unsupported network: ${network}`);
     }
 
-    console.log(`Connecting to ${network} at ${config.rpcUrl}`);
+    const rpcUrl = config.getRpcUrl();
+    console.log(`Connecting to ${network} at ${rpcUrl.includes('alchemy') ? 'Alchemy' : rpcUrl}`);
 
     // Use StaticJsonRpcProvider to skip network detection
     const networkConfig = {
       name: network,
       chainId: network === 'mainnet' ? 1 : 11155111
     };
-    const provider = new ethers.providers.StaticJsonRpcProvider(config.rpcUrl, networkConfig);
+    const provider = new ethers.providers.StaticJsonRpcProvider(rpcUrl, networkConfig);
     const contract = new ethers.Contract(config.contractAddress, RAFFLE_ABI, provider);
 
     // Fetch raffle data from contract
@@ -137,11 +148,19 @@ Deno.serve(async (req) => {
       console.log(`Scanning blockchain for TicketPurchased events...`);
       const filter = contract.filters.TicketPurchased(raffle.contract_raffle_id);
       
-      // Use a smaller, safer block range - last 2000 blocks
+      // Calculate starting block based on raffle creation time
       const currentBlock = await provider.getBlockNumber();
-      const fromBlock = Math.max(0, currentBlock - 2000);
+      const raffleCreatedAt = new Date(raffle.created_at).getTime();
+      const currentTime = Date.now();
+      const timeDiffSeconds = (currentTime - raffleCreatedAt) / 1000;
+      const avgBlockTime = 12; // Ethereum average block time
+      const estimatedBlocksSinceCreation = Math.ceil(timeDiffSeconds / avgBlockTime);
       
-      console.log(`Querying events from block ${fromBlock} to ${currentBlock}`);
+      // Go back 20% more blocks to be safe, and ensure minimum range
+      const blocksToScan = Math.max(estimatedBlocksSinceCreation * 1.2, 10000);
+      const fromBlock = Math.max(0, currentBlock - Math.floor(blocksToScan));
+      
+      console.log(`Querying events from block ${fromBlock} to ${currentBlock} (scanning ~${Math.floor(blocksToScan)} blocks)`);
       
       const events = await contract.queryFilter(filter, fromBlock, 'latest');
       console.log(`Found ${events.length} ticket purchase events`);
