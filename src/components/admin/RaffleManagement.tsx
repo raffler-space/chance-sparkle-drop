@@ -698,11 +698,27 @@ export const RaffleManagement = () => {
                     {raffle.status?.toUpperCase()}
                   </Badge>
                   <Badge 
-                    className={
+                    className={`cursor-pointer transition-opacity hover:opacity-80 ${
                       raffle.network === 'mainnet'
                         ? 'bg-green-500/20 text-green-400 border-green-500/30'
                         : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-                    }
+                    }`}
+                    onClick={async () => {
+                      if (raffle.id < 0) return; // Can't update blockchain-only raffles
+                      
+                      const newNetwork = raffle.network === 'mainnet' ? 'testnet' : 'mainnet';
+                      const { error } = await supabase
+                        .from('raffles')
+                        .update({ network: newNetwork })
+                        .eq('id', raffle.id);
+                      
+                      if (error) {
+                        toast.error('Failed to update network');
+                      } else {
+                        toast.success(`Network updated to ${newNetwork.toUpperCase()}`);
+                        fetchRaffles();
+                      }
+                    }}
                   >
                     {raffle.network === 'mainnet' ? '🟢 MAINNET' : '🟡 TESTNET'}
                   </Badge>
