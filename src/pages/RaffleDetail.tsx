@@ -33,6 +33,7 @@ interface Raffle {
   winner_address: string;
   draw_tx_hash: string;
   additional_info: any;
+  network: string;
 }
 
 const RaffleDetail = () => {
@@ -389,6 +390,7 @@ const RaffleDetail = () => {
           maxTickets: raffle.max_tickets,
           ticketsSold: onChainTicketsSold !== null ? onChainTicketsSold : raffle.tickets_sold,
           contract_raffle_id: raffle.contract_raffle_id,
+          network: raffle.network,
         }}
         account={account}
         onPurchaseSuccess={() => {
