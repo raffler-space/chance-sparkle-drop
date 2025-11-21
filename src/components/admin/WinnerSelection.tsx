@@ -129,14 +129,14 @@ export const WinnerSelection = () => {
     };
   }, [contract]);
 
-  // Poll contract state for "drawing" raffles to sync with blockchain
+  // Poll contract state for raffles without winners to sync with blockchain
   useEffect(() => {
     if (!contract || !isContractReady) return;
 
     const syncRaffleStates = async () => {
-      const drawingRaffles = raffles.filter(r => r.status === 'drawing' && r.contract_raffle_id !== null);
+      const activeRaffles = raffles.filter(r => r.status === 'active' && !r.winner_address && r.contract_raffle_id !== null);
       
-      for (const raffle of drawingRaffles) {
+      for (const raffle of activeRaffles) {
         try {
           const contractInfo = await contract.raffles(raffle.contract_raffle_id);
           const winner = contractInfo.winner;
@@ -237,20 +237,6 @@ export const WinnerSelection = () => {
     setProcessing(raffleId);
 
     try {
-      // Update raffle status to drawing via secure Edge Function
-      const { data, error: updateError } = await supabase.functions.invoke('admin-update-raffle-winner', {
-        body: {
-          raffleId: raffleId,
-          status: 'drawing',
-        },
-      });
-
-      if (updateError || !data?.success) {
-        toast.error('Failed to initiate draw');
-        setProcessing(null);
-        return;
-      }
-
       // Call smart contract to select winner using contract raffle ID
       toast.loading('Requesting Chainlink VRF...', { id: 'vrf-request' });
       const success = await selectWinner(contractRaffleId);
@@ -259,11 +245,7 @@ export const WinnerSelection = () => {
         toast.success('VRF request sent! Winner will be selected shortly...', { id: 'vrf-request' });
         // Note: The actual winner update happens in the event listener
       } else {
-        // Revert status if failed
-        await supabase
-          .from('raffles')
-          .update({ status: 'active' })
-          .eq('id', raffleId);
+        toast.error('Failed to trigger draw', { id: 'vrf-request' });
         setProcessing(null);
       }
     } catch (error) {
@@ -515,18 +497,13 @@ export const WinnerSelection = () => {
                 <div className="ml-4">
                   <Button
                     onClick={() => handleTriggerDraw(raffle.id, raffle.contract_raffle_id)}
-                    disabled={!canDraw || processing === raffle.id || raffle.status === 'drawing' || raffle.status === 'completed' || raffle.contract_raffle_id === null || raffle.contract_raffle_id === undefined}
+                    disabled={!canDraw || processing === raffle.id || raffle.status === 'completed' || raffle.contract_raffle_id === null || raffle.contract_raffle_id === undefined}
                     className="bg-gradient-to-r from-neon-gold to-neon-cyan hover:opacity-90"
                   >
                     {processing === raffle.id ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         Processing...
-                      </>
-                    ) : raffle.status === 'drawing' ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Waiting for VRF...
                       </>
                     ) : raffle.status === 'completed' ? (
                       'Draw Complete'

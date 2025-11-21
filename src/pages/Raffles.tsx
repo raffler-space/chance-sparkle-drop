@@ -55,14 +55,14 @@ export default function Raffles() {
     return () => clearInterval(interval);
   }, []);
 
-  // Poll contract state for "drawing" raffles to sync with blockchain
+  // Poll contract state for raffles without winners to sync with blockchain
   useEffect(() => {
     if (!contract || !isContractReady) return;
 
     const syncRaffleStates = async () => {
-      const drawingRaffles = raffles.filter(r => r.status === 'drawing' && r.contract_raffle_id !== null);
+      const activeRaffles = raffles.filter(r => r.status === 'active' && !r.winner_address && r.contract_raffle_id !== null);
       
-      for (const raffle of drawingRaffles) {
+      for (const raffle of activeRaffles) {
         try {
           const contractInfo = await contract.raffles(raffle.contract_raffle_id);
           const winner = contractInfo.winner;

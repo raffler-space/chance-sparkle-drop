@@ -46,7 +46,7 @@ export const sepoliaConfig: NetworkConfig = {
 export const mainnetConfig: NetworkConfig = {
   chainId: 1,
   name: "Ethereum Mainnet",
-  rpcUrl: "https://eth.llamarpc.com",
+  rpcUrl: "https://ethereum-rpc.publicnode.com",
   blockExplorer: "https://etherscan.io",
   nativeCurrency: {
     name: "Ether",

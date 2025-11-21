@@ -11,7 +11,7 @@ const config = getDefaultConfig({
   chains: [sepolia, mainnet],
   transports: {
     [sepolia.id]: http('https://rpc.ankr.com/eth_sepolia'),
-    [mainnet.id]: http('https://eth.llamarpc.com'),
+    [mainnet.id]: http('https://ethereum-rpc.publicnode.com'),
   },
   ssr: false,
 });
