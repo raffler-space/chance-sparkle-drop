@@ -190,6 +190,59 @@ Deno.serve(async (req) => {
           }
         }
       }
+
+      // After creating all tickets, automatically create refund records
+      if (syncedTickets > 0 || events.length > 0) {
+        console.log('Creating refund records from synced tickets...');
+        
+        // Group tickets by wallet address and sum amounts
+        const walletRefunds: Record<string, { userId: string; amount: number }> = {};
+        
+        for (const event of events) {
+          const { buyer, price } = event.args!;
+          const priceInUsdt = parseFloat(ethers.utils.formatUnits(price, 6));
+          const userId = generateUserIdFromWallet(buyer);
+          
+          if (!walletRefunds[buyer]) {
+            walletRefunds[buyer] = { userId, amount: 0 };
+          }
+          walletRefunds[buyer].amount += priceInUsdt;
+        }
+
+        // Create refund records
+        const refundRecords = Object.entries(walletRefunds).map(([wallet, data]) => ({
+          raffle_id: raffleId,
+          user_id: data.userId,
+          wallet_address: wallet,
+          amount: data.amount,
+          status: 'pending'
+        }));
+
+        if (refundRecords.length > 0) {
+          // Check for existing refunds
+          const { data: existingRefunds } = await supabaseClient
+            .from('refunds')
+            .select('wallet_address')
+            .eq('raffle_id', raffleId);
+
+          const existingWallets = new Set(existingRefunds?.map(r => r.wallet_address) || []);
+          const newRefundRecords = refundRecords.filter(r => !existingWallets.has(r.wallet_address));
+
+          if (newRefundRecords.length > 0) {
+            const { error: refundError } = await supabaseClient
+              .from('refunds')
+              .insert(newRefundRecords);
+
+            if (refundError) {
+              console.error('Failed to create refund records:', refundError.message);
+            } else {
+              console.log(`Created ${newRefundRecords.length} refund records`);
+            }
+          } else {
+            console.log('All refund records already exist');
+          }
+        }
+      }
     } catch (error) {
       console.error('Failed to scan blockchain events:', error);
       eventScanError = error instanceof Error ? error.message : 'Unknown error';
@@ -197,7 +250,7 @@ Deno.serve(async (req) => {
 
     const message = eventScanError
       ? `Synced ${ticketsSold} tickets from blockchain. Note: Could not scan individual purchase events - ${eventScanError}. Ticket count updated but detailed records not created.`
-      : `Synced ${ticketsSold} tickets from blockchain (${syncedTickets} new records created)`;
+      : `Synced ${ticketsSold} tickets from blockchain (${syncedTickets} new records created). Refund records initialized and ready for processing.`;
 
     console.log(`Successfully synced raffle ${raffleId}: ${message}`);
 
