@@ -115,74 +115,7 @@ Deno.serve(async (req) => {
     const ticketsSold = contractRaffle.ticketsSold.toNumber();
     console.log(`Contract shows ${ticketsSold} tickets sold`);
 
-    // Fetch TicketPurchased events for this raffle
-    console.log(`Scanning blockchain for TicketPurchased events...`);
-    const filter = contract.filters.TicketPurchased(raffle.contract_raffle_id);
-    
-    // Calculate starting block based on raffle creation time
-    // Ethereum mainnet: ~12 seconds per block
-    // For safety, start scanning from 1000 blocks before estimated creation
-    const currentBlock = await provider.getBlockNumber();
-    const raffleCreatedAt = new Date(raffle.created_at).getTime() / 1000;
-    const currentTime = Math.floor(Date.now() / 1000);
-    const secondsSinceCreation = currentTime - raffleCreatedAt;
-    const estimatedBlocksSinceCreation = Math.floor(secondsSinceCreation / 12);
-    
-    // Start from estimated creation block minus 1000 blocks for safety, but max 5000 blocks back
-    const fromBlock = Math.max(0, currentBlock - Math.min(estimatedBlocksSinceCreation + 1000, 5000));
-    
-    console.log(`Querying events from block ${fromBlock} to ${currentBlock}`);
-    
-    const events = await contract.queryFilter(filter, fromBlock, 'latest');
-    console.log(`Found ${events.length} ticket purchase events`);
-
-    // Process each event and create/update ticket records
-    let syncedTickets = 0;
-    for (const event of events) {
-      const { buyer, ticketNumber, price } = event.args!;
-      const txHash = event.transactionHash;
-      
-      // Generate deterministic user_id from wallet address
-      const userId = generateUserIdFromWallet(buyer);
-      
-      // Check if ticket already exists
-      const { data: existingTicket } = await supabaseClient
-        .from('tickets')
-        .select('id')
-        .eq('raffle_id', raffleId)
-        .eq('ticket_number', ticketNumber.toNumber())
-        .eq('tx_hash', txHash)
-        .maybeSingle();
-
-      if (!existingTicket) {
-        // Convert price from wei to USDT (assuming 6 decimals for USDT)
-        const priceInUsdt = parseFloat(ethers.utils.formatUnits(price, 6));
-        
-        // Get block timestamp for purchased_at
-        const block = await provider.getBlock(event.blockNumber);
-        
-        const { error: insertError } = await supabaseClient
-          .from('tickets')
-          .insert({
-            user_id: userId,
-            wallet_address: buyer,
-            raffle_id: raffleId,
-            ticket_number: ticketNumber.toNumber(),
-            tx_hash: txHash,
-            purchase_price: priceInUsdt,
-            quantity: 1,
-            purchased_at: new Date(block.timestamp * 1000).toISOString()
-          });
-
-        if (insertError) {
-          console.error(`Failed to insert ticket ${ticketNumber}: ${insertError.message}`);
-        } else {
-          syncedTickets++;
-        }
-      }
-    }
-
-    // Update raffle tickets_sold count
+    // Update raffle tickets_sold count first
     const { error: updateError } = await supabaseClient
       .from('raffles')
       .update({ tickets_sold: ticketsSold })
@@ -192,7 +125,77 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to update raffle: ${updateError.message}`);
     }
 
-    console.log(`Successfully synced raffle ${raffleId}: ${ticketsSold} tickets sold, ${syncedTickets} new ticket records created`);
+    // Try to fetch TicketPurchased events for this raffle
+    let syncedTickets = 0;
+    let eventScanError = null;
+    
+    try {
+      console.log(`Scanning blockchain for TicketPurchased events...`);
+      const filter = contract.filters.TicketPurchased(raffle.contract_raffle_id);
+      
+      // Use a smaller, safer block range - last 2000 blocks
+      const currentBlock = await provider.getBlockNumber();
+      const fromBlock = Math.max(0, currentBlock - 2000);
+      
+      console.log(`Querying events from block ${fromBlock} to ${currentBlock}`);
+      
+      const events = await contract.queryFilter(filter, fromBlock, 'latest');
+      console.log(`Found ${events.length} ticket purchase events`);
+
+      // Process each event and create/update ticket records
+      for (const event of events) {
+        const { buyer, ticketNumber, price } = event.args!;
+        const txHash = event.transactionHash;
+        
+        // Generate deterministic user_id from wallet address
+        const userId = generateUserIdFromWallet(buyer);
+        
+        // Check if ticket already exists
+        const { data: existingTicket } = await supabaseClient
+          .from('tickets')
+          .select('id')
+          .eq('raffle_id', raffleId)
+          .eq('ticket_number', ticketNumber.toNumber())
+          .eq('tx_hash', txHash)
+          .maybeSingle();
+
+        if (!existingTicket) {
+          // Convert price from wei to USDT (assuming 6 decimals for USDT)
+          const priceInUsdt = parseFloat(ethers.utils.formatUnits(price, 6));
+          
+          // Get block timestamp for purchased_at
+          const block = await provider.getBlock(event.blockNumber);
+          
+          const { error: insertError } = await supabaseClient
+            .from('tickets')
+            .insert({
+              user_id: userId,
+              wallet_address: buyer,
+              raffle_id: raffleId,
+              ticket_number: ticketNumber.toNumber(),
+              tx_hash: txHash,
+              purchase_price: priceInUsdt,
+              quantity: 1,
+              purchased_at: new Date(block.timestamp * 1000).toISOString()
+            });
+
+          if (insertError) {
+            console.error(`Failed to insert ticket ${ticketNumber}: ${insertError.message}`);
+          } else {
+            syncedTickets++;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to scan blockchain events:', error);
+      eventScanError = error instanceof Error ? error.message : 'Unknown error';
+    }
+
+    const message = eventScanError
+      ? `Synced ${ticketsSold} tickets from blockchain. Note: Could not scan individual purchase events - ${eventScanError}. Ticket count updated but detailed records not created.`
+      : `Synced ${ticketsSold} tickets from blockchain (${syncedTickets} new records created)`;
+
+    console.log(`Successfully synced raffle ${raffleId}: ${message}`);
 
     return new Response(
       JSON.stringify({
@@ -200,7 +203,8 @@ Deno.serve(async (req) => {
         raffleId,
         ticketsSold,
         ticketRecordsCreated: syncedTickets,
-        message: `Synced ${ticketsSold} tickets from blockchain (${syncedTickets} new records created)`,
+        eventScanError,
+        message,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
