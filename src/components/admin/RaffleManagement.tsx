@@ -38,6 +38,7 @@ interface Raffle {
   contract_raffle_id: number | null;
   detailed_description: string | null;
   rules: string | null;
+  network: string;
 }
 
 const calculateTimeRemaining = (drawDate: string | null): string => {
@@ -68,6 +69,7 @@ export const RaffleManagement = () => {
   const [editingRaffle, setEditingRaffle] = useState<Raffle | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<{ [key: number]: string }>({});
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [networkFilter, setNetworkFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('created_at_desc');
   const [formData, setFormData] = useState({
     name: '',
@@ -85,6 +87,7 @@ export const RaffleManagement = () => {
     show_on_raffles: true,
     detailed_description: '',
     rules: '',
+    network: 'mainnet', // Default to mainnet
   });
 
   useEffect(() => {
@@ -223,6 +226,7 @@ export const RaffleManagement = () => {
       show_on_home: formData.show_on_home,
       detailed_description: formData.detailed_description || null,
       rules: formData.rules || null,
+      network: chainId === 1 ? 'mainnet' : 'testnet',
     };
 
     if (editingRaffle) {
@@ -381,6 +385,7 @@ export const RaffleManagement = () => {
       show_on_raffles: raffle.show_on_raffles,
       detailed_description: raffle.detailed_description || '',
       rules: raffle.rules || '',
+      network: raffle.network || 'mainnet',
     });
     setDialogOpen(true);
   };
@@ -424,6 +429,7 @@ export const RaffleManagement = () => {
             draw_date: drawDate.toISOString(),
             show_on_home: false,
             show_on_raffles: false,
+            network: chainId === 1 ? 'mainnet' : 'testnet',
           },
           contractRaffleId: chainRaffle.contractRaffleId,
         },
@@ -477,6 +483,7 @@ export const RaffleManagement = () => {
       show_on_raffles: true,
       detailed_description: '',
       rules: '',
+      network: chainId === 1 ? 'mainnet' : 'testnet',
     });
     setEditingRaffle(null);
     setDialogOpen(false);
@@ -485,8 +492,9 @@ export const RaffleManagement = () => {
   // Filter and sort raffles
   const filteredAndSortedRaffles = raffles
     .filter(raffle => {
-      if (statusFilter === 'all') return true;
-      return raffle.status === statusFilter;
+      if (statusFilter !== 'all' && raffle.status !== statusFilter) return false;
+      if (networkFilter !== 'all' && raffle.network !== networkFilter) return false;
+      return true;
     })
     .sort((a, b) => {
       switch (sortBy) {
@@ -591,7 +599,7 @@ export const RaffleManagement = () => {
         <div className="flex flex-wrap gap-4 items-center">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground font-rajdhani">Filter:</span>
+            <span className="text-sm text-muted-foreground font-rajdhani">Status:</span>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[140px] glass-card border-border/50">
                 <SelectValue />
@@ -601,7 +609,22 @@ export const RaffleManagement = () => {
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="draft">Draft</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="refunding">Refunding</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground font-rajdhani">Network:</span>
+            <Select value={networkFilter} onValueChange={setNetworkFilter}>
+              <SelectTrigger className="w-[140px] glass-card border-border/50">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="mainnet">Mainnet</SelectItem>
+                <SelectItem value="testnet">Testnet</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -673,6 +696,15 @@ export const RaffleManagement = () => {
                     }
                   >
                     {raffle.status?.toUpperCase()}
+                  </Badge>
+                  <Badge 
+                    className={
+                      raffle.network === 'mainnet'
+                        ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                        : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                    }
+                  >
+                    {raffle.network === 'mainnet' ? '🟢 MAINNET' : '🟡 TESTNET'}
                   </Badge>
                   {raffle.contract_raffle_id !== null && (
                     <Badge variant="outline" className="font-rajdhani border-neon-cyan/30">
@@ -1008,6 +1040,16 @@ export const RaffleManagement = () => {
                   </select>
                   <p className="text-sm text-muted-foreground font-rajdhani">
                     Draft raffles can be activated later from the raffle list
+                  </p>
+                </div>
+
+                <div className="p-3 bg-muted/20 rounded-lg border border-border/30">
+                  <Label className="text-sm font-rajdhani">Network</Label>
+                  <p className="text-lg font-orbitron font-bold mt-1">
+                    {chainId === 1 ? '🟢 Mainnet' : '🟡 Testnet (Sepolia)'}
+                  </p>
+                  <p className="text-xs text-muted-foreground font-rajdhani mt-1">
+                    Raffle will be deployed to {chainId === 1 ? 'Ethereum Mainnet' : 'Sepolia Testnet'}
                   </p>
                 </div>
 

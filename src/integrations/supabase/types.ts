@@ -105,6 +105,7 @@ export type Database = {
           launch_time: string | null
           max_tickets: number
           name: string
+          network: string
           nft_collection_address: string
           prize_description: string
           rules: string | null
@@ -131,6 +132,7 @@ export type Database = {
           launch_time?: string | null
           max_tickets: number
           name: string
+          network?: string
           nft_collection_address: string
           prize_description: string
           rules?: string | null
@@ -157,6 +159,7 @@ export type Database = {
           launch_time?: string | null
           max_tickets?: number
           name?: string
+          network?: string
           nft_collection_address?: string
           prize_description?: string
           rules?: string | null
