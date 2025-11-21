@@ -118,7 +118,7 @@ export const RaffleCard = ({
               : 'bg-neon-gold/20 text-neon-gold border-neon-gold/30'
           }`}
         >
-          {status === 'completed' ? '✓ Completed' : status === 'drawing' ? 'Drawing' : status === 'refunding' ? '💸 Refunding' : isUpcoming ? '📅 Upcoming' : isActive ? '🔴 LIVE' : '✓ Completed'}
+          {status === 'completed' ? '✓ Completed' : status === 'refunding' ? '💸 Refunding' : isUpcoming ? '📅 Upcoming' : isActive ? '🔴 LIVE' : '✓ Completed'}
         </Badge>
       </Link>
 
@@ -212,11 +212,11 @@ export const RaffleCard = ({
         </Button>
         <Button
           onClick={() => setIsPurchaseModalOpen(true)}
-          disabled={!isActive || status === 'drawing' || status === 'completed'}
+          disabled={!isActive || status === 'completed'}
           className="flex-1 bg-gradient-to-r from-purple to-secondary hover:opacity-90 font-orbitron"
         >
           <Ticket className="mr-2 h-4 w-4" />
-          {status === 'completed' ? 'Ended' : status === 'drawing' ? 'Drawing...' : 'Enter'}
+          {status === 'completed' ? 'Ended' : 'Enter'}
         </Button>
       </CardFooter>
 
