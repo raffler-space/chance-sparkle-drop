@@ -135,6 +135,20 @@ export const RefundManager = () => {
 
       if (ticketsError) throw ticketsError;
 
+      // Check if we have ticket records but tickets were sold on-chain
+      const selectedRaffleData = raffles.find(r => r.id === raffleId);
+      if ((!tickets || tickets.length === 0) && selectedRaffleData && selectedRaffleData.tickets_sold > 0) {
+        toast.error('No ticket purchase records found in database. On-chain ticket purchases need to be synced with individual ticket data including wallet addresses before refunds can be processed.');
+        setProcessing(false);
+        return;
+      }
+
+      if (!tickets || tickets.length === 0) {
+        toast.error('No tickets found for this raffle');
+        setProcessing(false);
+        return;
+      }
+
       // Group by user and sum amounts
       const userRefunds = tickets.reduce((acc, ticket) => {
         if (!acc[ticket.user_id]) {
@@ -162,7 +176,7 @@ export const RefundManager = () => {
 
       if (insertError) throw insertError;
 
-      toast.success('Refund records initialized successfully');
+      toast.success(`Refund records initialized successfully for ${refundRecords.length} users`);
       fetchRefunds(raffleId);
     } catch (error) {
       console.error('Error initializing refunds:', error);
