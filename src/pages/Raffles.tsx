@@ -191,13 +191,17 @@ export default function Raffles() {
       return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">📅 UPCOMING</Badge>;
     }
     if (status === 'completed') {
-      return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">✅ COMPLETED</Badge>;
+      return <Badge className="bg-neon-gold/20 text-neon-gold border-neon-gold/30">✓ COMPLETED</Badge>;
     }
     if (status === 'drawing') {
       return <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">🎲 DRAWING WINNER...</Badge>;
     }
     if (status === 'refunding') {
       return <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">💸 REFUNDING</Badge>;
+    }
+    // Check if draw date has passed for active raffles
+    if (drawDate && new Date(drawDate) < new Date() && status === 'active') {
+      return <Badge className="bg-neon-gold/20 text-neon-gold border-neon-gold/30">✓ COMPLETED</Badge>;
     }
     if (ticketsSold === 0 && drawDate && new Date(drawDate) > new Date()) {
       return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">⏳ PENDING</Badge>;
