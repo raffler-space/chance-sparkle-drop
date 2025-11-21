@@ -104,8 +104,12 @@ Deno.serve(async (req) => {
 
     console.log(`Connecting to ${network} at ${config.rpcUrl}`);
 
-    // Connect to blockchain
-    const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
+    // Connect to blockchain with explicit network config to avoid auto-detection
+    const networkConfig = {
+      name: network,
+      chainId: network === 'mainnet' ? 1 : 11155111
+    };
+    const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl, networkConfig);
     const contract = new ethers.Contract(config.contractAddress, RAFFLE_ABI, provider);
 
     // Fetch raffle data from contract
