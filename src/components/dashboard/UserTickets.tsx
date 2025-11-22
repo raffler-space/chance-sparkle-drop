@@ -268,7 +268,7 @@ export const UserTickets = ({ userId }: { userId: string }) => {
 
 const getStatusBadge = (status: string, isSoldOut: boolean) => {
     if (status === 'completed' || (status === 'Refunding' && isSoldOut)) return <Badge className="bg-muted text-muted-foreground">✓ Completed</Badge>;
-    if (status === 'refunded') return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">✅ Refunded</Badge>;
+    if (status === 'Refunded') return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">✅ Refunded</Badge>;
     if (status === 'active') return <Badge className="bg-red-500/20 text-red-400 border-red-500/30">🔴 LIVE</Badge>;
     return <Badge variant="secondary">{status}</Badge>;
   };
