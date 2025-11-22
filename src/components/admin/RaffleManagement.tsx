@@ -42,22 +42,39 @@ interface Raffle {
   duration_days: number | null;
 }
 
-const calculateTimeRemaining = (drawDate: string | null): string => {
-  if (!drawDate) return 'No end date set';
-  
+const calculateTimeRemaining = (raffle: Raffle): { time: string; label: string } => {
   const now = new Date().getTime();
-  const end = new Date(drawDate).getTime();
+  let targetDate: string | null = null;
+  let label = '';
+  
+  // Draft raffles: countdown to launch_time
+  if (raffle.status === 'draft' && raffle.launch_time) {
+    targetDate = raffle.launch_time;
+    label = 'Launches in:';
+  }
+  // Active raffles: countdown to draw_date
+  else if (raffle.status === 'active' && raffle.draw_date) {
+    targetDate = raffle.draw_date;
+    label = 'Ends in:';
+  }
+  
+  if (!targetDate) return { time: 'No date set', label: '' };
+  
+  const end = new Date(targetDate).getTime();
   const diff = end - now;
   
-  if (diff <= 0) return 'Ended';
+  if (diff <= 0) return { time: raffle.status === 'draft' ? 'Ready to launch' : 'Ended', label: '' };
   
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
   
-  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  return `${minutes}m`;
+  let time = '';
+  if (days > 0) time = `${days}d ${hours}h ${minutes}m`;
+  else if (hours > 0) time = `${hours}h ${minutes}m`;
+  else time = `${minutes}m`;
+  
+  return { time, label };
 };
 
 export const RaffleManagement = () => {
@@ -68,7 +85,7 @@ export const RaffleManagement = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRaffle, setEditingRaffle] = useState<Raffle | null>(null);
-  const [timeRemaining, setTimeRemaining] = useState<{ [key: number]: string }>({});
+  const [timeRemaining, setTimeRemaining] = useState<{ [key: number]: { time: string; label: string } }>({});
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [networkFilter, setNetworkFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('created_at_desc');
@@ -97,9 +114,9 @@ export const RaffleManagement = () => {
 
   useEffect(() => {
     const updateTimers = () => {
-      const newTimeRemaining: { [key: number]: string } = {};
+      const newTimeRemaining: { [key: number]: { time: string; label: string } } = {};
       raffles.forEach(raffle => {
-        newTimeRemaining[raffle.id] = calculateTimeRemaining(raffle.draw_date);
+        newTimeRemaining[raffle.id] = calculateTimeRemaining(raffle);
       });
       setTimeRemaining(newTimeRemaining);
     };
@@ -778,13 +795,15 @@ export const RaffleManagement = () => {
                     <span className="text-muted-foreground">Position:</span>
                     <p className="font-rajdhani font-bold">#{raffle.display_order}</p>
                   </div>
-                  {raffle.draw_date && raffle.status === 'active' && (
+                  {timeRemaining[raffle.id] && timeRemaining[raffle.id].label && (
                     <div>
                       <span className="text-muted-foreground flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        Time Remaining:
+                        {timeRemaining[raffle.id].label}
                       </span>
-                      <p className="font-rajdhani font-bold text-neon-cyan">{timeRemaining[raffle.id]}</p>
+                      <p className={`font-rajdhani font-bold ${raffle.status === 'draft' ? 'text-neon-purple' : 'text-neon-cyan'}`}>
+                        {timeRemaining[raffle.id].time}
+                      </p>
                     </div>
                   )}
                 </div>
