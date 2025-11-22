@@ -99,6 +99,7 @@ export type Database = {
           display_order: number | null
           draw_date: string | null
           draw_tx_hash: string | null
+          duration_days: number | null
           gallery_images: string[] | null
           id: number
           image_url: string | null
@@ -126,6 +127,7 @@ export type Database = {
           display_order?: number | null
           draw_date?: string | null
           draw_tx_hash?: string | null
+          duration_days?: number | null
           gallery_images?: string[] | null
           id?: number
           image_url?: string | null
@@ -153,6 +155,7 @@ export type Database = {
           display_order?: number | null
           draw_date?: string | null
           draw_tx_hash?: string | null
+          duration_days?: number | null
           gallery_images?: string[] | null
           id?: number
           image_url?: string | null

@@ -30,6 +30,7 @@ interface Raffle {
   launch_time: string | null;
   display_order: number;
   network: string;
+  duration_days: number | null;
 }
 
 export default function Raffles() {
@@ -142,6 +143,19 @@ export default function Raffles() {
     ? raffles.filter(r => r.status === 'draft')
     : raffles.filter(r => r.status !== 'draft');
 
+  const getCalculatedDrawDate = (raffle: Raffle): string | null => {
+    // For upcoming raffles, calculate draw date from launch_time + duration_days
+    if (raffle.launch_time && new Date(raffle.launch_time) > new Date() && raffle.duration_days) {
+      const launchDate = new Date(raffle.launch_time);
+      const drawDate = new Date(launchDate);
+      drawDate.setDate(drawDate.getDate() + raffle.duration_days);
+      return drawDate.toISOString();
+    }
+    
+    // Otherwise use the stored draw_date
+    return raffle.draw_date;
+  };
+
   const getTimeRemaining = (raffle: Raffle) => {
     // For draft raffles, show countdown to launch
     if (raffle.status === 'draft') {
@@ -161,11 +175,12 @@ export default function Raffles() {
       return `Launches in: ${days}d ${hours}h ${minutes}m ${seconds}s`;
     }
     
-    // For active raffles, show time to draw
-    if (!raffle.draw_date) return 'Draw Date TBA';
+    // For active raffles, show time to draw using calculated draw date
+    const drawDate = getCalculatedDrawDate(raffle);
+    if (!drawDate) return 'Draw Date TBA';
     
     const now = new Date().getTime();
-    const draw = new Date(raffle.draw_date).getTime();
+    const draw = new Date(drawDate).getTime();
     const diff = draw - now;
 
     if (diff <= 0) return 'Draw Complete';
@@ -183,7 +198,10 @@ export default function Raffles() {
     setIsPurchaseModalOpen(true);
   };
 
-  const getStatusBadge = (status: string, drawDate: string | null, ticketsSold: number, launchTime: string | null, winnerAddress: string | null) => {
+  const getStatusBadge = (raffle: Raffle) => {
+    const { status, tickets_sold: ticketsSold, launch_time: launchTime, winner_address: winnerAddress } = raffle;
+    const drawDate = getCalculatedDrawDate(raffle);
+    
     // Check if raffle has a future launch time
     if (launchTime && new Date(launchTime) > new Date()) {
       return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">📅 UPCOMING</Badge>;
@@ -301,7 +319,7 @@ export default function Raffles() {
                     <Ticket className="w-20 h-20 text-neon-cyan/40" />
                   )}
                   <div className="absolute top-3 right-3">
-                    {getStatusBadge(raffle.status, raffle.draw_date, raffle.tickets_sold, raffle.launch_time, raffle.winner_address)}
+                    {getStatusBadge(raffle)}
                   </div>
                 </Link>
 

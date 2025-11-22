@@ -34,6 +34,7 @@ interface Raffle {
   draw_tx_hash: string;
   additional_info: any;
   network: string;
+  duration_days: number;
 }
 
 const RaffleDetail = () => {
@@ -63,13 +64,29 @@ const RaffleDetail = () => {
     }
   }, [raffle?.contract_raffle_id]);
 
+  const getCalculatedDrawDate = () => {
+    if (!raffle) return null;
+    
+    // For upcoming raffles, calculate draw date from launch_time + duration_days
+    if (raffle.launch_time && new Date(raffle.launch_time) > new Date() && raffle.duration_days) {
+      const launchDate = new Date(raffle.launch_time);
+      const drawDate = new Date(launchDate);
+      drawDate.setDate(drawDate.getDate() + raffle.duration_days);
+      return drawDate.toISOString();
+    }
+    
+    // Otherwise use the stored draw_date
+    return raffle.draw_date;
+  };
+
   useEffect(() => {
-    if (!raffle?.draw_date) return;
+    const drawDate = getCalculatedDrawDate();
+    if (!drawDate) return;
 
     const calculateTimeRemaining = () => {
       const now = new Date().getTime();
-      const drawDate = new Date(raffle.draw_date).getTime();
-      const difference = drawDate - now;
+      const drawDateTime = new Date(drawDate).getTime();
+      const difference = drawDateTime - now;
 
       if (difference <= 0) {
         setTimeRemaining({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -88,7 +105,7 @@ const RaffleDetail = () => {
     const interval = setInterval(calculateTimeRemaining, 1000);
 
     return () => clearInterval(interval);
-  }, [raffle?.draw_date]);
+  }, [raffle?.draw_date, raffle?.launch_time, raffle?.duration_days]);
 
   const loadOnChainData = async () => {
     if (!raffle?.contract_raffle_id) return;
@@ -275,11 +292,11 @@ const RaffleDetail = () => {
                   style={{ width: `${calculateProgress()}%` }}
                 />
               </div>
-              {raffle.draw_date && (
+              {getCalculatedDrawDate() && (
                 <div className="flex items-center justify-between text-muted-foreground">
                   <div className="flex items-center">
                     <Clock className="w-4 h-4 mr-2" />
-                    <span>Draw Date: {new Date(raffle.draw_date).toLocaleDateString()}</span>
+                    <span>Draw Date: {new Date(getCalculatedDrawDate()!).toLocaleDateString()}</span>
                   </div>
                   {timeRemaining && (
                     <div className="flex items-center gap-1 font-mono text-primary font-semibold">

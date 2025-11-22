@@ -39,6 +39,7 @@ interface Raffle {
   detailed_description: string | null;
   rules: string | null;
   network: string;
+  duration_days: number | null;
 }
 
 const calculateTimeRemaining = (drawDate: string | null): string => {
@@ -377,7 +378,7 @@ export const RaffleManagement = () => {
       max_tickets: raffle.max_tickets.toString(),
       nft_collection_address: raffle.nft_collection_address,
       image_url: raffle.image_url || '',
-      duration_days: '7',
+      duration_days: raffle.duration_days?.toString() || '7',
       status: raffle.status || 'active',
       launch_time: raffle.launch_time ? new Date(raffle.launch_time).toISOString().slice(0, 16) : '',
       display_order: raffle.display_order?.toString() || '1',
