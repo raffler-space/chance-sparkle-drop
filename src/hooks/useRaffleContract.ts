@@ -532,6 +532,32 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
     }
   }, [contract, account]);
 
+  // Get all raffle participants
+  const getRaffleParticipants = useCallback(async (raffleId: number) => {
+    if (!contract) return [];
+
+    try {
+      const participants = await contract.getRaffleParticipants(raffleId);
+      return participants;
+    } catch (error) {
+      console.error('Error getting raffle participants:', error);
+      return [];
+    }
+  }, [contract]);
+
+  // Get raffle entries (all ticket entry IDs)
+  const getRaffleEntries = useCallback(async (raffleId: number) => {
+    if (!contract) return [];
+
+    try {
+      const entries = await contract.getRaffleEntries(raffleId);
+      return entries.map((e: ethers.BigNumber) => e.toNumber());
+    } catch (error) {
+      console.error('Error getting raffle entries:', error);
+      return [];
+    }
+  }, [contract]);
+
   return {
     contract,
     signer,
@@ -542,6 +568,8 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
     claimPrize,
     getRaffleInfo,
     getUserEntries,
+    getRaffleParticipants,
+    getRaffleEntries,
     checkOwner,
     getRaffleCounter,
     getAllRafflesFromChain,

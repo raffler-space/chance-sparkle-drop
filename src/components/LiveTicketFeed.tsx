@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Ticket } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useRaffleContract } from "@/hooks/useRaffleContract";
+import { useWeb3 } from "@/hooks/useWeb3";
 
 interface TicketPurchase {
   id: string;
@@ -12,24 +14,29 @@ interface TicketPurchase {
   purchase_price: number;
   purchased_at: string;
   tx_hash: string;
+  source?: 'database' | 'blockchain';
 }
 
 interface LiveTicketFeedProps {
   raffleId: number;
+  contractRaffleId?: number | null;
 }
 
-const LiveTicketFeed = ({ raffleId }: LiveTicketFeedProps) => {
+const LiveTicketFeed = ({ raffleId, contractRaffleId }: LiveTicketFeedProps) => {
   const [tickets, setTickets] = useState<TicketPurchase[]>([]);
   const [loading, setLoading] = useState(true);
+  const { chainId } = useWeb3();
+  const { getRaffleParticipants, getUserEntries, isContractReady } = useRaffleContract(chainId, undefined);
 
   useEffect(() => {
-    loadTickets();
+    loadAllTickets();
     subscribeToTickets();
-  }, [raffleId]);
+  }, [raffleId, contractRaffleId, isContractReady]);
 
-  const loadTickets = async () => {
+  const loadAllTickets = async () => {
     try {
-      const { data, error } = await supabase
+      // Load tickets from database
+      const { data: dbTickets, error } = await supabase
         .from("tickets")
         .select("*")
         .eq("raffle_id", raffleId)
@@ -37,9 +44,54 @@ const LiveTicketFeed = ({ raffleId }: LiveTicketFeedProps) => {
         .limit(50);
 
       if (error) throw error;
-      setTickets(data || []);
+
+      const ticketsWithSource = (dbTickets || []).map(ticket => ({
+        ...ticket,
+        source: 'database' as const
+      }));
+
+      // If we have a contract raffle ID and contract is ready, fetch blockchain data
+      if (contractRaffleId !== null && contractRaffleId !== undefined && isContractReady) {
+        try {
+          const participants = await getRaffleParticipants(contractRaffleId);
+          console.log('Blockchain participants:', participants);
+          
+          // For each participant, get their entries to count tickets
+          const blockchainTickets = await Promise.all(
+            participants.map(async (address: string) => {
+              const entries = await getUserEntries(contractRaffleId, address);
+              return {
+                id: `blockchain-${address}`,
+                wallet_address: address,
+                quantity: entries.length,
+                purchase_price: 0, // We don't have price from blockchain easily
+                purchased_at: new Date().toISOString(), // We don't have timestamp from blockchain
+                tx_hash: 'blockchain',
+                source: 'blockchain' as const
+              };
+            })
+          );
+
+          // Merge tickets, preferring database records (they have more info)
+          const dbAddresses = new Set(ticketsWithSource.map(t => t.wallet_address.toLowerCase()));
+          const uniqueBlockchainTickets = blockchainTickets.filter(
+            t => !dbAddresses.has(t.wallet_address.toLowerCase())
+          );
+
+          const allTickets = [...ticketsWithSource, ...uniqueBlockchainTickets];
+          setTickets(allTickets);
+          console.log('Total tickets displayed:', allTickets.length, '(DB:', ticketsWithSource.length, '+ Blockchain:', uniqueBlockchainTickets.length, ')');
+        } catch (blockchainError) {
+          console.error('Error fetching blockchain data:', blockchainError);
+          // Fall back to just database tickets
+          setTickets(ticketsWithSource);
+        }
+      } else {
+        setTickets(ticketsWithSource);
+      }
     } catch (error) {
       console.error("Error loading tickets:", error);
+      setTickets([]);
     } finally {
       setLoading(false);
     }
@@ -57,7 +109,8 @@ const LiveTicketFeed = ({ raffleId }: LiveTicketFeedProps) => {
           filter: `raffle_id=eq.${raffleId}`,
         },
         (payload) => {
-          setTickets((prev) => [payload.new as TicketPurchase, ...prev].slice(0, 50));
+          const newTicket = { ...payload.new as TicketPurchase, source: 'database' as const };
+          setTickets((prev) => [newTicket, ...prev].slice(0, 50));
         }
       )
       .subscribe();
