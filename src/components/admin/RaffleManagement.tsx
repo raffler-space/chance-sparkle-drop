@@ -225,8 +225,10 @@ export const RaffleManagement = () => {
       launch_time: formData.status === 'draft' && formData.launch_time ? new Date(formData.launch_time).toISOString() : null,
       display_order: parseInt(formData.display_order),
       show_on_home: formData.show_on_home,
+      show_on_raffles: formData.show_on_raffles,
       detailed_description: formData.detailed_description || null,
       rules: formData.rules || null,
+      duration_days: formData.duration_days ? parseInt(formData.duration_days) : null,
       network: chainId === 1 ? 'mainnet' : 'testnet',
     };
 
