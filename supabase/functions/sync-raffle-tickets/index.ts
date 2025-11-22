@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
       console.log(`Scanning blockchain for TicketPurchased events...`);
       const filter = contract.filters.TicketPurchased(raffle.contract_raffle_id);
       
-      // Calculate starting block based on raffle creation time
+      // Calculate starting block based on raffle creation time with more conservative range
       const currentBlock = await provider.getBlockNumber();
       const raffleCreatedAt = new Date(raffle.created_at).getTime();
       const currentTime = Date.now();
@@ -156,27 +156,41 @@ Deno.serve(async (req) => {
       const avgBlockTime = 12; // Ethereum average block time
       const estimatedBlocksSinceCreation = Math.ceil(timeDiffSeconds / avgBlockTime);
       
-      // Go back 20% more blocks to be safe, and ensure minimum range
-      const blocksToScan = Math.max(estimatedBlocksSinceCreation * 1.2, 10000);
+      // Limit to maximum 5000 blocks to avoid timeouts (roughly 17 hours of blocks)
+      const blocksToScan = Math.min(estimatedBlocksSinceCreation * 1.2, 5000);
       const fromBlock = Math.max(0, currentBlock - Math.floor(blocksToScan));
       
-      console.log(`Querying events from block ${fromBlock} to ${currentBlock} (scanning ~${Math.floor(blocksToScan)} blocks)`);
+      console.log(`Querying events from block ${fromBlock} to ${currentBlock} (scanning ${Math.floor(blocksToScan)} blocks)`);
       
-      // Query in chunks to work with Alchemy Free tier (10 block limit)
-      const CHUNK_SIZE = 10; // Alchemy Free tier only allows 10 block range
+      // Use larger chunks for better performance - most RPC providers support 2000+ block range
+      const CHUNK_SIZE = 100;
       const allEvents = [];
+      const MAX_SCAN_TIME = 50000; // 50 second timeout to leave time for processing
+      const scanStartTime = Date.now();
       
       for (let start = fromBlock; start <= currentBlock; start += CHUNK_SIZE) {
+        // Check timeout
+        if (Date.now() - scanStartTime > MAX_SCAN_TIME) {
+          console.log(`Timeout reached after scanning ${start - fromBlock} blocks, stopping scan`);
+          eventScanError = 'Scan timeout - some events may not be synced. Try syncing again.';
+          break;
+        }
+        
         const end = Math.min(start + CHUNK_SIZE - 1, currentBlock);
-        console.log(`  Scanning chunk: blocks ${start} to ${end}`);
         
         try {
           const chunkEvents = await contract.queryFilter(filter, start, end);
-          allEvents.push(...chunkEvents);
-          console.log(`  Found ${chunkEvents.length} events in this chunk`);
+          if (chunkEvents.length > 0) {
+            allEvents.push(...chunkEvents);
+            console.log(`  Found ${chunkEvents.length} events in blocks ${start}-${end}`);
+          }
         } catch (chunkError) {
           console.error(`  Error scanning chunk ${start}-${end}:`, chunkError);
-          // Continue with next chunk even if one fails
+          // If we get rate limited, try smaller chunks
+          if (chunkError instanceof Error && chunkError.message.includes('429')) {
+            console.log('  Rate limited, slowing down...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
         }
       }
       
