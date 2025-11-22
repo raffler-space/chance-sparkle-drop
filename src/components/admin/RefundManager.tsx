@@ -308,6 +308,33 @@ export const RefundManager = () => {
     }
   };
 
+  const markAsRefunded = async (raffleId: number) => {
+    setProcessing(true);
+    try {
+      const { error } = await supabase
+        .from('raffles')
+        .update({ status: 'refunded' })
+        .eq('id', raffleId);
+
+      if (error) throw error;
+
+      toast.success('Raffle marked as refunded successfully');
+      
+      // Remove from the refunding list
+      setRaffles(prev => prev.filter(r => r.id !== raffleId));
+      
+      // Clear selection if this was the selected raffle
+      if (selectedRaffleId === raffleId) {
+        setSelectedRaffleId(raffles.length > 1 ? raffles.find(r => r.id !== raffleId)?.id || null : null);
+      }
+    } catch (error) {
+      console.error('Error marking raffle as refunded:', error);
+      toast.error('Failed to mark raffle as refunded');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const selectedRaffle = raffles.find(r => r.id === selectedRaffleId);
   const totalRefundAmount = refunds.reduce((sum, r) => sum + r.amount, 0);
   const pendingCount = refunds.filter(r => r.status === 'pending').length;
@@ -486,7 +513,7 @@ export const RefundManager = () => {
             <CardHeader>
               <CardTitle className="font-orbitron">Refund Actions</CardTitle>
             </CardHeader>
-            <CardContent className="flex gap-4">
+            <CardContent className="flex flex-wrap gap-4">
               {refunds.length === 0 ? (
                 <Button
                   onClick={() => initializeRefunds(selectedRaffle.id)}
@@ -513,6 +540,14 @@ export const RefundManager = () => {
                   >
                     <RefreshCw className="mr-2 h-4 w-4" />
                     Refresh
+                  </Button>
+                  <Button
+                    onClick={() => markAsRefunded(selectedRaffle.id)}
+                    disabled={processing || completedCount !== refunds.length || refunds.length === 0}
+                    className="bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/50"
+                  >
+                    {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    ✅ Mark as Refunded
                   </Button>
                 </>
               )}
