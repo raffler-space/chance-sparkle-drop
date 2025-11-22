@@ -8,10 +8,10 @@ import '@rainbow-me/rainbowkit/styles.css';
 const config = getDefaultConfig({
   appName: 'Raffler',
   projectId: '2df0f6c681b062523668597d1c63f31d',
-  chains: [sepolia, mainnet],
+  chains: [mainnet, sepolia],
   transports: {
-    [sepolia.id]: http('https://rpc.ankr.com/eth_sepolia'),
     [mainnet.id]: http('https://ethereum-rpc.publicnode.com'),
+    [sepolia.id]: http('https://rpc.ankr.com/eth_sepolia'),
   },
   ssr: false,
 });
