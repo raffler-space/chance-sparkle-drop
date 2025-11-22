@@ -201,6 +201,9 @@ export default function Raffles() {
     if (status === 'drawing') {
       return <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">🎲 DRAWING WINNER...</Badge>;
     }
+    if (status === 'refunded') {
+      return <Badge className="bg-green-500/20 text-green-400 border-green-500/30">✅ REFUNDED</Badge>;
+    }
     if (status === 'refunding') {
       return <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">💸 REFUNDING</Badge>;
     }

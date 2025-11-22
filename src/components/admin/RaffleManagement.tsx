@@ -610,6 +610,7 @@ export const RaffleManagement = () => {
                 <SelectItem value="draft">Draft</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="refunding">Refunding</SelectItem>
+                <SelectItem value="refunded">Refunded</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
