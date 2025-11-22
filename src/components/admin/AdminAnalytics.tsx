@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
-import { Loader2, DollarSign, Users, Trophy, TrendingUp, ArrowUpDown, RotateCcw } from 'lucide-react';
+import { Loader2, DollarSign, Users, Trophy, TrendingUp, ArrowUpDown, RotateCcw, Download, CalendarIcon } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { useRaffleContract } from '@/hooks/useRaffleContract';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,18 +54,31 @@ export const AdminAnalytics = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [sortField, setSortField] = useState<SortField>('totalSpent');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     fetchAnalytics();
     fetchLeaderboard();
-  }, [raffleContract.isContractReady]);
+  }, [raffleContract.isContractReady, startDate, endDate]);
 
   const fetchAnalytics = async () => {
     try {
-      // Fetch all ticket data in one query for consistency
-      const { data: tickets, error: ticketsError } = await supabase
+      // Build query with date filters
+      let ticketsQuery = supabase
         .from('tickets')
-        .select('purchase_price, quantity, wallet_address');
+        .select('purchase_price, quantity, wallet_address, purchased_at');
+      
+      if (startDate) {
+        ticketsQuery = ticketsQuery.gte('purchased_at', startDate.toISOString());
+      }
+      if (endDate) {
+        const endOfDay = new Date(endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        ticketsQuery = ticketsQuery.lte('purchased_at', endOfDay.toISOString());
+      }
+
+      const { data: tickets, error: ticketsError } = await ticketsQuery;
 
       if (ticketsError) {
         console.error('Error fetching tickets:', ticketsError);
@@ -94,14 +111,28 @@ export const AdminAnalytics = () => {
         ? rafflesWithBlockchainData.reduce((sum, r) => sum + r.tickets_sold, 0) / rafflesWithBlockchainData.length 
         : 0;
 
-      // Fetch referral data
-      const { data: referrals } = await supabase
-        .from('referrals')
-        .select('*');
+      // Fetch referral data with date filters
+      let referralsQuery = supabase.from('referrals').select('*');
+      if (startDate) {
+        referralsQuery = referralsQuery.gte('created_at', startDate.toISOString());
+      }
+      if (endDate) {
+        const endOfDay = new Date(endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        referralsQuery = referralsQuery.lte('created_at', endOfDay.toISOString());
+      }
+      const { data: referrals } = await referralsQuery;
 
-      const { data: earnings } = await supabase
-        .from('referral_earnings')
-        .select('amount, status');
+      let earningsQuery = supabase.from('referral_earnings').select('amount, status, created_at');
+      if (startDate) {
+        earningsQuery = earningsQuery.gte('created_at', startDate.toISOString());
+      }
+      if (endDate) {
+        const endOfDay = new Date(endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        earningsQuery = earningsQuery.lte('created_at', endOfDay.toISOString());
+      }
+      const { data: earnings } = await earningsQuery;
 
       const totalReferrals = referrals?.length || 0;
       const pendingPayouts = earnings?.filter(e => e.status === 'pending')
@@ -128,10 +159,21 @@ export const AdminAnalytics = () => {
 
   const fetchLeaderboard = async () => {
     try {
-      // Fetch all tickets with wallet addresses
-      const { data: tickets } = await supabase
+      // Build query with date filters
+      let ticketsQuery = supabase
         .from('tickets')
-        .select('wallet_address, purchase_price, quantity, raffle_id');
+        .select('wallet_address, purchase_price, quantity, raffle_id, purchased_at');
+      
+      if (startDate) {
+        ticketsQuery = ticketsQuery.gte('purchased_at', startDate.toISOString());
+      }
+      if (endDate) {
+        const endOfDay = new Date(endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        ticketsQuery = ticketsQuery.lte('purchased_at', endOfDay.toISOString());
+      }
+
+      const { data: tickets } = await ticketsQuery;
 
       // Fetch raffles to determine winners
       const { data: raffles } = await supabase
@@ -235,6 +277,59 @@ export const AdminAnalytics = () => {
     setLeaderboard([]);
   };
 
+  const handleExportCSV = () => {
+    if (!analytics) return;
+
+    // Prepare CSV content
+    const csvRows: string[] = [];
+    
+    // Header
+    csvRows.push('Analytics Export');
+    csvRows.push(`Generated: ${format(new Date(), 'PPpp')}`);
+    if (startDate || endDate) {
+      csvRows.push(`Date Range: ${startDate ? format(startDate, 'PP') : 'All time'} - ${endDate ? format(endDate, 'PP') : 'Present'}`);
+    }
+    csvRows.push('');
+    
+    // Summary metrics
+    csvRows.push('Metric,Value');
+    csvRows.push(`Total Revenue (USDT),${analytics.totalRevenue.toFixed(2)}`);
+    csvRows.push(`Active Users,${analytics.activeUsers}`);
+    csvRows.push(`Total Raffles,${analytics.totalRaffles}`);
+    csvRows.push(`Completed Raffles,${analytics.completedRaffles}`);
+    csvRows.push(`Average Tickets Sold,${analytics.averageTicketsSold.toFixed(1)}`);
+    csvRows.push(`Total Referrals,${analytics.totalReferrals || 0}`);
+    csvRows.push(`Pending Payouts (USDT),${(analytics.pendingPayouts || 0).toFixed(2)}`);
+    csvRows.push(`Total Paid Out (USDT),${(analytics.totalPaid || 0).toFixed(2)}`);
+    csvRows.push('');
+    
+    // Leaderboard
+    csvRows.push('Participant Leaderboard');
+    csvRows.push('Wallet Address,Raffles Participated,Tickets Purchased,Total Spent (USDT),Wins,Losses,Win Rate (%)');
+    sortedLeaderboard.forEach(entry => {
+      csvRows.push(
+        `${entry.walletAddress},${entry.rafflesParticipated},${entry.ticketsPurchased},${entry.totalSpent.toFixed(2)},${entry.wins},${entry.losses},${entry.winRate.toFixed(1)}`
+      );
+    });
+
+    // Create and download file
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    const dateRange = startDate || endDate 
+      ? `_${startDate ? format(startDate, 'yyyy-MM-dd') : 'all'}_to_${endDate ? format(endDate, 'yyyy-MM-dd') : 'now'}`
+      : '';
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `analytics_export${dateRange}_${format(new Date(), 'yyyy-MM-dd_HHmmss')}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const sortedLeaderboard = [...leaderboard].sort((a, b) => {
     const aValue = a[sortField];
     const bValue = b[sortField];
@@ -258,28 +353,106 @@ export const AdminAnalytics = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-orbitron font-bold text-foreground">Analytics Overview</h2>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              <RotateCcw className="w-4 h-4 mr-2" />
-              Reset Counters
+      <div className="flex flex-col gap-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-orbitron font-bold text-foreground">Analytics Overview</h2>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleExportCSV}>
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
             </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Reset Analytics Counters?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will reset all displayed analytics counters to 0. This only affects the display and does not modify any database records. You can refresh to see the actual data again.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleResetCounters}>Reset</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Reset Counters
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reset Analytics Counters?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will reset all displayed analytics counters to 0. This only affects the display and does not modify any database records. You can refresh to see the actual data again.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleResetCounters}>Reset</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </div>
+
+        {/* Date Range Filters */}
+        <Card className="glass-card border-neon-cyan/30 p-4">
+          <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-rajdhani text-muted-foreground">Date Range:</span>
+            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "justify-start text-left font-normal",
+                    !startDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {startDate ? format(startDate, "PPP") : "Start Date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={startDate}
+                  onSelect={setStartDate}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+            <span className="text-muted-foreground">to</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "justify-start text-left font-normal",
+                    !endDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {endDate ? format(endDate, "PPP") : "End Date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={endDate}
+                  onSelect={setEndDate}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+            {(startDate || endDate) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setStartDate(undefined);
+                  setEndDate(undefined);
+                }}
+              >
+                Clear Filters
+              </Button>
+            )}
+          </div>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
