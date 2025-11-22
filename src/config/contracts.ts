@@ -79,8 +79,8 @@ export const isSupportedNetwork = (chainId: number): boolean => {
   return chainId in networks;
 };
 
-// Default to Sepolia for development
-export const defaultNetwork = sepoliaConfig;
+// Default to Mainnet for production
+export const defaultNetwork = mainnetConfig;
 
 // Contract ABIs
 export const RAFFLE_ABI = [
