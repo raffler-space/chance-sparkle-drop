@@ -313,7 +313,7 @@ export const RefundManager = () => {
     try {
       const { error } = await supabase
         .from('raffles')
-        .update({ status: 'refunded' })
+        .update({ status: 'Refunded' })
         .eq('id', raffleId);
 
       if (error) throw error;
