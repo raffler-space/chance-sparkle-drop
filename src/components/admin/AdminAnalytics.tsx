@@ -1,10 +1,22 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
-import { Loader2, DollarSign, Users, Trophy, TrendingUp, ArrowUpDown } from 'lucide-react';
+import { Loader2, DollarSign, Users, Trophy, TrendingUp, ArrowUpDown, RotateCcw } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { useRaffleContract } from '@/hooks/useRaffleContract';
+import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface AnalyticsData {
   totalRevenue: number;
@@ -209,6 +221,20 @@ export const AdminAnalytics = () => {
     }
   };
 
+  const handleResetCounters = () => {
+    setAnalytics({
+      totalRevenue: 0,
+      activeUsers: 0,
+      totalRaffles: 0,
+      completedRaffles: 0,
+      averageTicketsSold: 0,
+      totalReferrals: 0,
+      pendingPayouts: 0,
+      totalPaid: 0,
+    });
+    setLeaderboard([]);
+  };
+
   const sortedLeaderboard = [...leaderboard].sort((a, b) => {
     const aValue = a[sortField];
     const bValue = b[sortField];
@@ -232,6 +258,30 @@ export const AdminAnalytics = () => {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-orbitron font-bold text-foreground">Analytics Overview</h2>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" size="sm">
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Reset Counters
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reset Analytics Counters?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will reset all displayed analytics counters to 0. This only affects the display and does not modify any database records. You can refresh to see the actual data again.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleResetCounters}>Reset</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="glass-card border-neon-gold/30 p-6">
           <div className="flex items-center justify-between">
