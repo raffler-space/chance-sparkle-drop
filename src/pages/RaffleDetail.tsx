@@ -392,7 +392,7 @@ const RaffleDetail = () => {
           </TabsContent>
 
           <TabsContent value="activity" className="mt-6">
-            <LiveTicketFeed raffleId={raffle.id} contractRaffleId={raffle.contract_raffle_id} />
+            <LiveTicketFeed raffleId={raffle.id} />
           </TabsContent>
         </Tabs>
       </div>
