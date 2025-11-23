@@ -105,9 +105,7 @@ export const RaffleCard = ({
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
         <Badge
           className={`absolute top-4 right-4 ${
-            actualSoldTickets >= totalTickets
-              ? 'bg-red-500/20 text-red-400 border-red-500/30'
-              : status === 'completed'
+            status === 'completed'
               ? 'bg-neon-gold/20 text-neon-gold border-neon-gold/30'
               : status === 'drawing'
               ? 'bg-neon-cyan/20 text-neon-cyan border-neon-cyan/30'
@@ -122,7 +120,7 @@ export const RaffleCard = ({
               : 'bg-neon-gold/20 text-neon-gold border-neon-gold/30'
           }`}
         >
-          {actualSoldTickets >= totalTickets ? '🚫 SOLD OUT' : status === 'completed' ? '✓ Completed' : status === 'Refunded' ? '✅ Refunded' : status === 'refunding' ? '💸 Refunding' : isUpcoming ? '📅 Upcoming' : isActive ? '🔴 LIVE' : '✓ Completed'}
+          {status === 'completed' ? '✓ Completed' : status === 'Refunded' ? '✅ Refunded' : status === 'refunding' ? '💸 Refunding' : isUpcoming ? '📅 Upcoming' : isActive ? '🔴 LIVE' : '✓ Completed'}
         </Badge>
       </Link>
 
