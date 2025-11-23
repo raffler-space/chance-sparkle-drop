@@ -1,5 +1,7 @@
 import { AnimatedBackground } from '@/components/AnimatedBackground';
 import { Navbar } from '@/components/Navbar';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface HowItWorksProps {
   account: string | null;
@@ -9,6 +11,24 @@ interface HowItWorksProps {
 }
 
 export default function HowItWorks({ account, isConnecting, onConnectWallet, onDisconnectWallet }: HowItWorksProps) {
+  const [participationGuide, setParticipationGuide] = useState('');
+
+  useEffect(() => {
+    loadParticipationGuide();
+  }, []);
+
+  const loadParticipationGuide = async () => {
+    const { data } = await supabase
+      .from('site_content')
+      .select('content_value')
+      .eq('content_key', 'how_to_participate_guide')
+      .single();
+    
+    if (data) {
+      setParticipationGuide(data.content_value);
+    }
+  };
+
   const steps = [
     {
       step: 1,
@@ -80,6 +100,19 @@ export default function HowItWorks({ account, isConnecting, onConnectWallet, onD
                 </p>
               </div>
             ))}
+          </div>
+
+          {/* How To Participate Section */}
+          <div className="mt-20">
+            <h2 className="text-3xl sm:text-5xl font-orbitron font-black text-center mb-12 bg-gradient-to-r from-secondary via-accent to-primary bg-clip-text text-transparent">
+              📋 HOW TO PARTICIPATE
+            </h2>
+            <div className="glass-effect p-8 rounded-xl">
+              <div 
+                className="prose prose-invert max-w-none text-foreground/90"
+                dangerouslySetInnerHTML={{ __html: participationGuide }}
+              />
+            </div>
           </div>
         </div>
       </main>
