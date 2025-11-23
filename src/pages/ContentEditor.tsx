@@ -202,6 +202,9 @@ const ContentEditor = () => {
       'terms_of_service',
       'privacy_policy',
       'disclaimer'
+    ],
+    'how-it-works': [
+      'how_to_participate_guide'
     ]
   };
 
