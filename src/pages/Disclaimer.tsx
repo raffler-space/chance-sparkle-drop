@@ -42,7 +42,7 @@ const Disclaimer = () => {
         isConnecting={isConnecting}
       />
       
-      <div className="max-w-4xl mx-auto px-4 py-12 relative z-10">
+      <div className="max-w-4xl mx-auto px-4 pt-32 pb-12 relative z-10">
         <div className="flex items-center gap-3 mb-8">
           <AlertTriangle className="w-10 h-10 text-warning" />
           <h1 className="text-4xl font-bold font-orbitron">Legal Disclaimer</h1>
