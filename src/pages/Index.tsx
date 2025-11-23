@@ -110,8 +110,8 @@ const Index = () => {
       .order('display_order', { ascending: true });
 
     if (!error && data) {
-      // Separate active/completed/refunding and draft raffles
-      const active = data.filter(raffle => raffle.status === 'active' || raffle.status === 'completed' || raffle.status === 'Refunding');
+      // Separate active/completed/refunding/refunded and draft raffles
+      const active = data.filter(raffle => raffle.status === 'active' || raffle.status === 'completed' || raffle.status === 'Refunding' || raffle.status === 'Refunded');
       const upcoming = data.filter(raffle => raffle.status === 'draft');
       setActiveRaffles(active);
       setUpcomingRaffles(upcoming);
