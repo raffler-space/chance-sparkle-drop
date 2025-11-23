@@ -299,7 +299,8 @@ const ContentEditor = () => {
                       <Textarea
                         value={item.content_value}
                         onChange={(e) => handleContentChange(item.id, e.target.value)}
-                        className="min-h-[100px]"
+                        className="min-h-[400px] font-mono text-xs"
+                        rows={Math.min(Math.ceil(item.content_value.length / 100), 50)}
                       />
                     ) : (
                       <Input
