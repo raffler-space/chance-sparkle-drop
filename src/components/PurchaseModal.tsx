@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Minus, Plus, Ticket, AlertTriangle, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -334,7 +335,8 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <ScrollArea className="max-h-[70vh] pr-4">
+          <div className="space-y-6 py-4">
           {/* Wallet Connection Status - Debug Info */}
           {account && (
             <div className="glass-card p-3 border-green-500/30 bg-green-500/5">
@@ -566,7 +568,8 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
               Please connect your wallet to purchase tickets
             </p>
           )}
-        </div>
+          </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
