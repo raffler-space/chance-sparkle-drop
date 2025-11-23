@@ -42,7 +42,7 @@ const PrivacyPolicy = () => {
         isConnecting={isConnecting}
       />
       
-      <div className="max-w-4xl mx-auto px-4 py-12 relative z-10">
+      <div className="max-w-4xl mx-auto px-4 pt-32 pb-12 relative z-10">
         <h1 className="text-4xl font-bold font-orbitron mb-8">Privacy Policy</h1>
         
         {loading ? (
