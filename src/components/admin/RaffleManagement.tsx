@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, Loader2, ExternalLink, Eye, EyeOff, Clock, Filter } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, ExternalLink, Eye, EyeOff, Clock, Filter, RefreshCw } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -89,6 +89,7 @@ export const RaffleManagement = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [networkFilter, setNetworkFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('created_at_desc');
+  const [syncingRaffles, setSyncingRaffles] = useState<Set<number>>(new Set());
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -605,6 +606,55 @@ export const RaffleManagement = () => {
     }
   };
 
+  const handleSyncTickets = async (raffle: Raffle) => {
+    if (!raffle.contract_raffle_id && raffle.contract_raffle_id !== 0) {
+      toast.error('This raffle has no blockchain contract');
+      return;
+    }
+
+    try {
+      setSyncingRaffles(prev => new Set(prev).add(raffle.id));
+      toast.info('Syncing ticket data from blockchain...', {
+        description: 'This may take a moment',
+      });
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await supabase.functions.invoke('sync-raffle-tickets', {
+        body: { raffleId: raffle.id },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to sync tickets');
+      }
+
+      const result = response.data;
+      toast.success(`Synced successfully!`, {
+        description: `${result.ticketRecordsCreated} ticket records stored permanently`,
+      });
+
+      // Refresh raffles to show updated ticket counts
+      fetchRaffles();
+    } catch (error: any) {
+      console.error('Error syncing tickets:', error);
+      toast.error('Failed to sync tickets', {
+        description: error.message || 'Please try again',
+      });
+    } finally {
+      setSyncingRaffles(prev => {
+        const next = new Set(prev);
+        next.delete(raffle.id);
+        return next;
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -916,6 +966,22 @@ export const RaffleManagement = () => {
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
+                    {(raffle.contract_raffle_id !== null && raffle.contract_raffle_id !== undefined) && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleSyncTickets(raffle)}
+                        className="border-neon-purple/30 hover:border-neon-purple"
+                        disabled={syncingRaffles.has(raffle.id)}
+                        title="Sync ticket data from blockchain"
+                      >
+                        {syncingRaffles.has(raffle.id) ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-4 h-4" />
+                        )}
+                      </Button>
+                    )}
                   </>
                 )}
               </div>
