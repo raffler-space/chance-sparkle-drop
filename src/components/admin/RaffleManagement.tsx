@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -90,6 +91,8 @@ export const RaffleManagement = () => {
   const [networkFilter, setNetworkFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('created_at_desc');
   const [syncingRaffles, setSyncingRaffles] = useState<Set<number>>(new Set());
+  const [activationDialogOpen, setActivationDialogOpen] = useState(false);
+  const [raffleToActivate, setRaffleToActivate] = useState<Raffle | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -560,6 +563,7 @@ export const RaffleManagement = () => {
 
     try {
       setIsProcessing(true);
+      setActivationDialogOpen(false);
       toast.info('Activating raffle on blockchain...', {
         description: 'Please confirm the transaction in your wallet',
       });
@@ -568,10 +572,14 @@ export const RaffleManagement = () => {
       const network = chainId ? getNetworkConfig(chainId) : null;
       const usdtAddress = network?.contracts.usdt || '';
 
+      // Use the raffle's actual duration_days, or default to 7 if not set
+      const durationDays = raffle.duration_days || 7;
+      const endTimeSeconds = Math.floor(Date.now() / 1000) + (durationDays * 24 * 60 * 60);
+
       const tx = await raffleContract.contract.createRaffle(
         ethers.utils.parseUnits(raffle.ticket_price.toString(), 6),
         raffle.max_tickets,
-        Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // 7 days from now
+        endTimeSeconds,
         raffle.nft_collection_address,
         usdtAddress
       );
@@ -806,7 +814,10 @@ export const RaffleManagement = () => {
                   {raffle.status === 'draft' && (
                     <Button
                       size="sm"
-                      onClick={() => handleActivateRaffle(raffle)}
+                      onClick={() => {
+                        setRaffleToActivate(raffle);
+                        setActivationDialogOpen(true);
+                      }}
                       disabled={isProcessing}
                       className="bg-gradient-to-r from-neon-cyan to-neon-purple hover:opacity-90"
                     >
@@ -1230,6 +1241,86 @@ export const RaffleManagement = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Activation Confirmation Dialog */}
+      <AlertDialog open={activationDialogOpen} onOpenChange={setActivationDialogOpen}>
+        <AlertDialogContent className="bg-background/95 backdrop-blur-xl border-neon-cyan/30">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-2xl font-orbitron text-neon-cyan">
+              Confirm Raffle Activation
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-base text-foreground">
+              You are about to deploy this raffle to the blockchain. Please review the details carefully:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {raffleToActivate && (
+            <div className="space-y-3 my-4 p-4 bg-muted/20 rounded-lg border border-border/30">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Raffle Name</p>
+                  <p className="font-orbitron font-bold">{raffleToActivate.name}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Prize</p>
+                  <p className="font-rajdhani font-semibold">{raffleToActivate.prize_description}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Ticket Price</p>
+                  <p className="font-rajdhani font-bold text-neon-cyan">{raffleToActivate.ticket_price} USDT</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Max Tickets</p>
+                  <p className="font-rajdhani font-bold">{raffleToActivate.max_tickets.toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Duration</p>
+                  <p className="font-rajdhani font-bold text-neon-purple">
+                    {raffleToActivate.duration_days || 7} days
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Network</p>
+                  <p className="font-rajdhani font-bold">
+                    {raffleToActivate.network === 'mainnet' ? '🟢 MAINNET' : '🟡 TESTNET'}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm text-muted-foreground">NFT Gating Address</p>
+                <p className="font-mono text-xs break-all">{raffleToActivate.nft_collection_address}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="p-3 bg-warning/10 border border-warning/30 rounded-md">
+            <p className="text-sm text-warning-foreground font-rajdhani">
+              ⚠️ This action cannot be undone. The raffle will be deployed to the blockchain and become active immediately.
+            </p>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-border/50">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (raffleToActivate) {
+                  handleActivateRaffle(raffleToActivate);
+                }
+              }}
+              className="bg-gradient-to-r from-neon-cyan to-neon-purple hover:opacity-90"
+            >
+              Confirm & Activate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
