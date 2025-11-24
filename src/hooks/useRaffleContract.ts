@@ -375,9 +375,27 @@ export const useRaffleContract = (chainId: number | undefined, account: string |
     const gasLimit = ethers.BigNumber.from(Math.min(500000 + (quantity * 100000), 8000000));
     console.log('Using gas limit:', gasLimit.toString(), 'for', quantity, 'tickets');
 
-    const tx = await contract.buyTickets(raffleId, quantity, {
-      gasLimit
-    });
+    let tx;
+    try {
+      // Try with specified gas limit
+      tx = await contract.buyTickets(raffleId, quantity, {
+        gasLimit
+      });
+    } catch (gasError: any) {
+      // If gas estimation fails (common on some mobile wallets), retry with higher manual gas limit
+      if (gasError.message?.includes('cannot estimate gas') || 
+          gasError.message?.includes('execution reverted') ||
+          gasError.code === 'UNPREDICTABLE_GAS_LIMIT') {
+        console.log('Gas estimation failed, retrying with increased manual gas limit');
+        const safeGasLimit = ethers.BigNumber.from(Math.min(1000000 + (quantity * 150000), 10000000));
+        console.log('Using safe gas limit:', safeGasLimit.toString());
+        tx = await contract.buyTickets(raffleId, quantity, {
+          gasLimit: safeGasLimit
+        });
+      } else {
+        throw gasError;
+      }
+    }
 
     console.log('Transaction sent:', tx.hash);
       toast.loading('Purchasing tickets...', { id: 'buy-tickets' });
