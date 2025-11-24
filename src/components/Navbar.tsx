@@ -215,8 +215,8 @@ export const Navbar = ({ onConnectWallet, onDisconnectWallet, walletAddress, isC
               </Link>
             ))}
             
-            {/* Dashboard and Referrals - show when user is logged in */}
-            {user && (
+            {/* Dashboard and Referrals - show when user is logged in OR wallet connected */}
+            {(user || walletAddress) && (
               <div className="space-y-1">
                 <Link
                   to="/dashboard"
