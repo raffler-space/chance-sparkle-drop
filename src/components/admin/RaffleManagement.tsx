@@ -577,6 +577,8 @@ export const RaffleManagement = () => {
       const endTimeSeconds = Math.floor(Date.now() / 1000) + (durationDays * 24 * 60 * 60);
 
       const tx = await raffleContract.contract.createRaffle(
+        raffle.name,
+        raffle.description || '',
         ethers.utils.parseUnits(raffle.ticket_price.toString(), 6),
         raffle.max_tickets,
         endTimeSeconds,
