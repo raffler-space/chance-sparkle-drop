@@ -100,7 +100,6 @@ serve(async (req) => {
       .insert({
         ...raffleData,
         contract_raffle_id: contractRaffleId || null,
-        status: 'active',
       })
       .select()
       .single();
