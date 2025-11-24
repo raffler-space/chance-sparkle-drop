@@ -88,10 +88,12 @@ export const useUSDTContract = (chainId: number | undefined, account: string | n
         return tx;
       } catch (gasError: any) {
         // If gas estimation fails (common on some mobile wallets), retry with manual gas limit
-        if (gasError.message?.includes('cannot estimate gas') || gasError.code === 'UNPREDICTABLE_GAS_LIMIT') {
-          console.log('Gas estimation failed, retrying with manual gas limit');
+        if (gasError.message?.includes('cannot estimate gas') || 
+            gasError.message?.includes('execution reverted') ||
+            gasError.code === 'UNPREDICTABLE_GAS_LIMIT') {
+          console.log('Gas estimation failed, retrying with higher manual gas limit');
           const tx = await contract.approve(spender, amountInSmallestUnit, {
-            gasLimit: 100000 // Safe gas limit for USDT approve transactions
+            gasLimit: 200000 // Higher safe gas limit for USDT approve transactions
           });
           return tx;
         }
