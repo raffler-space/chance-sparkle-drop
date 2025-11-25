@@ -241,27 +241,32 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
 
       const currentTicketsSold = currentRaffle?.tickets_sold || 0;
 
-      // Save to database - requires authentication
+      // Save to database - works for both authenticated and wallet-only users
       try {
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        const { data: { user } } = await supabase.auth.getUser();
         
-        if (authError || !user) {
-          console.warn('No authenticated user - tickets purchased on blockchain but not saved to database');
-          toast.warning('Purchase successful on blockchain', {
-            description: 'Sign in to track your tickets in the dashboard',
-            duration: 8000,
-          });
-          setQuantity(1);
-          onClose();
-          onPurchaseSuccess?.();
-          return;
-        }
+        // Generate deterministic user_id from wallet address for unauthenticated users
+        // This ensures consistency across purchases from the same wallet
+        const generateUserIdFromWallet = (walletAddress: string): string => {
+          // Create a deterministic UUID from wallet address
+          // Using a simple hash to create a valid UUID format
+          const hash = walletAddress.toLowerCase().slice(2); // Remove 0x
+          const uuid = `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${hash.slice(13, 16)}-a${hash.slice(17, 20)}-${hash.slice(20, 32)}`;
+          return uuid;
+        };
 
-        console.log('Saving tickets to database...', { userId: user.id, quantity, txHash: result.txHash });
+        const userId = user?.id || generateUserIdFromWallet(account!);
+
+        console.log('Saving tickets to database...', { 
+          userId, 
+          isAuthenticated: !!user, 
+          quantity, 
+          txHash: result.txHash 
+        });
 
         // Insert ticket records with proper error handling
         const ticketRecords = Array.from({ length: quantity }, (_, i) => ({
-          user_id: user.id,
+          user_id: userId,
           raffle_id: raffle.id,
           tx_hash: result.txHash,
           wallet_address: account,
@@ -294,8 +299,12 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
 
         console.log('Database updated successfully - all tickets recorded');
         
+        const toastDescription = user 
+          ? 'Your tickets have been recorded in your dashboard'
+          : 'Your tickets are linked to your wallet address';
+        
         toast.success(`Successfully purchased ${quantity} ticket${quantity > 1 ? 's' : ''}!`, {
-          description: 'Your tickets have been recorded in your dashboard',
+          description: toastDescription,
         });
       } catch (dbError: any) {
         console.error('Critical database error:', dbError);

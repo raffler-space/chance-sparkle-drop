@@ -41,7 +41,7 @@ interface GroupedRaffle {
   isWinner: boolean;
 }
 
-export const UserTickets = ({ userId }: { userId: string }) => {
+export const UserTickets = ({ userId, walletAddress }: { userId?: string; walletAddress?: string | null }) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedRaffles, setExpandedRaffles] = useState<Set<number>>(new Set());
@@ -52,7 +52,7 @@ export const UserTickets = ({ userId }: { userId: string }) => {
 
   useEffect(() => {
     fetchTickets();
-  }, [userId, account, isContractReady]);
+  }, [userId, walletAddress, account, isContractReady]);
 
   useEffect(() => {
     const fetchBlockchainTicketCounts = async () => {
@@ -123,38 +123,53 @@ export const UserTickets = ({ userId }: { userId: string }) => {
   const fetchTickets = async () => {
     setLoading(true);
     
-    // Try to fetch from database first (for authenticated users)
-    const { data, error } = await supabase
-      .from('tickets')
-      .select(`
-        *,
-        raffles (
-          id,
-          name,
-          status,
-          prize_description,
-          contract_raffle_id,
-          winner_address,
-          draw_date,
-          max_tickets,
-          tickets_sold
-        )
-      `)
-      .eq('user_id', userId)
-      .order('purchased_at', { ascending: false });
+    try {
+      // Build query based on available identifiers
+      let query = supabase
+        .from('tickets')
+        .select(`
+          *,
+          raffles (
+            id,
+            name,
+            status,
+            prize_description,
+            contract_raffle_id,
+            winner_address,
+            draw_date,
+            max_tickets,
+            tickets_sold
+          )
+        `);
 
-    if (error) {
-      console.error('Error fetching tickets from database:', error);
+      // Query by userId if authenticated, otherwise by wallet address
+      if (userId) {
+        query = query.eq('user_id', userId);
+      } else if (walletAddress || account) {
+        query = query.eq('wallet_address', (walletAddress || account)!.toLowerCase());
+      } else {
+        // No identifier available
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await query.order('purchased_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching tickets from database:', error);
+      }
+      
+      // If user has wallet but no database tickets, fetch from blockchain
+      if ((!data || data.length === 0) && account && isContractReady) {
+        await fetchBlockchainTickets();
+      } else {
+        setTickets((data as any) || []);
+      }
+    } catch (error) {
+      console.error('Error in fetchTickets:', error);
+    } finally {
+      setLoading(false);
     }
-    
-    // If user has wallet but no database tickets, fetch from blockchain
-    if ((!data || data.length === 0) && account && isContractReady) {
-      await fetchBlockchainTickets();
-    } else {
-      setTickets((data as any) || []);
-    }
-    
-    setLoading(false);
   };
 
   const fetchBlockchainTickets = async () => {
