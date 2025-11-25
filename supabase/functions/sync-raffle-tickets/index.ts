@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
       console.log(`Scanning blockchain for TicketPurchased events...`);
       const filter = contract.filters.TicketPurchased(raffle.contract_raffle_id);
       
-      // Calculate starting block based on raffle creation time
+      // Calculate starting block based on raffle creation time - search FORWARD from creation
       const currentBlock = await provider.getBlockNumber();
       const raffleCreatedAt = new Date(raffle.created_at).getTime();
       const currentTime = Date.now();
@@ -156,11 +156,12 @@ Deno.serve(async (req) => {
       const avgBlockTime = 12; // Ethereum average block time
       const estimatedBlocksSinceCreation = Math.ceil(timeDiffSeconds / avgBlockTime);
       
-      // Scan up to 500k blocks (roughly 2 months) or since creation, whichever is less
-      const blocksToScan = Math.min(estimatedBlocksSinceCreation * 1.2, 500000);
-      const fromBlock = Math.max(0, currentBlock - Math.floor(blocksToScan));
+      // Start from estimated creation block, search forward to current block
+      const fromBlock = Math.max(0, currentBlock - estimatedBlocksSinceCreation - 100); // Add 100 block buffer
       
-      console.log(`Querying events from block ${fromBlock} to ${currentBlock} (scanning ${Math.floor(blocksToScan)} blocks)`);
+      console.log(`Raffle created at: ${raffle.created_at}`);
+      console.log(`Estimated blocks since creation: ${estimatedBlocksSinceCreation}`);
+      console.log(`Querying events from block ${fromBlock} to ${currentBlock} (scanning ${estimatedBlocksSinceCreation + 100} blocks)`);
       
       // RPC providers have 50k block limit, use chunks just under that
       const CHUNK_SIZE = 49999;
