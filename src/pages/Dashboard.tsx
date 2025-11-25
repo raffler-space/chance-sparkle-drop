@@ -126,7 +126,7 @@ export default function Dashboard() {
           </TabsList>
 
           <TabsContent value="tickets" className="space-y-4">
-            <UserTickets userId={user?.id} />
+            <UserTickets userId={user?.id} walletAddress={account} />
           </TabsContent>
 
           <TabsContent value="raffles" className="space-y-4">
@@ -138,7 +138,7 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="support" className="space-y-4">
-            <SupportTab userId={user?.id} />
+            <SupportTab userId={user?.id} walletAddress={account} />
           </TabsContent>
         </Tabs>
       </main>

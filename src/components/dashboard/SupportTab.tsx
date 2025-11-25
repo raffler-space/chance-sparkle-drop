@@ -20,7 +20,7 @@ interface SupportTicket {
   updated_at: string;
 }
 
-export function SupportTab({ userId }: { userId?: string }) {
+export function SupportTab({ userId, walletAddress }: { userId?: string; walletAddress?: string | null }) {
   const { account } = useWeb3();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,18 +29,25 @@ export function SupportTab({ userId }: { userId?: string }) {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    if (userId) {
+    if (userId || walletAddress || account) {
       loadTickets();
     }
-  }, [userId]);
+  }, [userId, walletAddress, account]);
 
   const loadTickets = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('support_tickets')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+        .select('*');
+
+      // Query by userId if available, otherwise by wallet address
+      if (userId) {
+        query = query.eq('user_id', userId);
+      } else if (walletAddress || account) {
+        query = query.eq('wallet_address', (walletAddress || account)!.toLowerCase());
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
       setTickets(data || []);
@@ -55,7 +62,8 @@ export function SupportTab({ userId }: { userId?: string }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!userId || !account) {
+    const wallet = walletAddress || account;
+    if (!wallet) {
       toast.error('Please connect your wallet to submit a ticket');
       return;
     }
@@ -65,13 +73,21 @@ export function SupportTab({ userId }: { userId?: string }) {
       return;
     }
 
+    // Generate deterministic user_id from wallet address if not authenticated
+    const generateUserIdFromWallet = (walletAddr: string): string => {
+      const hash = walletAddr.toLowerCase().slice(2);
+      return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${hash.slice(13, 16)}-a${hash.slice(17, 20)}-${hash.slice(20, 32)}`;
+    };
+
+    const effectiveUserId = userId || generateUserIdFromWallet(wallet);
+
     setSubmitting(true);
     try {
       const { error } = await supabase
         .from('support_tickets')
         .insert({
-          user_id: userId,
-          wallet_address: account,
+          user_id: effectiveUserId,
+          wallet_address: wallet,
           subject: subject.trim(),
           message: message.trim(),
           status: 'open'
