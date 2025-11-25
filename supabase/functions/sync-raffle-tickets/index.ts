@@ -146,7 +146,8 @@ Deno.serve(async (req) => {
     
     try {
       console.log(`Scanning blockchain for TicketPurchased events...`);
-      const filter = contract.filters.TicketPurchased(raffle.contract_raffle_id);
+      // Query ALL TicketPurchased events (not filtered by raffle ID) to avoid indexed parameter issues
+      const filter = contract.filters.TicketPurchased();
       
       // Calculate starting block based on raffle creation time - search FORWARD from creation
       const currentBlock = await provider.getBlockNumber();
@@ -161,7 +162,7 @@ Deno.serve(async (req) => {
       
       console.log(`Raffle created at: ${raffle.created_at}`);
       console.log(`Estimated blocks since creation: ${estimatedBlocksSinceCreation}`);
-      console.log(`Querying events from block ${fromBlock} to ${currentBlock} (scanning ${estimatedBlocksSinceCreation + 100} blocks)`);
+      console.log(`Querying ALL events from block ${fromBlock} to ${currentBlock} (scanning ${estimatedBlocksSinceCreation + 100} blocks)`);
       
       // RPC providers have 50k block limit, use chunks just under that
       const CHUNK_SIZE = 49999;
@@ -182,8 +183,12 @@ Deno.serve(async (req) => {
         try {
           const chunkEvents = await contract.queryFilter(filter, start, end);
           if (chunkEvents.length > 0) {
-            allEvents.push(...chunkEvents);
-            console.log(`  Found ${chunkEvents.length} events in blocks ${start}-${end}`);
+            // Filter events for this specific raffle in JavaScript
+            const raffleEvents = chunkEvents.filter(e => e.args!.raffleId.toNumber() === raffle.contract_raffle_id);
+            if (raffleEvents.length > 0) {
+              allEvents.push(...raffleEvents);
+              console.log(`  Found ${raffleEvents.length} events for raffle ${raffle.contract_raffle_id} in blocks ${start}-${end} (${chunkEvents.length} total events)`);
+            }
           }
         } catch (chunkError) {
           console.error(`  Error scanning chunk ${start}-${end}:`, chunkError);
@@ -196,7 +201,7 @@ Deno.serve(async (req) => {
       }
       
       const events = allEvents;
-      console.log(`Found ${events.length} ticket purchase events`);
+      console.log(`Found ${events.length} ticket purchase events for raffle ${raffle.contract_raffle_id}`);
 
       // Process each event and create/update ticket records
       for (const event of events) {
