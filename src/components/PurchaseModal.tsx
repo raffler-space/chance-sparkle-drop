@@ -38,7 +38,7 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
   const [isApproving, setIsApproving] = useState(false);
   const [hasApproval, setHasApproval] = useState(false);
   
-  const { chainId } = useWeb3();
+  const { chainId, connectWallet } = useWeb3();
   const { buyTickets, isContractReady, contract } = useRaffleContract(chainId, account);
   const { getBalance, approve, getAllowance, isContractReady: isUSDTReady } = useUSDTContract(chainId, account);
 
@@ -361,12 +361,21 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
           )}
           
           {!account && (
-            <Alert className="border-destructive/50 bg-destructive/10">
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-              <AlertDescription className="text-destructive">
-                Wallet not connected. Please connect your wallet first.
-              </AlertDescription>
-            </Alert>
+            <div className="space-y-4">
+              <Alert className="border-neon-cyan/50 bg-neon-cyan/10">
+                <AlertTriangle className="h-4 w-4 text-neon-cyan" />
+                <AlertDescription className="text-foreground">
+                  Connect your wallet to purchase tickets
+                </AlertDescription>
+              </Alert>
+              <Button
+                onClick={connectWallet}
+                className="w-full bg-neon-cyan text-dark hover:bg-neon-cyan/90 font-orbitron"
+                size="lg"
+              >
+                Connect Wallet
+              </Button>
+            </div>
           )}
 
           {/* Network Mismatch Warning */}
