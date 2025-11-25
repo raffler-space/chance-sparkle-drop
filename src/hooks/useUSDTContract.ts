@@ -76,24 +76,41 @@ export const useUSDTContract = (chainId: number | undefined, account: string | n
   };
 
   const approve = async (spender: string, amount: string): Promise<ethers.ContractTransaction> => {
-    if (!contract) throw new Error('Contract not initialized');
+    if (!contract || !account) throw new Error('Contract not initialized');
 
     try {
       const decimals = await contract.decimals();
       const amountInSmallestUnit = ethers.utils.parseUnits(amount, decimals);
       
+      // Check current allowance
+      const currentAllowance = await contract.allowance(account, spender);
+      
+      // USDT on mainnet requires resetting allowance to 0 before setting a new non-zero amount
+      // This is a security feature to prevent the approve race condition
+      if (!currentAllowance.isZero()) {
+        console.log('Existing USDT allowance detected, resetting to 0 first...');
+        try {
+          const resetTx = await contract.approve(spender, 0, { gasLimit: 200000 });
+          await resetTx.wait();
+          console.log('Allowance reset to 0 successfully');
+        } catch (resetError) {
+          console.error('Error resetting allowance:', resetError);
+          throw new Error('Failed to reset USDT allowance. Please try again.');
+        }
+      }
+      
       try {
-        // Try with automatic gas estimation first
+        // Now approve the new amount with automatic gas estimation
         const tx = await contract.approve(spender, amountInSmallestUnit);
         return tx;
       } catch (gasError: any) {
-        // If gas estimation fails (common on some mobile wallets), retry with manual gas limit
+        // If gas estimation fails, retry with manual gas limit
         if (gasError.message?.includes('cannot estimate gas') || 
             gasError.message?.includes('execution reverted') ||
             gasError.code === 'UNPREDICTABLE_GAS_LIMIT') {
           console.log('Gas estimation failed, retrying with higher manual gas limit');
           const tx = await contract.approve(spender, amountInSmallestUnit, {
-            gasLimit: 200000 // Higher safe gas limit for USDT approve transactions
+            gasLimit: 200000
           });
           return tx;
         }
