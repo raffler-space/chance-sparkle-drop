@@ -43,6 +43,7 @@ export function Web3Provider({ children }: Web3ProviderProps) {
             overlayBlur: 'small',
           })}
           modalSize="compact"
+          initialChain={mainnet}
           coolMode
         >
           {children}
