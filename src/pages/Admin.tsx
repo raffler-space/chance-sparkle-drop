@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Navbar } from '@/components/Navbar';
 import { AnimatedBackground } from '@/components/AnimatedBackground';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, Plus, Trophy, Loader2, BarChart3, Wallet, Package, DollarSign, FileText, RefreshCcw } from 'lucide-react';
+import { Shield, Plus, Trophy, Loader2, BarChart3, Wallet, Package, DollarSign, FileText, RefreshCcw, MessageSquare } from 'lucide-react';
 import { RaffleManagement } from '@/components/admin/RaffleManagement';
 import { WinnerSelection } from '@/components/admin/WinnerSelection';
 import { AdminAnalytics } from '@/components/admin/AdminAnalytics';
@@ -13,6 +13,7 @@ import { PrizeClaimsManager } from '@/components/admin/PrizeClaimsManager';
 import ReferralPayouts from '@/components/admin/ReferralPayouts';
 import RaffleDetailsManager from '@/components/admin/RaffleDetailsManager';
 import { RefundManager } from '@/components/admin/RefundManager';
+import { SupportTickets } from '@/components/admin/SupportTickets';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { toast } from 'sonner';
 
@@ -157,6 +158,13 @@ export default function Admin() {
               <RefreshCcw className="w-4 h-4 mr-2" />
               Refunds
             </TabsTrigger>
+            <TabsTrigger 
+              value="support"
+              className="font-rajdhani data-[state=active]:bg-neon-pink/20 data-[state=active]:text-neon-pink"
+            >
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Support Tickets
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="raffles" className="space-y-4">
@@ -189,6 +197,10 @@ export default function Admin() {
 
           <TabsContent value="refunds" className="space-y-4">
             <RefundManager />
+          </TabsContent>
+
+          <TabsContent value="support" className="space-y-4">
+            <SupportTickets />
           </TabsContent>
         </Tabs>
       </main>
