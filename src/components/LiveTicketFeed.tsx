@@ -63,14 +63,31 @@ const LiveTicketFeed = ({ raffleId }: LiveTicketFeedProps) => {
             provider
           );
 
-          // Fetch TicketPurchased events for this raffle
-          // Use a much larger block range to catch all historical events
+          // Fetch TicketPurchased events for this raffle in chunks to respect RPC limits
           const currentBlock = await provider.getBlockNumber();
-          const fromBlock = Math.max(0, currentBlock - 1000000); // Last ~1M blocks (~6 months on mainnet)
-          const filter = raffleContract.filters.TicketPurchased(raffle.contract_raffle_id);
+          const totalBlocksToScan = 500000; // ~2 months of history
+          const fromBlock = Math.max(0, currentBlock - totalBlocksToScan);
+          const CHUNK_SIZE = 49999; // Just under 50k limit
           
           console.log(`Fetching blockchain events for raffle ${raffle.contract_raffle_id} from block ${fromBlock} to ${currentBlock}`);
-          const events = await raffleContract.queryFilter(filter, fromBlock, currentBlock);
+          
+          const filter = raffleContract.filters.TicketPurchased(raffle.contract_raffle_id);
+          const allEvents = [];
+          
+          // Query in chunks to respect RPC provider's block range limit (50k blocks)
+          for (let start = fromBlock; start <= currentBlock; start += CHUNK_SIZE) {
+            const end = Math.min(start + CHUNK_SIZE - 1, currentBlock);
+            try {
+              const chunkEvents = await raffleContract.queryFilter(filter, start, end);
+              allEvents.push(...chunkEvents);
+              console.log(`Chunk ${start}-${end}: Found ${chunkEvents.length} events`);
+            } catch (chunkError) {
+              console.error(`Error querying chunk ${start}-${end}:`, chunkError);
+            }
+          }
+          
+          const events = allEvents;
+          console.log(`Total events found: ${events.length}`);
 
           // Get block timestamps for events
           console.log(`Found ${events.length} blockchain events for raffle ${raffle.contract_raffle_id}`);
