@@ -176,6 +176,32 @@ const Index = () => {
             <div className="text-center py-12">
               <p className="text-muted-foreground text-lg">No active raffles at the moment. Check back soon!</p>
             </div>
+          ) : activeRaffles.length === 1 ? (
+            // Spotlight layout for single raffle
+            <div className="flex justify-center">
+              <div className="w-full max-w-3xl">
+                <RaffleCard 
+                  key={activeRaffles[0].id} 
+                  id={activeRaffles[0].id}
+                  title={activeRaffles[0].name}
+                  description={activeRaffles[0].description || activeRaffles[0].prize_description}
+                  prize={activeRaffles[0].prize_description}
+                  image={activeRaffles[0].image_url || mockRaffles[0].image}
+                  ticketPrice={`${activeRaffles[0].ticket_price} USDT`}
+                  ticketPriceNumeric={activeRaffles[0].ticket_price}
+                  totalTickets={activeRaffles[0].max_tickets}
+                  soldTickets={activeRaffles[0].tickets_sold || 0}
+                  endDate={activeRaffles[0].draw_date ? new Date(activeRaffles[0].draw_date) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)}
+                  isActive={activeRaffles[0].status === 'active'}
+                  account={account} 
+                  status={activeRaffles[0].status}
+                  winnerAddress={activeRaffles[0].winner_address}
+                  contract_raffle_id={activeRaffles[0].contract_raffle_id}
+                  launchTime={activeRaffles[0].launch_time ? new Date(activeRaffles[0].launch_time) : null}
+                  network={activeRaffles[0].network}
+                />
+              </div>
+            </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {activeRaffles.map((raffle) => (
