@@ -327,6 +327,42 @@ export type Database = {
         }
         Relationships: []
       }
+      support_tickets: {
+        Row: {
+          admin_response: string | null
+          created_at: string
+          id: string
+          message: string
+          status: string
+          subject: string
+          updated_at: string
+          user_id: string
+          wallet_address: string
+        }
+        Insert: {
+          admin_response?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          status?: string
+          subject: string
+          updated_at?: string
+          user_id: string
+          wallet_address: string
+        }
+        Update: {
+          admin_response?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          status?: string
+          subject?: string
+          updated_at?: string
+          user_id?: string
+          wallet_address?: string
+        }
+        Relationships: []
+      }
       tickets: {
         Row: {
           id: string

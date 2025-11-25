@@ -5,8 +5,9 @@ import { Navbar } from '@/components/Navbar';
 import { AnimatedBackground } from '@/components/AnimatedBackground';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
-import { Ticket, TrendingUp, History, Loader2 } from 'lucide-react';
+import { Ticket, TrendingUp, History, Loader2, MessageSquare } from 'lucide-react';
 import { UserTickets } from '@/components/dashboard/UserTickets';
+import { SupportTab } from '@/components/dashboard/SupportTab';
 import { ActiveRaffles } from '@/components/dashboard/ActiveRaffles';
 import { TransactionHistory } from '@/components/dashboard/TransactionHistory';
 import { WinnerNotification } from '@/components/dashboard/WinnerNotification';
@@ -115,6 +116,13 @@ export default function Dashboard() {
               <History className="w-4 h-4 mr-2" />
               Transaction History
             </TabsTrigger>
+            <TabsTrigger 
+              value="support"
+              className="font-rajdhani data-[state=active]:bg-neon-pink/20 data-[state=active]:text-neon-pink"
+            >
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Support
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="tickets" className="space-y-4">
@@ -127,6 +135,10 @@ export default function Dashboard() {
 
           <TabsContent value="history" className="space-y-4">
             <TransactionHistory userId={user?.id} walletAddress={account} />
+          </TabsContent>
+
+          <TabsContent value="support" className="space-y-4">
+            <SupportTab userId={user?.id} />
           </TabsContent>
         </Tabs>
       </main>
