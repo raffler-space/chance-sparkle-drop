@@ -163,8 +163,8 @@ Deno.serve(async (req) => {
       console.log(`Estimated blocks since creation: ${estimatedBlocksSinceCreation}`);
       console.log(`Querying events from block ${fromBlock} to ${currentBlock} (scanning ${estimatedBlocksSinceCreation + 100} blocks)`);
       
-      // Free tier RPC providers only allow 10 block range per query
-      const CHUNK_SIZE = 10;
+      // RPC providers have 50k block limit, use chunks just under that
+      const CHUNK_SIZE = 49999;
       const allEvents = [];
       const MAX_SCAN_TIME = 50000; // 50 second timeout to leave time for processing
       const scanStartTime = Date.now();
@@ -185,13 +185,11 @@ Deno.serve(async (req) => {
             allEvents.push(...chunkEvents);
             console.log(`  Found ${chunkEvents.length} events in blocks ${start}-${end}`);
           }
-          // Small delay to avoid rate limiting (10 blocks = ~120 seconds of chain time)
-          await new Promise(resolve => setTimeout(resolve, 50));
         } catch (chunkError) {
           console.error(`  Error scanning chunk ${start}-${end}:`, chunkError);
-          // If we get rate limited or block range error, wait longer
-          if (chunkError instanceof Error && (chunkError.message.includes('429') || chunkError.message.includes('block range'))) {
-            console.log('  Rate limited or block range error, slowing down...');
+          // If we get rate limited, try smaller chunks
+          if (chunkError instanceof Error && chunkError.message.includes('429')) {
+            console.log('  Rate limited, slowing down...');
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
         }

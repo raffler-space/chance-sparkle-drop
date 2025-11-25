@@ -73,7 +73,7 @@ const LiveTicketFeed = ({ raffleId }: LiveTicketFeedProps) => {
           
           // Start from estimated creation block, search forward to current block
           const fromBlock = Math.max(0, currentBlock - estimatedBlocksSinceCreation - 100); // Add 100 block buffer
-          const CHUNK_SIZE = 10; // Alchemy free tier limit
+          const CHUNK_SIZE = 49999; // Just under 50k limit
           
           console.log(`Raffle created at: ${raffle.created_at}`);
           console.log(`Estimated blocks since creation: ${estimatedBlocksSinceCreation}`);
@@ -82,21 +82,15 @@ const LiveTicketFeed = ({ raffleId }: LiveTicketFeedProps) => {
           const filter = raffleContract.filters.TicketPurchased(raffle.contract_raffle_id);
           const allEvents = [];
           
-          // Query in small chunks (10 blocks) for free tier RPC compatibility
+          // Query in chunks to respect RPC provider's block range limit (50k blocks)
           for (let start = fromBlock; start <= currentBlock; start += CHUNK_SIZE) {
             const end = Math.min(start + CHUNK_SIZE - 1, currentBlock);
             try {
               const chunkEvents = await raffleContract.queryFilter(filter, start, end);
-              if (chunkEvents.length > 0) {
-                allEvents.push(...chunkEvents);
-                console.log(`Chunk ${start}-${end}: Found ${chunkEvents.length} events`);
-              }
-              // Add small delay to avoid rate limiting
-              await new Promise(resolve => setTimeout(resolve, 100));
+              allEvents.push(...chunkEvents);
+              console.log(`Chunk ${start}-${end}: Found ${chunkEvents.length} events`);
             } catch (chunkError) {
               console.error(`Error querying chunk ${start}-${end}:`, chunkError);
-              // If rate limited, wait longer
-              await new Promise(resolve => setTimeout(resolve, 1000));
             }
           }
           
