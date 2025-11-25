@@ -182,7 +182,7 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
       // Step 1: Check and handle USDT approval
       if (!hasApproval) {
         toast.info('Approving USDT...', {
-          description: 'Please confirm the approval transaction',
+          description: 'You may need to confirm 1-2 transactions (USDT requires reset if you have existing approvals)',
         });
         
         setIsApproving(true);
@@ -201,7 +201,9 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
           if (approveError.code === 4001) {
             toast.error('Approval rejected');
           } else {
-            toast.error('Failed to approve USDT');
+            toast.error('Failed to approve USDT', {
+              description: approveError.message || 'Please try again'
+            });
           }
           return;
         }
