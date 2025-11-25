@@ -64,29 +64,45 @@ const LiveTicketFeed = ({ raffleId }: LiveTicketFeedProps) => {
           );
 
           // Fetch TicketPurchased events for this raffle
+          // Use a much larger block range to catch all historical events
+          const currentBlock = await provider.getBlockNumber();
+          const fromBlock = Math.max(0, currentBlock - 1000000); // Last ~1M blocks (~6 months on mainnet)
           const filter = raffleContract.filters.TicketPurchased(raffle.contract_raffle_id);
-          const events = await raffleContract.queryFilter(filter, -10000); // Last ~10k blocks
+          
+          console.log(`Fetching blockchain events for raffle ${raffle.contract_raffle_id} from block ${fromBlock} to ${currentBlock}`);
+          const events = await raffleContract.queryFilter(filter, fromBlock, currentBlock);
 
           // Get block timestamps for events
+          console.log(`Found ${events.length} blockchain events for raffle ${raffle.contract_raffle_id}`);
+          
           const blockchainTickets = await Promise.all(
             events.map(async (event) => {
-              const block = await event.getBlock();
-              const txHash = event.transactionHash;
-              
-              // Check if this tx_hash already exists in database tickets
-              const existsInDb = ticketsWithSource.some(t => t.tx_hash.toLowerCase() === txHash.toLowerCase());
-              
-              if (!existsInDb) {
-                const ticket: TicketPurchase = {
-                  id: txHash,
-                  wallet_address: event.args?.buyer || '',
-                  quantity: event.args?.quantity?.toNumber() || 0,
-                  purchase_price: event.args?.totalPrice ? parseFloat(ethers.utils.formatUnits(event.args.totalPrice, 6)) : 0,
-                  purchased_at: new Date(block.timestamp * 1000).toISOString(),
-                  tx_hash: txHash,
-                  source: 'blockchain',
-                };
-                return ticket;
+              try {
+                const block = await event.getBlock();
+                const txHash = event.transactionHash;
+                
+                console.log(`Processing event: tx=${txHash}, buyer=${event.args?.buyer}, quantity=${event.args?.quantity}`);
+                
+                // Check if this tx_hash already exists in database tickets
+                const existsInDb = ticketsWithSource.some(t => t.tx_hash.toLowerCase() === txHash.toLowerCase());
+                
+                if (!existsInDb) {
+                  const ticket: TicketPurchase = {
+                    id: txHash,
+                    wallet_address: event.args?.buyer || '',
+                    quantity: event.args?.quantity?.toNumber() || 0,
+                    purchase_price: event.args?.totalPrice ? parseFloat(ethers.utils.formatUnits(event.args.totalPrice, 6)) : 0,
+                    purchased_at: new Date(block.timestamp * 1000).toISOString(),
+                    tx_hash: txHash,
+                    source: 'blockchain',
+                  };
+                  console.log(`Adding blockchain ticket: ${txHash}`);
+                  return ticket;
+                } else {
+                  console.log(`Ticket ${txHash} already exists in database`);
+                }
+              } catch (error) {
+                console.error(`Error processing event:`, error);
               }
               return null;
             })
@@ -94,11 +110,14 @@ const LiveTicketFeed = ({ raffleId }: LiveTicketFeedProps) => {
 
           const validBlockchainTickets = blockchainTickets.filter((t): t is TicketPurchase => t !== null);
           
+          console.log(`Valid blockchain tickets: ${validBlockchainTickets.length}, Database tickets: ${ticketsWithSource.length}`);
+          
           // Merge and sort all tickets
           const allTickets = [...ticketsWithSource, ...validBlockchainTickets]
             .sort((a, b) => new Date(b.purchased_at).getTime() - new Date(a.purchased_at).getTime())
             .slice(0, 50);
 
+          console.log(`Total tickets to display: ${allTickets.length}`);
           setTickets(allTickets);
         } catch (blockchainError) {
           console.error("Error fetching blockchain tickets:", blockchainError);
