@@ -42,6 +42,8 @@ export function Web3Provider({ children }: Web3ProviderProps) {
             fontStack: 'system',
             overlayBlur: 'small',
           })}
+          modalSize="compact"
+          coolMode
         >
           {children}
         </RainbowKitProvider>
