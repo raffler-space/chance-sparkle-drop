@@ -33,10 +33,10 @@ const LiveTicketFeed = ({ raffleId }: LiveTicketFeedProps) => {
 
   const loadAllTickets = async () => {
     try {
-      // Get raffle details to fetch contract info
+      // Get raffle details including creation time
       const { data: raffle } = await supabase
         .from("raffles")
-        .select("contract_raffle_id, network")
+        .select("contract_raffle_id, network, created_at")
         .eq("id", raffleId)
         .single();
 
@@ -63,12 +63,20 @@ const LiveTicketFeed = ({ raffleId }: LiveTicketFeedProps) => {
             provider
           );
 
-          // Fetch TicketPurchased events for this raffle in chunks to respect RPC limits
+          // Calculate the starting block based on raffle creation time
           const currentBlock = await provider.getBlockNumber();
-          const totalBlocksToScan = 500000; // ~2 months of history
-          const fromBlock = Math.max(0, currentBlock - totalBlocksToScan);
+          const raffleCreatedAt = new Date(raffle.created_at).getTime();
+          const currentTime = Date.now();
+          const timeDiffSeconds = (currentTime - raffleCreatedAt) / 1000;
+          const avgBlockTime = 12; // Ethereum average block time in seconds
+          const estimatedBlocksSinceCreation = Math.ceil(timeDiffSeconds / avgBlockTime);
+          
+          // Start from estimated creation block, search forward to current block
+          const fromBlock = Math.max(0, currentBlock - estimatedBlocksSinceCreation - 100); // Add 100 block buffer
           const CHUNK_SIZE = 49999; // Just under 50k limit
           
+          console.log(`Raffle created at: ${raffle.created_at}`);
+          console.log(`Estimated blocks since creation: ${estimatedBlocksSinceCreation}`);
           console.log(`Fetching blockchain events for raffle ${raffle.contract_raffle_id} from block ${fromBlock} to ${currentBlock}`);
           
           const filter = raffleContract.filters.TicketPurchased(raffle.contract_raffle_id);
