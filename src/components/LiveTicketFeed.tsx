@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Ticket } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { ethers } from "ethers";
+import { getNetworkConfig } from "@/config/contracts";
 
 interface TicketPurchase {
   id: string;
@@ -12,6 +14,7 @@ interface TicketPurchase {
   purchase_price: number;
   purchased_at: string;
   tx_hash: string;
+  source?: 'database' | 'blockchain';
 }
 
 interface LiveTicketFeedProps {
@@ -30,6 +33,14 @@ const LiveTicketFeed = ({ raffleId }: LiveTicketFeedProps) => {
 
   const loadAllTickets = async () => {
     try {
+      // Get raffle details to fetch contract info
+      const { data: raffle } = await supabase
+        .from("raffles")
+        .select("contract_raffle_id, network")
+        .eq("id", raffleId)
+        .single();
+
+      // Load tickets from database
       const { data: dbTickets, error } = await supabase
         .from("tickets")
         .select("*")
@@ -39,7 +50,63 @@ const LiveTicketFeed = ({ raffleId }: LiveTicketFeedProps) => {
 
       if (error) throw error;
 
-      setTickets(dbTickets || []);
+      const ticketsWithSource = (dbTickets || []).map(t => ({ ...t, source: 'database' as const }));
+
+      // If raffle has contract_raffle_id, fetch blockchain events as backup
+      if (raffle?.contract_raffle_id !== null && raffle?.contract_raffle_id !== undefined) {
+        try {
+          const networkConfig = getNetworkConfig(raffle.network === 'sepolia' ? 11155111 : 1);
+          const provider = new ethers.providers.JsonRpcProvider(networkConfig.rpcUrl);
+          const raffleContract = new ethers.Contract(
+            networkConfig.contracts.raffle,
+            ["event TicketPurchased(uint256 indexed raffleId, address indexed buyer, uint256 quantity, uint256 totalPrice)"],
+            provider
+          );
+
+          // Fetch TicketPurchased events for this raffle
+          const filter = raffleContract.filters.TicketPurchased(raffle.contract_raffle_id);
+          const events = await raffleContract.queryFilter(filter, -10000); // Last ~10k blocks
+
+          // Get block timestamps for events
+          const blockchainTickets = await Promise.all(
+            events.map(async (event) => {
+              const block = await event.getBlock();
+              const txHash = event.transactionHash;
+              
+              // Check if this tx_hash already exists in database tickets
+              const existsInDb = ticketsWithSource.some(t => t.tx_hash.toLowerCase() === txHash.toLowerCase());
+              
+              if (!existsInDb) {
+                const ticket: TicketPurchase = {
+                  id: txHash,
+                  wallet_address: event.args?.buyer || '',
+                  quantity: event.args?.quantity?.toNumber() || 0,
+                  purchase_price: event.args?.totalPrice ? parseFloat(ethers.utils.formatUnits(event.args.totalPrice, 6)) : 0,
+                  purchased_at: new Date(block.timestamp * 1000).toISOString(),
+                  tx_hash: txHash,
+                  source: 'blockchain',
+                };
+                return ticket;
+              }
+              return null;
+            })
+          );
+
+          const validBlockchainTickets = blockchainTickets.filter((t): t is TicketPurchase => t !== null);
+          
+          // Merge and sort all tickets
+          const allTickets = [...ticketsWithSource, ...validBlockchainTickets]
+            .sort((a, b) => new Date(b.purchased_at).getTime() - new Date(a.purchased_at).getTime())
+            .slice(0, 50);
+
+          setTickets(allTickets);
+        } catch (blockchainError) {
+          console.error("Error fetching blockchain tickets:", blockchainError);
+          setTickets(ticketsWithSource);
+        }
+      } else {
+        setTickets(ticketsWithSource);
+      }
     } catch (error) {
       console.error("Error loading tickets:", error);
       setTickets([]);
