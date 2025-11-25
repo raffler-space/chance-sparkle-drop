@@ -301,60 +301,6 @@ export const PurchaseModal = ({ isOpen, onClose, raffle, account, onPurchaseSucc
 
         console.log('Database updated successfully - all tickets recorded');
         
-        // Track referral for wallet-only users
-        const referralCode = localStorage.getItem('referralCode');
-        if (referralCode && !user) {
-          console.log('Found referral code for wallet-only user:', referralCode);
-          try {
-            // Find the referrer by their referral code
-            const { data: existingReferrals } = await supabase
-              .from('referrals')
-              .select('referrer_id')
-              .eq('referral_code', referralCode)
-              .limit(1);
-
-            if (existingReferrals && existingReferrals.length > 0) {
-              const referrerId = existingReferrals[0].referrer_id;
-              
-              // Prevent self-referral
-              if (referrerId !== userId) {
-                // Check if this user already has a referrer
-                const { data: existingReferral } = await supabase
-                  .from('referrals')
-                  .select('id')
-                  .eq('referred_id', userId)
-                  .maybeSingle();
-
-                if (!existingReferral) {
-                  // Create referral relationship
-                  const { error: refError } = await supabase
-                    .from('referrals')
-                    .insert({
-                      referrer_id: referrerId,
-                      referred_id: userId,
-                      referral_code: referralCode
-                    });
-
-                  if (refError) {
-                    console.error('Failed to track referral:', refError);
-                  } else {
-                    console.log('Referral tracked successfully for wallet-only user');
-                    localStorage.removeItem('referralCode');
-                  }
-                } else {
-                  console.log('User already has a referrer');
-                }
-              } else {
-                console.log('Prevented self-referral attempt');
-              }
-            } else {
-              console.log('Invalid referral code');
-            }
-          } catch (refError) {
-            console.error('Error processing referral:', refError);
-          }
-        }
-        
         const toastDescription = user 
           ? 'Your tickets have been recorded in your dashboard'
           : 'Your tickets are linked to your wallet address';

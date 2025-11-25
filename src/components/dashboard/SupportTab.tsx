@@ -62,6 +62,11 @@ export function SupportTab({ userId, walletAddress }: { userId?: string; walletA
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!userId) {
+      toast.error('Please sign in to submit a support ticket');
+      return;
+    }
+    
     const wallet = walletAddress || account;
     if (!wallet) {
       toast.error('Please connect your wallet to submit a ticket');
@@ -73,20 +78,12 @@ export function SupportTab({ userId, walletAddress }: { userId?: string; walletA
       return;
     }
 
-    // Generate deterministic user_id from wallet address if not authenticated
-    const generateUserIdFromWallet = (walletAddr: string): string => {
-      const hash = walletAddr.toLowerCase().slice(2);
-      return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${hash.slice(13, 16)}-a${hash.slice(17, 20)}-${hash.slice(20, 32)}`;
-    };
-
-    const effectiveUserId = userId || generateUserIdFromWallet(wallet);
-
     setSubmitting(true);
     try {
       const { error } = await supabase
         .from('support_tickets')
         .insert({
-          user_id: effectiveUserId,
+          user_id: userId,
           wallet_address: wallet,
           subject: subject.trim(),
           message: message.trim(),
@@ -165,7 +162,7 @@ export function SupportTab({ userId, walletAddress }: { userId?: string; walletA
           </div>
           <Button
             type="submit"
-            disabled={submitting || !account}
+            disabled={submitting || !account || !userId}
             className="w-full bg-gradient-to-r from-neon-cyan to-neon-purple hover:opacity-90 font-rajdhani"
           >
             {submitting ? (
