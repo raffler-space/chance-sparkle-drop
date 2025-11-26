@@ -80,6 +80,7 @@ export const Navbar = ({ onConnectWallet, onDisconnectWallet, walletAddress, isC
     { label: 'Home', href: '/', type: 'link' },
     { label: 'Raffles', href: '/raffles', type: 'link' },
     { label: 'How It Works', href: '/how-it-works', type: 'link' },
+    { label: 'Referrals', href: '/referrals', type: 'link', icon: Gift },
     { label: 'Admin', href: '/admin', type: 'link', icon: Shield, adminOnly: true },
     { label: 'Content Editor', href: '/content-editor', type: 'link', icon: Shield, adminOnly: true },
   ];
@@ -159,12 +160,6 @@ export const Navbar = ({ onConnectWallet, onDisconnectWallet, walletAddress, isC
                       Dashboard
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/referrals" className="cursor-pointer font-rajdhani">
-                      <Gift className="mr-2 h-4 w-4" />
-                      Referrals
-                    </Link>
-                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={onDisconnectWallet} className="cursor-pointer font-rajdhani">
                     <Wallet className="mr-2 h-4 w-4" />
@@ -215,26 +210,16 @@ export const Navbar = ({ onConnectWallet, onDisconnectWallet, walletAddress, isC
               </Link>
             ))}
             
-            {/* Dashboard and Referrals - show when user is logged in OR wallet connected */}
+            {/* Dashboard - show when user is logged in OR wallet connected */}
             {(user || walletAddress) && (
-              <div className="space-y-1">
-                <Link
-                  to="/dashboard"
-                  className="flex items-center gap-2 px-3 py-2 text-base font-rajdhani font-medium text-muted-foreground hover:text-primary transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <LayoutDashboard className="w-4 h-4" />
-                  Dashboard
-                </Link>
-                <Link
-                  to="/referrals"
-                  className="flex items-center gap-2 px-3 py-2 text-base font-rajdhani font-medium text-muted-foreground hover:text-primary transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <Gift className="w-4 h-4" />
-                  Referrals
-                </Link>
-              </div>
+              <Link
+                to="/dashboard"
+                className="flex items-center gap-2 px-3 py-2 text-base font-rajdhani font-medium text-muted-foreground hover:text-primary transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                Dashboard
+              </Link>
             )}
 
             <div className="px-3 py-2 space-y-2">
