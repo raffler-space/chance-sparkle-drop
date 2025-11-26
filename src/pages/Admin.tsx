@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Navbar } from '@/components/Navbar';
 import { AnimatedBackground } from '@/components/AnimatedBackground';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, Plus, Trophy, Loader2, BarChart3, Wallet, Package, DollarSign, FileText, RefreshCcw, MessageSquare } from 'lucide-react';
+import { Shield, Plus, Trophy, Loader2, BarChart3, Wallet, Package, DollarSign, FileText, RefreshCcw, MessageSquare, Users } from 'lucide-react';
 import { RaffleManagement } from '@/components/admin/RaffleManagement';
 import { WinnerSelection } from '@/components/admin/WinnerSelection';
 import { AdminAnalytics } from '@/components/admin/AdminAnalytics';
@@ -14,6 +14,7 @@ import ReferralPayouts from '@/components/admin/ReferralPayouts';
 import RaffleDetailsManager from '@/components/admin/RaffleDetailsManager';
 import { RefundManager } from '@/components/admin/RefundManager';
 import { SupportTickets } from '@/components/admin/SupportTickets';
+import { ReferralManagement } from '@/components/admin/ReferralManagement';
 import { useWeb3 } from '@/hooks/useWeb3';
 import { toast } from 'sonner';
 
@@ -165,6 +166,13 @@ export default function Admin() {
               <MessageSquare className="w-4 h-4 mr-2" />
               Support Tickets
             </TabsTrigger>
+            <TabsTrigger 
+              value="referral-mgmt"
+              className="font-rajdhani data-[state=active]:bg-neon-gold/20 data-[state=active]:text-neon-gold"
+            >
+              <Users className="w-4 h-4 mr-2" />
+              Referral Management
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="raffles" className="space-y-4">
@@ -201,6 +209,10 @@ export default function Admin() {
 
           <TabsContent value="support" className="space-y-4">
             <SupportTickets />
+          </TabsContent>
+
+          <TabsContent value="referral-mgmt" className="space-y-4">
+            <ReferralManagement />
           </TabsContent>
         </Tabs>
       </main>
