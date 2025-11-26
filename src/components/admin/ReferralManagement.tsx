@@ -83,6 +83,13 @@ export function ReferralManagement() {
 
       if (supportError) console.error('Error fetching support tickets:', supportError);
 
+      // Get emails from profiles table
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, email');
+
+      if (profilesError) console.error('Error fetching profiles:', profilesError);
+
       // Map wallet addresses by user_id (take first occurrence)
       const walletsByUser: Record<string, string> = {};
       ticketsData?.forEach(t => {
@@ -98,9 +105,13 @@ export function ReferralManagement() {
         }
       });
 
-      // Note: Emails require a profiles table or auth access
-      // For now, we'll mark them as unavailable
+      // Map emails from profiles
       const emailsByUser: Record<string, string> = {};
+      profilesData?.forEach(p => {
+        if (p.email) {
+          emailsByUser[p.id] = p.email;
+        }
+      });
 
       // Aggregate points by user
       const pointsByUser: Record<string, number> = {};
