@@ -62,7 +62,8 @@ export function ReferralManagement() {
 
       const { data: referralsData, error: refError } = await supabase
         .from('referrals')
-        .select('referrer_id, referral_tier');
+        .select('referrer_id, referral_tier')
+        .eq('is_self_referral', false);
 
       if (refError) throw refError;
 

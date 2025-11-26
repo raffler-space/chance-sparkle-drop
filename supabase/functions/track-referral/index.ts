@@ -97,11 +97,12 @@ serve(async (req) => {
       );
     }
 
-    // Check if this user was already referred
+    // Check if this user was already referred (excluding self-referrals)
     const { data: existingReferral, error: checkError } = await supabaseAdmin
       .from('referrals')
       .select('id')
       .eq('referred_id', userId)
+      .eq('is_self_referral', false)
       .maybeSingle();
 
     if (checkError) {
@@ -119,13 +120,14 @@ serve(async (req) => {
       );
     }
 
-    // Create the referral relationship
+    // Create the referral relationship (actual referral, not self-referral)
     const { error: insertError } = await supabaseAdmin
       .from('referrals')
       .insert({
         referrer_id: referrerId,
         referred_id: userId,
-        referral_code: referralCode
+        referral_code: referralCode,
+        is_self_referral: false
       });
 
     if (insertError) {

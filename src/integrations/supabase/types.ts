@@ -323,6 +323,7 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          is_self_referral: boolean | null
           parent_referral_id: string | null
           referral_code: string
           referral_tier: number | null
@@ -332,6 +333,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
+          is_self_referral?: boolean | null
           parent_referral_id?: string | null
           referral_code: string
           referral_tier?: number | null
@@ -341,6 +343,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
+          is_self_referral?: boolean | null
           parent_referral_id?: string | null
           referral_code?: string
           referral_tier?: number | null

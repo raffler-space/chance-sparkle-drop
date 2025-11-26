@@ -111,8 +111,8 @@ export const AdminAnalytics = () => {
         ? rafflesWithBlockchainData.reduce((sum, r) => sum + r.tickets_sold, 0) / rafflesWithBlockchainData.length 
         : 0;
 
-      // Fetch referral data with date filters
-      let referralsQuery = supabase.from('referrals').select('*');
+      // Fetch referral data with date filters (exclude self-referrals)
+      let referralsQuery = supabase.from('referrals').select('*').eq('is_self_referral', false);
       if (startDate) {
         referralsQuery = referralsQuery.gte('created_at', startDate.toISOString());
       }
