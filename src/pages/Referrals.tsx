@@ -47,11 +47,12 @@ export default function Referrals({ account, isConnecting, onConnectWallet, onDi
 
   const loadReferralStats = async (userId: string) => {
     try {
-      // Get tier-based referrals
+      // Get tier-based referrals (exclude self-referrals)
       const { data: referrals, error: refError } = await supabase
         .from('referrals')
         .select('referral_tier')
-        .eq('referrer_id', userId);
+        .eq('referrer_id', userId)
+        .eq('is_self_referral', false);
 
       if (refError) throw refError;
 
