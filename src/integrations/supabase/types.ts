@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      daily_quests: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          icon: string | null
+          id: string
+          points_reward: number
+          quest_description: string
+          quest_name: string
+          quest_type: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          points_reward?: number
+          quest_description: string
+          quest_name: string
+          quest_type: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          points_reward?: number
+          quest_description?: string
+          quest_name?: string
+          quest_type?: string
+        }
+        Relationships: []
+      }
       email_templates: {
         Row: {
           created_at: string
@@ -229,29 +262,100 @@ export type Database = {
           },
         ]
       }
+      referral_points: {
+        Row: {
+          created_at: string | null
+          id: string
+          points_earned: number
+          points_source: string
+          reference_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          points_earned?: number
+          points_source: string
+          reference_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          points_earned?: number
+          points_source?: string
+          reference_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      referral_tiers: {
+        Row: {
+          benefits: string | null
+          created_at: string | null
+          icon: string | null
+          id: string
+          required_points: number
+          tier_level: number
+          tier_name: string
+        }
+        Insert: {
+          benefits?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          required_points: number
+          tier_level: number
+          tier_name: string
+        }
+        Update: {
+          benefits?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          required_points?: number
+          tier_level?: number
+          tier_name?: string
+        }
+        Relationships: []
+      }
       referrals: {
         Row: {
           created_at: string | null
           id: string
+          parent_referral_id: string | null
           referral_code: string
+          referral_tier: number | null
           referred_id: string
           referrer_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
+          parent_referral_id?: string | null
           referral_code: string
+          referral_tier?: number | null
           referred_id: string
           referrer_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
+          parent_referral_id?: string | null
           referral_code?: string
+          referral_tier?: number | null
           referred_id?: string
           referrer_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "referrals_parent_referral_id_fkey"
+            columns: ["parent_referral_id"]
+            isOneToOne: false
+            referencedRelation: "referrals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       refunds: {
         Row: {
@@ -447,6 +551,38 @@ export type Database = {
             columns: ["raffle_id"]
             isOneToOne: false
             referencedRelation: "raffles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_quest_completions: {
+        Row: {
+          completed_date: string
+          created_at: string | null
+          id: string
+          quest_id: string
+          user_id: string
+        }
+        Insert: {
+          completed_date?: string
+          created_at?: string | null
+          id?: string
+          quest_id: string
+          user_id: string
+        }
+        Update: {
+          completed_date?: string
+          created_at?: string | null
+          id?: string
+          quest_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_quest_completions_quest_id_fkey"
+            columns: ["quest_id"]
+            isOneToOne: false
+            referencedRelation: "daily_quests"
             referencedColumns: ["id"]
           },
         ]
