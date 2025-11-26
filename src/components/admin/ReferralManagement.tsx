@@ -14,6 +14,7 @@ import { Trophy, Plus, Edit, Users, Star, TrendingUp } from 'lucide-react';
 interface LeaderboardEntry {
   user_id: string;
   wallet_address: string | null;
+  email: string | null;
   total_points: number;
   tier1_referrals: number;
   tier2_referrals: number;
@@ -68,20 +69,38 @@ export function ReferralManagement() {
 
       if (refError) throw refError;
 
-      // Get wallet addresses for users
+      // Get wallet addresses from tickets
       const { data: ticketsData, error: ticketsError } = await supabase
         .from('tickets')
         .select('user_id, wallet_address');
 
       if (ticketsError) throw ticketsError;
 
+      // Get wallet addresses and emails from support tickets as fallback
+      const { data: supportData, error: supportError } = await supabase
+        .from('support_tickets')
+        .select('user_id, wallet_address');
+
+      if (supportError) console.error('Error fetching support tickets:', supportError);
+
       // Map wallet addresses by user_id (take first occurrence)
       const walletsByUser: Record<string, string> = {};
       ticketsData?.forEach(t => {
-        if (!walletsByUser[t.user_id]) {
+        if (!walletsByUser[t.user_id] && t.wallet_address) {
           walletsByUser[t.user_id] = t.wallet_address;
         }
       });
+      
+      // Use support tickets as fallback for wallet addresses
+      supportData?.forEach(s => {
+        if (!walletsByUser[s.user_id] && s.wallet_address) {
+          walletsByUser[s.user_id] = s.wallet_address;
+        }
+      });
+
+      // Note: Emails require a profiles table or auth access
+      // For now, we'll mark them as unavailable
+      const emailsByUser: Record<string, string> = {};
 
       // Aggregate points by user
       const pointsByUser: Record<string, number> = {};
@@ -107,6 +126,7 @@ export function ReferralManagement() {
           return {
             user_id,
             wallet_address: walletsByUser[user_id] || null,
+            email: emailsByUser[user_id] || null,
             total_points,
             tier1_referrals: refs.tier1,
             tier2_referrals: refs.tier2,
@@ -270,6 +290,7 @@ export function ReferralManagement() {
                 <TableRow>
                   <TableHead className="text-neon-cyan">Rank</TableHead>
                   <TableHead className="text-neon-cyan">User ID</TableHead>
+                  <TableHead className="text-neon-cyan">Email</TableHead>
                   <TableHead className="text-neon-cyan">Wallet Address</TableHead>
                   <TableHead className="text-neon-cyan text-right">Points</TableHead>
                   <TableHead className="text-neon-cyan text-right">Tier 1</TableHead>
@@ -288,6 +309,7 @@ export function ReferralManagement() {
                       {entry.rank > 3 && `#${entry.rank}`}
                     </TableCell>
                     <TableCell className="font-mono text-sm">{entry.user_id.slice(0, 8)}...</TableCell>
+                    <TableCell className="font-mono text-sm">{entry.email || 'N/A'}</TableCell>
                     <TableCell className="font-mono text-sm">
                       {entry.wallet_address ? `${entry.wallet_address.slice(0, 6)}...${entry.wallet_address.slice(-4)}` : 'N/A'}
                     </TableCell>
