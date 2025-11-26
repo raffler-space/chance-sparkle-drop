@@ -13,6 +13,7 @@ import { Trophy, Plus, Edit, Users, Star, TrendingUp } from 'lucide-react';
 
 interface LeaderboardEntry {
   user_id: string;
+  wallet_address: string | null;
   total_points: number;
   tier1_referrals: number;
   tier2_referrals: number;
@@ -67,6 +68,21 @@ export function ReferralManagement() {
 
       if (refError) throw refError;
 
+      // Get wallet addresses for users
+      const { data: ticketsData, error: ticketsError } = await supabase
+        .from('tickets')
+        .select('user_id, wallet_address');
+
+      if (ticketsError) throw ticketsError;
+
+      // Map wallet addresses by user_id (take first occurrence)
+      const walletsByUser: Record<string, string> = {};
+      ticketsData?.forEach(t => {
+        if (!walletsByUser[t.user_id]) {
+          walletsByUser[t.user_id] = t.wallet_address;
+        }
+      });
+
       // Aggregate points by user
       const pointsByUser: Record<string, number> = {};
       pointsData?.forEach(p => {
@@ -90,6 +106,7 @@ export function ReferralManagement() {
           const refs = referralsByUser[user_id] || { tier1: 0, tier2: 0, tier3: 0 };
           return {
             user_id,
+            wallet_address: walletsByUser[user_id] || null,
             total_points,
             tier1_referrals: refs.tier1,
             tier2_referrals: refs.tier2,
@@ -253,6 +270,7 @@ export function ReferralManagement() {
                 <TableRow>
                   <TableHead className="text-neon-cyan">Rank</TableHead>
                   <TableHead className="text-neon-cyan">User ID</TableHead>
+                  <TableHead className="text-neon-cyan">Wallet Address</TableHead>
                   <TableHead className="text-neon-cyan text-right">Points</TableHead>
                   <TableHead className="text-neon-cyan text-right">Tier 1</TableHead>
                   <TableHead className="text-neon-cyan text-right">Tier 2</TableHead>
@@ -270,6 +288,9 @@ export function ReferralManagement() {
                       {entry.rank > 3 && `#${entry.rank}`}
                     </TableCell>
                     <TableCell className="font-mono text-sm">{entry.user_id.slice(0, 8)}...</TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {entry.wallet_address ? `${entry.wallet_address.slice(0, 6)}...${entry.wallet_address.slice(-4)}` : 'N/A'}
+                    </TableCell>
                     <TableCell className="text-right font-bold text-neon-gold">{entry.total_points.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{entry.tier1_referrals}</TableCell>
                     <TableCell className="text-right">{entry.tier2_referrals}</TableCell>
