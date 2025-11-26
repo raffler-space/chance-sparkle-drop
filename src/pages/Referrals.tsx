@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
+import { ReferralTierDisplay } from '@/components/referrals/ReferralTierDisplay';
+import { DailyQuestsPanel } from '@/components/referrals/DailyQuestsPanel';
+import { MultiTierStats } from '@/components/referrals/MultiTierStats';
 
 interface ReferralsProps {
   account: string | null;
@@ -20,32 +23,43 @@ export default function Referrals({ account, isConnecting, onConnectWallet, onDi
     totalReferrals: 0,
     earnings: 0,
     commissionRate: 5,
-    rank: 0
+    rank: 0,
+    totalPoints: 0,
+    tier1Referrals: 0,
+    tier2Referrals: 0,
+    tier3Referrals: 0
   });
+  const [tiers, setTiers] = useState<any[]>([]);
+  const [quests, setQuests] = useState<any[]>([]);
+  const [completedQuests, setCompletedQuests] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        // Generate referral code from user ID
         setReferralCode(session.user.id.slice(0, 8));
-        // In a real app, fetch actual stats from database
         loadReferralStats(session.user.id);
+        loadTiers();
+        loadQuests(session.user.id);
       }
     });
   }, []);
 
   const loadReferralStats = async (userId: string) => {
     try {
-      // Get total referrals
+      // Get tier-based referrals
       const { data: referrals, error: refError } = await supabase
         .from('referrals')
-        .select('*')
+        .select('referral_tier')
         .eq('referrer_id', userId);
 
       if (refError) throw refError;
 
-      // Get earnings
+      const tier1 = referrals?.filter(r => r.referral_tier === 1).length || 0;
+      const tier2 = referrals?.filter(r => r.referral_tier === 2).length || 0;
+      const tier3 = referrals?.filter(r => r.referral_tier === 3).length || 0;
+
+      // Get earnings (money from ticket purchases)
       const { data: earnings, error: earnError } = await supabase
         .from('referral_earnings')
         .select('amount')
@@ -55,29 +69,42 @@ export default function Referrals({ account, isConnecting, onConnectWallet, onDi
 
       const totalEarnings = earnings?.reduce((sum, e) => sum + Number(e.amount), 0) || 0;
 
-      // Get leaderboard position
-      const { data: allEarnings, error: leaderError } = await supabase
-        .from('referral_earnings')
-        .select('referrer_id, amount');
+      // Get total points
+      const { data: points, error: pointsError } = await supabase
+        .from('referral_points')
+        .select('points_earned')
+        .eq('user_id', userId);
+
+      if (pointsError) throw pointsError;
+
+      const totalPoints = points?.reduce((sum, p) => sum + Number(p.points_earned), 0) || 0;
+
+      // Get leaderboard position (based on points)
+      const { data: allPoints, error: leaderError } = await supabase
+        .from('referral_points')
+        .select('user_id, points_earned');
 
       if (leaderError) throw leaderError;
 
-      // Calculate rank
-      const earningsByUser = allEarnings?.reduce((acc, e) => {
-        acc[e.referrer_id] = (acc[e.referrer_id] || 0) + Number(e.amount);
+      const pointsByUser = allPoints?.reduce((acc, p) => {
+        acc[p.user_id] = (acc[p.user_id] || 0) + Number(p.points_earned);
         return acc;
       }, {} as Record<string, number>) || {};
 
-      const sortedUsers = Object.entries(earningsByUser)
+      const sortedUsers = Object.entries(pointsByUser)
         .sort(([, a], [, b]) => b - a);
       
       const userRank = sortedUsers.findIndex(([id]) => id === userId) + 1;
 
       setStats({
-        totalReferrals: referrals?.length || 0,
+        totalReferrals: tier1 + tier2 + tier3,
         earnings: totalEarnings,
         commissionRate: 5,
-        rank: userRank
+        rank: userRank,
+        totalPoints,
+        tier1Referrals: tier1,
+        tier2Referrals: tier2,
+        tier3Referrals: tier3
       });
     } catch (error) {
       console.error('Error loading referral stats:', error);
@@ -86,6 +113,45 @@ export default function Referrals({ account, isConnecting, onConnectWallet, onDi
         description: "Failed to load referral statistics",
         variant: "destructive",
       });
+    }
+  };
+
+  const loadTiers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('referral_tiers')
+        .select('*')
+        .order('tier_level', { ascending: true });
+
+      if (error) throw error;
+      setTiers(data || []);
+    } catch (error) {
+      console.error('Error loading tiers:', error);
+    }
+  };
+
+  const loadQuests = async (userId: string) => {
+    try {
+      const { data: questsData, error: questsError } = await supabase
+        .from('daily_quests')
+        .select('*')
+        .eq('active', true);
+
+      if (questsError) throw questsError;
+      setQuests(questsData || []);
+
+      // Get today's completed quests
+      const today = new Date().toISOString().split('T')[0];
+      const { data: completions, error: completionsError } = await supabase
+        .from('user_quest_completions')
+        .select('quest_id')
+        .eq('user_id', userId)
+        .eq('completed_date', today);
+
+      if (completionsError) throw completionsError;
+      setCompletedQuests(new Set(completions?.map(c => c.quest_id) || []));
+    } catch (error) {
+      console.error('Error loading quests:', error);
     }
   };
 
@@ -119,9 +185,9 @@ export default function Referrals({ account, isConnecting, onConnectWallet, onDi
 
   const statCards = [
     { label: 'Total Referrals', value: stats.totalReferrals.toString(), icon: '👥' },
-    { label: 'Earnings', value: `$${stats.earnings.toLocaleString()}`, icon: '💰' },
-    { label: 'Commission Rate', value: `${stats.commissionRate}%`, icon: '📈' },
-    { label: 'Rank', value: stats.rank > 0 ? `#${stats.rank}` : 'N/A', icon: '🏆' }
+    { label: 'Points', value: stats.totalPoints.toLocaleString(), icon: '⭐' },
+    { label: 'Cash Earnings', value: `$${stats.earnings.toLocaleString()}`, icon: '💰' },
+    { label: 'Leaderboard Rank', value: stats.rank > 0 ? `#${stats.rank}` : 'N/A', icon: '🏆' }
   ];
 
   return (
@@ -140,31 +206,91 @@ export default function Referrals({ account, isConnecting, onConnectWallet, onDi
             💸 EARN REFERRALS
           </h1>
           
-          <div className="glass-effect p-8 rounded-xl space-y-8">
-            <h2 className="font-orbitron text-3xl font-bold text-accent text-center">
-              🚀 Your Referral Dashboard
-            </h2>
-            
+          <div className="space-y-8">
+            {/* Tier Display */}
+            {user && tiers.length > 0 && (
+              <ReferralTierDisplay currentPoints={stats.totalPoints} tiers={tiers} />
+            )}
+
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {statCards.map((stat, index) => (
-                <div
-                  key={index}
-                  className="text-center p-6 bg-background/30 rounded-xl"
-                >
-                  <div className="text-4xl mb-2">{stat.icon}</div>
-                  <div className="text-2xl font-bold text-primary mb-1">
-                    {stat.value}
+            <div className="glass-effect p-6 rounded-xl">
+              <h2 className="font-orbitron text-2xl font-bold text-accent text-center mb-6">
+                📊 Your Stats
+              </h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {statCards.map((stat, index) => (
+                  <div
+                    key={index}
+                    className="text-center p-6 bg-background/30 rounded-xl"
+                  >
+                    <div className="text-4xl mb-2">{stat.icon}</div>
+                    <div className="text-2xl font-bold text-primary mb-1">
+                      {stat.value}
+                    </div>
+                    <div className="text-sm text-muted-foreground">{stat.label}</div>
                   </div>
-                  <div className="text-sm text-muted-foreground">{stat.label}</div>
+                ))}
+              </div>
+            </div>
+
+            {/* Multi-Tier Stats */}
+            {user && (
+              <MultiTierStats 
+                stats={{
+                  tier1: stats.tier1Referrals,
+                  tier2: stats.tier2Referrals,
+                  tier3: stats.tier3Referrals
+                }} 
+              />
+            )}
+
+            {/* Daily Quests */}
+            {user && quests.length > 0 && (
+              <DailyQuestsPanel
+                quests={quests}
+                completedToday={completedQuests}
+                onQuestComplete={() => user && loadQuests(user.id)}
+                referralLink={referralLink}
+              />
+            )}
+
+            {/* Future Rewards Teaser */}
+            <div className="glass-effect p-6 rounded-xl border-2 border-accent/30">
+              <h3 className="text-xl font-orbitron font-bold text-center text-accent mb-4">
+                🎁 Coming Soon: Exclusive Rewards
+              </h3>
+              <div className="grid md:grid-cols-3 gap-4 text-center">
+                <div className="p-4 bg-background/30 rounded-lg">
+                  <div className="text-3xl mb-2">🎟️</div>
+                  <div className="font-semibold">Free Raffle Entries</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    Redeem points for free tickets
+                  </div>
                 </div>
-              ))}
+                <div className="p-4 bg-background/30 rounded-lg">
+                  <div className="text-3xl mb-2">💵</div>
+                  <div className="font-semibold">Cash Prizes</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    Top performers get cash rewards
+                  </div>
+                </div>
+                <div className="p-4 bg-background/30 rounded-lg">
+                  <div className="text-3xl mb-2">👑</div>
+                  <div className="font-semibold">VIP Access</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    Exclusive raffles for top tiers
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Referral Link Section */}
-            <div className="space-y-4">
-              <p className="text-xl text-center text-foreground/90">
-                🎯 Share your link and earn 5% from every ticket purchase!
+            <div className="glass-effect p-6 rounded-xl space-y-4">
+              <h3 className="text-xl font-orbitron font-bold text-center text-accent">
+                🎯 Your Referral Link
+              </h3>
+              <p className="text-center text-foreground/90">
+                Earn 100 points per direct referral + 5% commission on ticket purchases!
               </p>
               
               <div className="flex gap-2 p-4 bg-background/50 rounded-xl">
