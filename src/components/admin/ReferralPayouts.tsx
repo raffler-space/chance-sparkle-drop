@@ -17,6 +17,8 @@ interface ReferralPayout {
   status: string;
   created_at: string;
   paid_at: string | null;
+  referrer_email?: string;
+  referrer_wallet?: string;
 }
 
 interface ReferrerSummary {
@@ -25,6 +27,8 @@ interface ReferrerSummary {
   total_paid: number;
   pending_count: number;
   paid_count: number;
+  email?: string;
+  wallet_address?: string;
 }
 
 export default function ReferralPayouts() {
@@ -42,7 +46,7 @@ export default function ReferralPayouts() {
     try {
       setLoading(true);
 
-      // Load individual payouts
+      // Load individual payouts with referrer profile info
       const { data: payoutsData, error: payoutsError } = await supabase
         .from('referral_earnings')
         .select('*')
@@ -50,6 +54,35 @@ export default function ReferralPayouts() {
         .order('created_at', { ascending: false });
 
       if (payoutsError) throw payoutsError;
+
+      // Get referrer profiles
+      const referrerIds = [...new Set(payoutsData?.map(p => p.referrer_id) || [])];
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .in('id', referrerIds);
+
+      // Get wallet addresses from tickets
+      const { data: ticketsData } = await supabase
+        .from('tickets')
+        .select('user_id, wallet_address')
+        .in('user_id', referrerIds);
+
+      // Create lookup maps
+      const profileMap = new Map(profilesData?.map(p => [p.id, p.email]) || []);
+      const walletMap = new Map();
+      ticketsData?.forEach(t => {
+        if (!walletMap.has(t.user_id)) {
+          walletMap.set(t.user_id, t.wallet_address);
+        }
+      });
+
+      // Enrich payouts with email and wallet
+      const enrichedPayouts = payoutsData?.map(payout => ({
+        ...payout,
+        referrer_email: profileMap.get(payout.referrer_id),
+        referrer_wallet: walletMap.get(payout.referrer_id),
+      })) || [];
 
       // Load summary by referrer
       const { data: summaryData, error: summaryError } = await supabase
@@ -67,6 +100,8 @@ export default function ReferralPayouts() {
             total_paid: 0,
             pending_count: 0,
             paid_count: 0,
+            email: profileMap.get(earning.referrer_id),
+            wallet_address: walletMap.get(earning.referrer_id),
           };
         }
 
@@ -81,7 +116,7 @@ export default function ReferralPayouts() {
         return acc;
       }, {} as Record<string, ReferrerSummary>) || {};
 
-      setPayouts(payoutsData || []);
+      setPayouts(enrichedPayouts);
       setSummary(Object.values(summaryMap).filter(s => 
         viewMode === 'pending' ? s.total_pending > 0 : s.total_paid > 0
       ));
@@ -169,6 +204,8 @@ export default function ReferralPayouts() {
           <TableHeader>
             <TableRow>
               <TableHead>Referrer ID</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Wallet Address</TableHead>
               <TableHead className="text-right">
                 {viewMode === 'pending' ? 'Pending' : 'Paid'} Amount
               </TableHead>
@@ -183,6 +220,12 @@ export default function ReferralPayouts() {
               <TableRow key={s.referrer_id}>
                 <TableCell className="font-mono text-sm">
                   {s.referrer_id.slice(0, 8)}...
+                </TableCell>
+                <TableCell className="font-mono text-sm">
+                  {s.email || 'N/A'}
+                </TableCell>
+                <TableCell className="font-mono text-sm">
+                  {s.wallet_address ? `${s.wallet_address.slice(0, 6)}...${s.wallet_address.slice(-4)}` : 'N/A'}
                 </TableCell>
                 <TableCell className="text-right font-bold">
                   ${viewMode === 'pending' ? s.total_pending.toFixed(2) : s.total_paid.toFixed(2)}
@@ -222,6 +265,8 @@ export default function ReferralPayouts() {
             <TableRow>
               <TableHead>Date</TableHead>
               <TableHead>Referrer ID</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Wallet Address</TableHead>
               <TableHead>Raffle ID</TableHead>
               <TableHead className="text-right">Amount</TableHead>
               <TableHead className="text-right">Commission %</TableHead>
@@ -237,6 +282,12 @@ export default function ReferralPayouts() {
                 </TableCell>
                 <TableCell className="font-mono text-sm">
                   {payout.referrer_id.slice(0, 8)}...
+                </TableCell>
+                <TableCell className="font-mono text-sm">
+                  {payout.referrer_email || 'N/A'}
+                </TableCell>
+                <TableCell className="font-mono text-sm">
+                  {payout.referrer_wallet ? `${payout.referrer_wallet.slice(0, 6)}...${payout.referrer_wallet.slice(-4)}` : 'N/A'}
                 </TableCell>
                 <TableCell>#{payout.raffle_id}</TableCell>
                 <TableCell className="text-right font-bold text-primary">
