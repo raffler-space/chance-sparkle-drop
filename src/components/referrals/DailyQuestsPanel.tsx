@@ -37,34 +37,58 @@ export function DailyQuestsPanel({ quests, completedToday, onQuestComplete, refe
     if (socialUrls[quest.quest_type]) {
       window.open(socialUrls[quest.quest_type], '_blank');
       
-      // Mark quest as complete
       setCompleting(quest.id);
-      try {
-        const { error } = await supabase
-          .from('user_quest_completions')
-          .insert({
-            quest_id: quest.id,
-            completed_date: new Date().toISOString().split('T')[0]
-          } as any);
+      
+      toast({
+        title: "Verifying share...",
+        description: "Please wait while we confirm your share action.",
+      });
 
-        if (error) throw error;
+      // Wait 30 seconds to simulate verification
+      setTimeout(async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error('Not authenticated');
 
-        toast({
-          title: "Quest Complete! 🎉",
-          description: `You earned ${quest.points_reward} points!`,
-        });
-        
-        onQuestComplete();
-      } catch (error) {
-        console.error('Error completing quest:', error);
-        toast({
-          title: "Already completed",
-          description: "You've already completed this quest today!",
-          variant: "destructive",
-        });
-      } finally {
-        setCompleting(null);
-      }
+          // Mark quest as complete
+          const { error: completionError } = await supabase
+            .from('user_quest_completions')
+            .insert({
+              quest_id: quest.id,
+              completed_date: new Date().toISOString().split('T')[0]
+            } as any);
+
+          if (completionError) throw completionError;
+
+          // Credit points
+          const { error: pointsError } = await supabase
+            .from('referral_points')
+            .insert({
+              user_id: user.id,
+              points_earned: quest.points_reward,
+              points_source: 'daily_quest',
+              reference_id: quest.id
+            });
+
+          if (pointsError) throw pointsError;
+
+          toast({
+            title: "Quest Complete! 🎉",
+            description: `You earned ${quest.points_reward} points!`,
+          });
+          
+          onQuestComplete();
+        } catch (error) {
+          console.error('Error completing quest:', error);
+          toast({
+            title: "Already completed",
+            description: "You've already completed this quest today!",
+            variant: "destructive",
+          });
+        } finally {
+          setCompleting(null);
+        }
+      }, 30000); // 30 second delay
     }
   };
 
