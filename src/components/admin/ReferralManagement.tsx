@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Trophy, Plus, Edit, Users, Star, TrendingUp } from 'lucide-react';
+import { Trophy, Plus, Edit, Users, Star, TrendingUp, Copy } from 'lucide-react';
 
 interface LeaderboardEntry {
   user_id: string;
@@ -202,6 +202,11 @@ export function ReferralManagement() {
     }
   };
 
+  const copyUserId = (userId: string) => {
+    navigator.clipboard.writeText(userId);
+    toast.success('User ID copied to clipboard');
+  };
+
   const handleSaveQuest = async (questData: Partial<Quest>) => {
     try {
       if (selectedQuest?.id) {
@@ -319,7 +324,19 @@ export function ReferralManagement() {
                       {entry.rank === 3 && '🥉'}
                       {entry.rank > 3 && `#${entry.rank}`}
                     </TableCell>
-                    <TableCell className="font-mono text-sm">{entry.user_id.slice(0, 8)}...</TableCell>
+                    <TableCell className="font-mono text-sm">
+                      <div className="flex items-center gap-2">
+                        <span>{entry.user_id.slice(0, 8)}...</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 hover:bg-neon-cyan/20"
+                          onClick={() => copyUserId(entry.user_id)}
+                        >
+                          <Copy className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
                     <TableCell className="font-mono text-sm">{entry.email || 'N/A'}</TableCell>
                     <TableCell className="font-mono text-sm">
                       {entry.wallet_address ? `${entry.wallet_address.slice(0, 6)}...${entry.wallet_address.slice(-4)}` : 'N/A'}
