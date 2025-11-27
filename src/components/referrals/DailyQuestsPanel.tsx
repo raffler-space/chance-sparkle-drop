@@ -54,6 +54,7 @@ export function DailyQuestsPanel({ quests, completedToday, onQuestComplete, refe
           const { error: completionError } = await supabase
             .from('user_quest_completions')
             .insert({
+              user_id: user.id,
               quest_id: quest.id,
               completed_date: new Date().toISOString().split('T')[0]
             } as any);
