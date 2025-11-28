@@ -315,6 +315,20 @@ const Index = () => {
               <p className="text-muted-foreground text-sm mt-3">
                 Credit to Geridos
               </p>
+              {/* Social Links */}
+              <div className="mt-4">
+                <a 
+                  href="https://x.com/Raffler_Space" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                  </svg>
+                  Follow us on X
+                </a>
+              </div>
             </div>
 
             {/* Legal Links */}
@@ -345,6 +359,40 @@ const Index = () => {
               <p className="text-muted-foreground text-sm">
                 Always gamble responsibly. Must be 18+ to participate. Blockchain transactions are irreversible.
               </p>
+            </div>
+          </div>
+
+          {/* Security Disclaimer */}
+          <div className="py-6 border-t border-border/50">
+            <div className="glass-effect p-4 rounded-lg">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                <div className="text-sm">
+                  <p className="text-muted-foreground">
+                    <span className="font-semibold text-foreground">Secured by Chainlink VRF:</span> Our smart contracts use{' '}
+                    <a 
+                      href="https://chain.link/vrf" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary hover:text-primary/80 transition-colors underline"
+                    >
+                      Chainlink VRF
+                    </a>
+                    {' '}for provably fair random winner selection. All contracts are{' '}
+                    <a 
+                      href="https://etherscan.io/address/0x61ae76814a9245abE8524f33f0F1B330124B4677#code" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary hover:text-primary/80 transition-colors underline"
+                    >
+                      verified on Etherscan
+                    </a>
+                    {' '}and have undergone multiple security audits.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
